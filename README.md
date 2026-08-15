@@ -46,7 +46,7 @@ niżej po instalacji):
 | Wariant | Platforma | Status | Dodatkowe wymagania |
 |---|---|---|---|
 | `chat.py` (MLX) | macOS + Apple Silicon | ✅ Przetestowane: macOS 26 (Tahoe), Apple M4 Pro, 64GB RAM | Konto HF z zaakceptowaną licencją Bielika (patrz niżej) |
-| `chat.py` (MLX) | macOS + Apple Silicon, inna wersja/chip (M1/M2/M3, macOS 14/15...) | ⚠️ Nieprzetestowane, ale powinno działać — MLX wspiera cały Apple Silicon | jw. |
+| `chat.py` (MLX) | macOS + Apple Silicon, starsze chipy z serii M lub inna wersja macOS | ⚠️ Nieprzetestowane, ale powinno działać — MLX wspiera cały Apple Silicon | jw. |
 | `chat_cuda.py` (CUDA) | Linux/Windows + karta NVIDIA | ⚠️ Nieprzetestowane (brak dostępu do sprzętu NVIDIA) | Sterowniki CUDA, `torch` z obsługą CUDA, konto HF z licencją Bielika |
 | `chat_lmstudio.py` (LM Studio) | dowolna (tam, gdzie działa LM Studio) | ✅ Przetestowane na macOS; LM Studio samo wspiera też Windows/Linux z CUDA | [LM Studio](https://lmstudio.ai/) z załadowanym modelem -- **nie wymaga** konta HF/licencji Bielika, bo model przynosisz swój |
 
@@ -54,6 +54,14 @@ Reszta projektu (`download_acts.py`, `build_rag_index.py`, `rag_search.py`,
 `check_acts_freshness.py`) to czysty Python + `sentence-transformers`/
 `requests`/`pypdf` — platformowo niezależne, powinny działać wszędzie,
 gdzie działa Python 3.12, niezależnie od wybranego wariantu czatu.
+
+**Szacunkowe minimum RAM (MLX):** nie testowane na maszynie z mniejszą
+ilością pamięci niż 64GB, ale sądząc po zmierzonym `Peak memory` z
+`mlx_lm` (patrz PROGRESS.md) -- ok. 5GB dla wariantu 4.5B, 8-11GB dla
+11B (zależnie od długości kontekstu RAG) -- **16GB powinno spokojnie
+wystarczyć na wariant 4.5B**, dla 11B bezpieczniej mieć więcej zapasu
+(np. 32GB), zwłaszcza przy fine-tuningu LoRA, gdzie zużycie jest
+wyższe niż przy samym czacie.
 
 Konto Hugging Face z zaakceptowaną licencją modelu (dotyczy wariantów
 MLX i CUDA -- oba warianty modelu są *gated*, licencję trzeba
