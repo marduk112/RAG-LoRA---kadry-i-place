@@ -1,0 +1,6 @@
+mlx-lm==0.31.3
+sentence-transformers==5.7.0
+pypdf==6.16.1
+numpy==2.5.2
+huggingface_hub==1.27.0
+requests==2.34.2

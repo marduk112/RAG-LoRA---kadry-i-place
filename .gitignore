@@ -1,0 +1,37 @@
+# Środowisko Python (odtwarzalne przez requirements.txt)
+.venv/
+__pycache__/
+*.pyc
+
+# Wagi modeli -- za duże na git (kilka-kilkanaście GB), pobieralne
+# ponownie przez `mlx_lm.convert` (patrz README.md, sekcja "Odtworzenie
+# pipeline'u"). Modele Bielika są też objęte licencją wymagającą
+# osobnej akceptacji na Hugging Face -- nie dystrybuujemy ich tutaj.
+models/
+
+# Adaptery LoRA -- checkpointy z treningu (setki MB, wiele wersji
+# pośrednich). Odtwarzalne przez `mlx_lm.lora` (patrz PROGRESS.md,
+# krok 4b/6). Jeśli chcesz pokazać konkretny, finalny adapter w repo,
+# dodaj go świadomie przez `git add -f`.
+adapters/
+
+# Dane pobrane/wygenerowane -- odtwarzalne przez
+# download_acts.py + build_rag_index.py. rag_index_meta.json bywa
+# duży (dziesiątki MB, duplikuje pełny tekst artykułu w każdym
+# fragmencie). data/finetune/ (ręcznie napisany zbiór do LoRA) NIE
+# jest tu ignorowany -- to jest właściwa praca, a nie pochodna danych.
+data/raw/
+data/processed/
+
+# System
+.DS_Store
+
+# Lokalne ustawienia Claude Code (uprawnienia specyficzne dla tej
+# maszyny/sesji -- nie do współdzielenia)
+.claude/settings.local.json
+
+# Sekrety (na wszelki wypadek -- token HF trzymamy poza repo, w
+# ~/.cache/huggingface/, ale gdyby ktoś kiedyś dodał lokalny plik z
+# kluczem):
+.env
+*.env.local
