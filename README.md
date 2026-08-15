@@ -43,11 +43,17 @@ Wspólne dla wszystkich wariantów:
 Zależnie od tego, którą ścieżkę wybierzesz (patrz sekcja "Użycie"
 niżej po instalacji):
 
-| Wariant | Platforma | Dodatkowe wymagania |
-|---|---|---|
-| `chat.py` (MLX) | macOS + Apple Silicon | Konto HF z zaakceptowaną licencją Bielika (patrz niżej) |
-| `chat_cuda.py` (CUDA) ⚠️ nieprzetestowane | Linux/Windows + karta NVIDIA | Sterowniki CUDA, `torch` z obsługą CUDA, konto HF z licencją Bielika |
-| `chat_lmstudio.py` (LM Studio) | dowolna (tam, gdzie działa LM Studio) | [LM Studio](https://lmstudio.ai/) z załadowanym modelem -- **nie wymaga** konta HF/licencji Bielika, bo model przynosisz swój |
+| Wariant | Platforma | Status | Dodatkowe wymagania |
+|---|---|---|---|
+| `chat.py` (MLX) | macOS + Apple Silicon | ✅ Przetestowane: macOS 26 (Tahoe), Apple M4 Pro, 64GB RAM | Konto HF z zaakceptowaną licencją Bielika (patrz niżej) |
+| `chat.py` (MLX) | macOS + Apple Silicon, inna wersja/chip (M1/M2/M3, macOS 14/15...) | ⚠️ Nieprzetestowane, ale powinno działać — MLX wspiera cały Apple Silicon | jw. |
+| `chat_cuda.py` (CUDA) | Linux/Windows + karta NVIDIA | ⚠️ Nieprzetestowane (brak dostępu do sprzętu NVIDIA) | Sterowniki CUDA, `torch` z obsługą CUDA, konto HF z licencją Bielika |
+| `chat_lmstudio.py` (LM Studio) | dowolna (tam, gdzie działa LM Studio) | ✅ Przetestowane na macOS; LM Studio samo wspiera też Windows/Linux z CUDA | [LM Studio](https://lmstudio.ai/) z załadowanym modelem -- **nie wymaga** konta HF/licencji Bielika, bo model przynosisz swój |
+
+Reszta projektu (`download_acts.py`, `build_rag_index.py`, `rag_search.py`,
+`check_acts_freshness.py`) to czysty Python + `sentence-transformers`/
+`requests`/`pypdf` — platformowo niezależne, powinny działać wszędzie,
+gdzie działa Python 3.12, niezależnie od wybranego wariantu czatu.
 
 Konto Hugging Face z zaakceptowaną licencją modelu (dotyczy wariantów
 MLX i CUDA -- oba warianty modelu są *gated*, licencję trzeba

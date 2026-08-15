@@ -6,6 +6,14 @@ README.md na końcu projektu.
 
 ## Krok 0-1: Środowisko
 
+- Środowisko testowe: macOS 26 (Tahoe, build 25G76), Apple M4 Pro,
+  64GB pamięci zunifikowanej (`sw_vers`, `sysctl -n machdep.cpu.brand_string`,
+  `sysctl -n hw.memsize`). Cały projekt (RAG, konwersja modeli,
+  fine-tuning LoRA, oba warianty Bielika) był rozwijany i testowany
+  wyłącznie na tej maszynie -- inne wersje macOS/chipy Apple Silicon
+  (M1/M2/M3) powinny działać (MLX wspiera cały Apple Silicon), ale nie
+  zostały zweryfikowane. Wariant CUDA (krok 9) nie był testowany w
+  ogóle, z braku dostępu do sprzętu NVIDIA.
 - System miał tylko Pythona 3.9 (za stary dla nowoczesnych bibliotek ML).
   Doinstalowano przez Homebrew **Python 3.12** i założono wirtualne
   środowisko `.venv/` w katalogu projektu (żeby nic nie zaśmiecać w systemie).
