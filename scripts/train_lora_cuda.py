@@ -4,7 +4,8 @@ karty NVIDIA/CUDA (środowisko deweloperskie to Mac/Apple Silicon) --
 API (peft, trl, transformers) zweryfikowano względem aktualnej
 dokumentacji, ale end-to-end przebieg treningu nie został uruchomiony.
 Jeśli coś nie zadziała, to najpewniej drobna niezgodność wersji
-bibliotek -- zgłoś/popraw i zaktualizuj PROGRESS.md.
+bibliotek -- daj znać (issue) albo od razu wyślij PR z poprawką i
+aktualizacją PROGRESS.md.
 
 Odpowiednik `mlx_lm.lora` (patrz PROGRESS.md, kroki 4b i 6) dla
 Linuksa/Windows z kartą NVIDIA: LoRA fine-tuning Bielika przez

@@ -220,8 +220,8 @@ systemowy (`scripts/prompt.py`).
 w którym powstał ten projekt, to Mac bez GPU CUDA. API zostało
 zweryfikowane względem aktualnej dokumentacji `peft`/`trl`, ale nie
 przetestowane end-to-end. Jeśli coś nie zadziała, to prawdopodobnie
-drobna niezgodność wersji bibliotek — popraw i zaktualizuj ten plik
-oraz PROGRESS.md.
+drobna niezgodność wersji bibliotek — daj znać (issue) albo od razu
+wyślij PR z poprawką i aktualizacją tego pliku oraz PROGRESS.md.
 
 ```bash
 # Torch z obsługą CUDA zainstaluj osobno wg https://pytorch.org/get-started/locally/
