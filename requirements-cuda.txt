@@ -1,9 +1,10 @@
 # Zależności dla wariantu CUDA (Linux/Windows + karta NVIDIA) --
-# odpowiednik requirements.txt, ale zamiast mlx-lm używa
-# transformers + peft + bitsandbytes + trl. Zainstaluj obok
-# requirements.txt (RAG jest wspólny dla obu wariantów):
+# odpowiednik requirements-mlx.txt, ale zamiast mlx-lm używa
+# transformers + peft + bitsandbytes + trl. NIE instaluj razem z
+# requirements.txt (ten ciągnie za sobą mlx-lm, który nie zainstaluje
+# się poza macOS) -- zamiast tego:
 #
-#   pip install -r requirements.txt -r requirements-cuda.txt
+#   pip install -r requirements-common.txt -r requirements-cuda.txt
 #
 # UWAGA: torch z obsługą CUDA najlepiej zainstalować osobno wg
 # instrukcji z https://pytorch.org/get-started/locally/ (wersja CUDA

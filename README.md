@@ -36,32 +36,54 @@ Szczegóły i konkretne przykłady testów — patrz PROGRESS.md, kroki 4b–4c.
 
 ## Wymagania
 
-- macOS na Apple Silicon (MLX korzysta z GPU przez Metal)
+Wspólne dla wszystkich wariantów:
 - Python 3.12 (system może mieć starszą wersję — patrz PROGRESS.md,
   krok 0)
-- Konto Hugging Face z zaakceptowaną licencją modelu (oba warianty są
-  *gated* -- licencję trzeba zaakceptować osobno dla każdego z nich,
-  na stronie repo na HF, zanim `hf download`/`mlx_lm.convert` zadziała):
-  - [`speakleash/Bielik-11B-v3.0-Instruct`](https://huggingface.co/speakleash/Bielik-11B-v3.0-Instruct) (domyślny)
-  - [`speakleash/Bielik-4.5B-v3.0-Instruct`](https://huggingface.co/speakleash/Bielik-4.5B-v3.0-Instruct) (szybszy wariant, opcjonalny)
+
+Zależnie od tego, którą ścieżkę wybierzesz (patrz sekcja "Użycie"
+niżej po instalacji):
+
+| Wariant | Platforma | Dodatkowe wymagania |
+|---|---|---|
+| `chat.py` (MLX) | macOS + Apple Silicon | Konto HF z zaakceptowaną licencją Bielika (patrz niżej) |
+| `chat_cuda.py` (CUDA) ⚠️ nieprzetestowane | Linux/Windows + karta NVIDIA | Sterowniki CUDA, `torch` z obsługą CUDA, konto HF z licencją Bielika |
+| `chat_lmstudio.py` (LM Studio) | dowolna (tam, gdzie działa LM Studio) | [LM Studio](https://lmstudio.ai/) z załadowanym modelem -- **nie wymaga** konta HF/licencji Bielika, bo model przynosisz swój |
+
+Konto Hugging Face z zaakceptowaną licencją modelu (dotyczy wariantów
+MLX i CUDA -- oba warianty modelu są *gated*, licencję trzeba
+zaakceptować osobno dla każdego z nich na stronie repo na HF, zanim
+`hf download`/`mlx_lm.convert`/`transformers` zadziała):
+- [`speakleash/Bielik-11B-v3.0-Instruct`](https://huggingface.co/speakleash/Bielik-11B-v3.0-Instruct) (domyślny)
+- [`speakleash/Bielik-4.5B-v3.0-Instruct`](https://huggingface.co/speakleash/Bielik-4.5B-v3.0-Instruct) (szybszy wariant, opcjonalny)
 
 ## Instalacja
 
 ```bash
 python3.12 -m venv .venv
+
+# macOS + Apple Silicon (MLX) -- wariant domyślny:
 .venv/bin/pip install -r requirements.txt
 
+# Linux/Windows + NVIDIA (CUDA) -- zamiast powyższego, patrz też
+# sekcja "Linux/Windows + karta NVIDIA (CUDA)" niżej:
+# .venv/bin/pip install -r requirements-common.txt -r requirements-cuda.txt
+
+# Tylko RAG + LM Studio (dowolna platforma, bez MLX/CUDA):
+# .venv/bin/pip install -r requirements-common.txt
+
 # Zaloguj się do Hugging Face (token z https://huggingface.co/settings/tokens)
+# -- pomiń, jeśli używasz tylko chat_lmstudio.py
 .venv/bin/hf auth login
 ```
 
 ## Odtworzenie całego pipeline'u od zera
 
-Repozytorium zawiera już gotowe dane (`data/`), model (`models/`) i
-adapter LoRA (`adapters/`) — więc do samego *używania* asystenta
-wystarczy sekcja "Użycie" niżej. Poniższe kroki są potrzebne tylko,
-jeśli chcesz odtworzyć pipeline od podstaw (np. dodać nową ustawę albo
-przetrenować LoRA od nowa).
+`models/`, `adapters/`, `data/raw/` i `data/processed/` są celowo
+niecommitowane (patrz `.gitignore` — duże, w pełni odtwarzalne pliki).
+Po sklonowaniu repo musisz przejść poniższe kroki raz, zanim zadziała
+sekcja "Użycie" niżej (chyba że korzystasz wyłącznie z
+`chat_lmstudio.py` z własnym modelem w LM Studio — wtedy wystarczą
+kroki 1-2, model dostarcza LM Studio).
 
 ```bash
 # 1. Pobranie aktów prawnych z ELI API Sejmu -> data/raw/, data/processed/
@@ -183,7 +205,8 @@ oraz PROGRESS.md.
 
 ```bash
 # Torch z obsługą CUDA zainstaluj osobno wg https://pytorch.org/get-started/locally/
-.venv/bin/pip install -r requirements.txt -r requirements-cuda.txt
+# (NIE używaj requirements.txt -- ten ciągnie za sobą mlx-lm, Apple-only)
+.venv/bin/pip install -r requirements-common.txt -r requirements-cuda.txt
 
 # Fine-tuning LoRA (odpowiednik kroku 4 wyżej, ale przez transformers+peft+trl)
 .venv/bin/python scripts/train_lora_cuda.py

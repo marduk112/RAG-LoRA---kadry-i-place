@@ -1,0 +1,5 @@
+# Zależność specyficzna dla wariantu MLX -- działa TYLKO na macOS +
+# Apple Silicon (mlx-lm nie zainstaluje się na Linuksie/Windows).
+# Dla CUDA użyj requirements-cuda.txt, dla LM Studio wystarczy sam
+# requirements-common.txt.
+mlx-lm==0.31.3

@@ -1,6 +1,6 @@
-mlx-lm==0.31.3
-sentence-transformers==5.7.0
-pypdf==6.16.1
-numpy==2.5.2
-huggingface_hub==1.27.0
-requests==2.34.2
+# Domyślny (macOS + Apple Silicon) stos: RAG + MLX.
+# Na Linuksie/Windows to NIE zainstaluje się (mlx-lm jest Apple-only) --
+# użyj requirements-common.txt + requirements-cuda.txt (CUDA) albo
+# samego requirements-common.txt (tylko RAG + LM Studio). Patrz README.
+-r requirements-common.txt
+-r requirements-mlx.txt
