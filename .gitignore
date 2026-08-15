@@ -14,6 +14,7 @@ models/
 # krok 4b/6). Jeśli chcesz pokazać konkretny, finalny adapter w repo,
 # dodaj go świadomie przez `git add -f`.
 adapters/
+adapters-cuda/
 
 # Dane pobrane/wygenerowane -- odtwarzalne przez
 # download_acts.py + build_rag_index.py. rag_index_meta.json bywa

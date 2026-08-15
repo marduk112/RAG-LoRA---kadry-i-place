@@ -5,7 +5,11 @@ LM Studio (lokalny serwer zgodny z API OpenAI), zamiast lokalnego MLX.
 Przydatne, gdy masz już w LM Studio załadowany model (np. Bielik w
 formacie GGUF) i nie chcesz go dublować w MLX. Ponownie wykorzystuje
 dokładnie ten sam prompt systemowy i sposób budowania kontekstu z RAG
-co scripts/chat.py -- różni się tylko backendem generacji.
+co scripts/chat.py (wspólny moduł scripts/prompt.py) -- różni się
+tylko backendem generacji. Ten skrypt NIE zależy od mlx_lm, więc
+działa też na Linuksie/Windows (wszystko, co robi, to zapytania HTTP
+do lokalnego serwera LM Studio + embedding modelu RAG przez
+sentence-transformers, który jest wieloplatformowy).
 
 Uwaga: LoRA wytrenowane w scripts/chat.py (adapters/*) NIE działa tutaj
 -- to wagi w formacie MLX, a LM Studio ładuje osobny plik GGUF. Ten
@@ -26,7 +30,7 @@ import sys
 
 import requests
 
-from chat import SYSTEM_PROMPT, build_context
+from prompt import SYSTEM_PROMPT, build_user_message
 from rag_search import RagIndex
 
 DEFAULT_URL = "http://localhost:1234/v1"
@@ -52,11 +56,9 @@ def detect_model(base_url: str) -> str:
 
 def answer(base_url: str, model_id: str, rag: RagIndex, question: str, top_k: int) -> str:
     results = rag.search(question, top_k=top_k)
-    context = build_context(results)
-    user_content = f"Fragmenty aktów prawnych:\n\n{context}\n\n---\n\nPytanie: {question}"
     messages = [
         {"role": "system", "content": SYSTEM_PROMPT},
-        {"role": "user", "content": user_content},
+        {"role": "user", "content": build_user_message(question, results)},
     ]
     resp = requests.post(
         f"{base_url}/chat/completions",

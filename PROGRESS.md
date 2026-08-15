@@ -332,11 +332,70 @@ Użycie:
 python scripts/check_acts_freshness.py
 ```
 
+## Krok 9: wariant CUDA (Linux/Windows + NVIDIA) — ⚠️ nieprzetestowane
+
+Cel: projekt do tej pory działał tylko na Apple Silicon, bo MLX to
+biblioteka specyficzna dla Apple/Metal. Żeby ktokolwiek z kartą NVIDIA
+mógł to odpalić bez Maca, dodano równoległy stos:
+
+**Poprawka przy okazji (drobny, ale realny bug):** `chat_lmstudio.py`
+importował `SYSTEM_PROMPT`/`build_context` z `chat.py`, a `chat.py` na
+poziomie modułu robi `from mlx_lm import ...` -- czyli `chat_lmstudio.py`
+w praktyce NIE dałoby się uruchomić na maszynie bez zainstalowanego
+`mlx_lm` (czyli poza macOS), mimo że sam w sobie nie potrzebuje MLX
+(łączy się tylko przez HTTP z LM Studio). Wydzielono `scripts/prompt.py`
+(bez ciężkich zależności: `SYSTEM_PROMPT`, `build_context`,
+`build_user_message`) i przepisano `chat.py`/`chat_lmstudio.py`, żeby
+z niego korzystały. Zweryfikowano przez `ast`-analizę importów, że
+`chat_lmstudio.py` już nie ciągnie za sobą `mlx`/`mlx_lm` w ogóle.
+
+**Nowe pliki:**
+- `requirements-cuda.txt` -- `transformers`, `peft`, `bitsandbytes`,
+  `trl`, `accelerate`, `datasets` (do doinstalowania obok
+  `requirements.txt`; torch z CUDA instaluje się osobno wg instrukcji
+  z pytorch.org, bo zależy od wersji sterowników).
+- `scripts/train_lora_cuda.py` -- odpowiednik `mlx_lm.lora`:
+  `BitsAndBytesConfig` (4-bit, nf4, double quant) +
+  `prepare_model_for_kbit_training` + `peft.LoraConfig` (rank 8,
+  target_modules `q_proj`/`v_proj` -- jak domyślne `mlx_lm.lora`,
+  tylko attention) + `trl.SFTTrainer` z `assistant_only_loss=True`
+  (odpowiednik `--mask-prompt`). Te same domyślne hiperparametry co w
+  przebiegach z kroku 4b/6 (batch 2, 200 kroków, ewaluacja/zapis co
+  25) -- z zastrzeżeniem w docstringu, że punkt najlepszego val loss
+  może wypaść inaczej niż na MLX (inny optymalizator/precyzja), więc
+  i tak trzeba ręcznie sprawdzić checkpointy, nie ufać automatycznie
+  ostatniemu.
+- `scripts/chat_cuda.py` -- odpowiednik `chat.py`: ładowanie modelu
+  przez `transformers` (4-bit) + `peft.PeftModel.from_pretrained` na
+  adapter, `tokenizer.apply_chat_template` + `model.generate`. Ten sam
+  `SYSTEM_PROMPT`/RAG co pozostałe warianty.
+
+**Jak API zostało zweryfikowane:** przez `find-docs`/context7
+(`/huggingface/peft`, `/huggingface/trl`) zamiast z pamięci -- w
+szczególności nazwa parametru `assistant_only_loss` (nowsza,
+zastąpiła starsze podejścia do maskowania promptu w TRL) i wzorzec
+ładowania modelu w 4-bit przez `BitsAndBytesConfig` +
+`quantization_config=` w `AutoModelForCausalLM.from_pretrained`.
+
+**Czego NIE zrobiono:** żadnego uruchomienia end-to-end. Środowisko
+deweloperskie tego projektu to Mac bez karty NVIDIA/CUDA -- nie ma
+tu jak przetestować `train_lora_cuda.py` ani `chat_cuda.py`.
+Zweryfikowano tylko: składnię (`py_compile`), zgodność z aktualną
+dokumentacją bibliotek, oraz że `target_modules` (`q_proj`, `v_proj`)
+pasują do rzeczywistej architektury Bielika (`LlamaForCausalLM`,
+sprawdzone w `config.json` pobranego modelu). Upublicznione mimo
+braku testu na wyraźną prośbę użytkownika, z jasnym oznaczeniem
+"NIEPRZETESTOWANE" w kodzie i README.
+
 ## Co dalej
 
 1. Do rozważenia: większy, bardziej zróżnicowany zbiór LoRA (więcej
    przykładów granicznych) jeśli zależałoby nam na poprawie
    niezawodności modelu również bez kontekstu RAG.
+2. Wariant CUDA (krok 9) wymaga realnego testu na maszynie z kartą
+   NVIDIA -- jeśli ktoś to zrobi, zaktualizować ten plik i README
+   (usunąć oznaczenie "nieprzetestowane", poprawić ewentualne
+   niezgodności API).
 2. Do rozważenia: uruchamianie `check_acts_freshness.py` okresowo
    (np. cron/`schedule`), żeby wychwycić nowelizacje bez czekania na
    ręczne sprawdzenie.

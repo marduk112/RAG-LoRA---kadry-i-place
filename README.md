@@ -1,8 +1,10 @@
 # Asystent kadrowo-płacowy (Bielik + RAG + LoRA)
 
 Lokalny (offline po pierwszym pobraniu) asystent odpowiadający na pytania
-z zakresu polskiego prawa pracy i ubezpieczeń społecznych. Działa
-natywnie na Apple Silicon (MLX), bez wysyłania niczego do chmury.
+z zakresu polskiego prawa pracy i ubezpieczeń społecznych, bez wysyłania
+niczego do chmury. Natywnie na Apple Silicon (MLX) — plus alternatywne
+ścieżki dla Linuksa/Windows z kartą NVIDIA (CUDA, patrz niżej;
+nieprzetestowane) i dla dowolnego modelu już załadowanego w LM Studio.
 
 Dziennik tego, jak to powstawało krok po kroku — z napotkanymi
 pułapkami i decyzjami — jest w [PROGRESS.md](PROGRESS.md). Ten plik to
@@ -162,6 +164,39 @@ sam RAG (7 ustaw) + Twój model z LM Studio, bez wyuczonego stylu/
 kalibracji z kroku 4b–4c. W testach samo grounding przez RAG
 wystarczyło jednak do trafnych, precyzyjnie cytowanych odpowiedzi
 (patrz PROGRESS.md, krok 7).
+
+### Linux/Windows + karta NVIDIA (CUDA) — ⚠️ NIEPRZETESTOWANE
+
+MLX (a więc `chat.py` i `mlx_lm.lora`) działa tylko na Apple Silicon.
+Dla maszyn z kartą NVIDIA jest równoległy stos oparty o `transformers`
++ `peft` + `bitsandbytes` (kwantyzacja 4-bit) + `trl` (`SFTTrainer`)
+zamiast `mlx-lm` — te same dane treningowe (`data/finetune/`), te same
+hiperparametry co w PROGRESS.md (krok 4b/6), ten sam RAG i prompt
+systemowy (`scripts/prompt.py`).
+
+**Ten wariant nie został uruchomiony na żadnej karcie NVIDIA** — środowisko,
+w którym powstał ten projekt, to Mac bez GPU CUDA. API zostało
+zweryfikowane względem aktualnej dokumentacji `peft`/`trl`, ale nie
+przetestowane end-to-end. Jeśli coś nie zadziała, to prawdopodobnie
+drobna niezgodność wersji bibliotek — popraw i zaktualizuj ten plik
+oraz PROGRESS.md.
+
+```bash
+# Torch z obsługą CUDA zainstaluj osobno wg https://pytorch.org/get-started/locally/
+.venv/bin/pip install -r requirements.txt -r requirements-cuda.txt
+
+# Fine-tuning LoRA (odpowiednik kroku 4 wyżej, ale przez transformers+peft+trl)
+.venv/bin/python scripts/train_lora_cuda.py
+
+# Czat (RAG + doduczony model) -- transformers+peft zamiast MLX
+.venv/bin/python scripts/chat_cuda.py
+.venv/bin/python scripts/chat_cuda.py --prompt "Ile dni urlopu przysługuje po 10 latach pracy?"
+```
+
+Konto Hugging Face z zaakceptowaną licencją Bielika jest wymagane tak
+samo jak w wariancie MLX (patrz "Wymagania" wyżej) — tu nie ma
+osobnego kroku konwersji, `transformers` ładuje i kwantyzuje model
+bezpośrednio przy starcie.
 
 Samo wyszukiwanie RAG (bez odpalania modelu językowego) można
 przetestować szybciej przez:

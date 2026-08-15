@@ -24,44 +24,19 @@ from pathlib import Path
 
 from mlx_lm import generate, load
 
+from prompt import SYSTEM_PROMPT, build_user_message
 from rag_search import RagIndex
 
 ROOT = Path(__file__).resolve().parent.parent
 MODEL_PATH = ROOT / "models" / "Bielik-11B-v3.0-Instruct-mlx"
 DEFAULT_ADAPTER_PATH = ROOT / "adapters" / "bielik11b-kadry-lora-iter25"
 
-SYSTEM_PROMPT = """Jesteś asystentem kadrowo-płacowym, odpowiadasz po polsku na pytania \
-dotyczące polskiego prawa pracy i ubezpieczeń społecznych.
-
-Poniżej, przed każdym pytaniem użytkownika, otrzymasz fragmenty aktów \
-prawnych wyszukane jako potencjalnie pomocny kontekst. Zasady:
-1. Odpowiadaj WYŁĄCZNIE na podstawie dostarczonych fragmentów -- nie \
-korzystaj z własnej wiedzy o konkretnych liczbach, kwotach czy terminach.
-2. Jeśli dostarczone fragmenty nie zawierają odpowiedzi na pytanie, wprost \
-napisz, że nie znalazłeś tego w dostępnych aktach prawnych, i nie zgaduj.
-3. Cytuj numer artykułu i nazwę aktu, na którym opierasz odpowiedź.
-4. Nie jesteś substytutem porady prawnej ani księgowej -- w sprawach \
-spornych zasugeruj konsultację ze specjalistą."""
-
-
-def build_context(results: list[dict]) -> str:
-    parts = []
-    for r in results:
-        parts.append(
-            f"### {r['act_title']} -- art. {r['article']}\n{r['text']}"
-        )
-    return "\n\n".join(parts)
-
 
 def answer(model, tokenizer, rag: RagIndex, question: str, top_k: int, verbose: bool) -> str:
     results = rag.search(question, top_k=top_k)
-    context = build_context(results)
-    user_content = (
-        f"Fragmenty aktów prawnych:\n\n{context}\n\n---\n\nPytanie: {question}"
-    )
     messages = [
         {"role": "system", "content": SYSTEM_PROMPT},
-        {"role": "user", "content": user_content},
+        {"role": "user", "content": build_user_message(question, results)},
     ]
     prompt = tokenizer.apply_chat_template(messages, add_generation_prompt=True)
     return generate(model, tokenizer, prompt=prompt, max_tokens=500, verbose=verbose)
