@@ -99,6 +99,12 @@ sekcja "Użycie" niżej (chyba że korzystasz wyłącznie z
 `chat_lmstudio.py` z własnym modelem w LM Studio — wtedy wystarczą
 kroki 1-2, model dostarcza LM Studio).
 
+Kroki 1-2 są wspólne dla wszystkich wariantów. Kroki 3-4 poniżej to
+wariant **MLX (macOS)** — dla **CUDA** (Linux/Windows + NVIDIA) pomiń
+je i użyj `scripts/train_lora_cuda.py` zamiast `mlx_lm.convert`/
+`mlx_lm.lora`, opisanego w sekcji "Linux/Windows + karta NVIDIA
+(CUDA)" niżej.
+
 ```bash
 # 1. Pobranie aktów prawnych z ELI API Sejmu -> data/raw/, data/processed/
 .venv/bin/python scripts/download_acts.py
@@ -106,7 +112,7 @@ kroki 1-2, model dostarcza LM Studio).
 # 2. Zbudowanie indeksu RAG (embeddingi artykułów) -> data/processed/rag_index*.
 .venv/bin/python scripts/build_rag_index.py
 
-# 3. Pobranie i konwersja Bielika do MLX (kwantyzacja 4-bit) -> models/
+# 3. [macOS/MLX] Pobranie i konwersja Bielika do MLX (kwantyzacja 4-bit) -> models/
 # (dla wariantu 4.5B podmień hf-path/mlx-path na Bielik-4.5B-v3.0-Instruct)
 .venv/bin/hf download speakleash/Bielik-11B-v3.0-Instruct  # najpierw pełny snapshot, patrz uwaga niżej
 .venv/bin/mlx_lm.convert \
@@ -114,7 +120,7 @@ kroki 1-2, model dostarcza LM Studio).
   --mlx-path models/Bielik-11B-v3.0-Instruct-mlx \
   -q
 
-# 4. Fine-tuning LoRA na data/finetune/{train,valid}.jsonl -> adapters/
+# 4. [macOS/MLX] Fine-tuning LoRA na data/finetune/{train,valid}.jsonl -> adapters/
 .venv/bin/mlx_lm.lora \
   --model models/Bielik-11B-v3.0-Instruct-mlx \
   --train \
