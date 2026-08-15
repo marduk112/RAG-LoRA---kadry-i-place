@@ -226,3 +226,14 @@ testy jakości i weryfikacja faktów prawnych (patrz PROGRESS.md) były
 wykonywane i sprawdzane na bieżąco, ale duża część implementacji i
 research'u (np. weryfikacja identyfikatorów ELI, testy fine-tuningu)
 została wykonana przez model.
+
+## Licencja
+
+Kod tego repozytorium jest dostępny na licencji [Apache 2.0](LICENSE).
+
+Modele Bielika (`speakleash/Bielik-*`) są udostępniane przez SpeakLeash
+osobno, również na licencji Apache 2.0, ale nie są częścią tego
+repozytorium (pobierane oddzielnie, patrz sekcja "Instalacja"). Teksty
+ustaw pobierane przez `scripts/download_acts.py` to oficjalne akty
+normatywne — w Polsce nieobjęte prawem autorskim (art. 4 ustawy o
+prawie autorskim i prawach pokrewnych).
