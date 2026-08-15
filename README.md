@@ -17,9 +17,10 @@ Dwa niezależne mechanizmy działają razem, celowo:
    (`data/processed/all_articles.json`). Najtrafniejsze fragmenty
    trafiają jako kontekst do modelu. To źródło **faktów** — aktualnych,
    źródłowych tekstów przepisów.
-2. **LoRA fine-tuning** — model **Bielik-4.5B-v3.0-Instruct** (polski
-   LLM od SpeakLeash) jest doduczony na przykładach pytanie/odpowiedź
-   z tej dziedziny. To źródło **stylu**: zwięzłe odpowiedzi z
+2. **LoRA fine-tuning** — model **Bielik** (polski LLM od SpeakLeash;
+   domyślnie wariant **11B-v3.0-Instruct**, dostępny też szybszy
+   **4.5B-v3.0-Instruct**) jest doduczony na przykładach pytanie/
+   odpowiedź z tej dziedziny. To źródło **stylu**: zwięzłe odpowiedzi z
    cytowaniem artykułu, oraz — co ważne — nawyk przyznawania się do
    niewiedzy zamiast zgadywania, gdy kontekst nie wystarcza.
 
@@ -36,9 +37,11 @@ Szczegóły i konkretne przykłady testów — patrz PROGRESS.md, kroki 4b–4c.
 - macOS na Apple Silicon (MLX korzysta z GPU przez Metal)
 - Python 3.12 (system może mieć starszą wersję — patrz PROGRESS.md,
   krok 0)
-- Konto Hugging Face z zaakceptowaną licencją modelu
-  [`speakleash/Bielik-4.5B-v3.0-Instruct`](https://huggingface.co/speakleash/Bielik-4.5B-v3.0-Instruct)
-  (model jest *gated*)
+- Konto Hugging Face z zaakceptowaną licencją modelu (oba warianty są
+  *gated* -- licencję trzeba zaakceptować osobno dla każdego z nich,
+  na stronie repo na HF, zanim `hf download`/`mlx_lm.convert` zadziała):
+  - [`speakleash/Bielik-11B-v3.0-Instruct`](https://huggingface.co/speakleash/Bielik-11B-v3.0-Instruct) (domyślny)
+  - [`speakleash/Bielik-4.5B-v3.0-Instruct`](https://huggingface.co/speakleash/Bielik-4.5B-v3.0-Instruct) (szybszy wariant, opcjonalny)
 
 ## Instalacja
 
@@ -66,30 +69,40 @@ przetrenować LoRA od nowa).
 .venv/bin/python scripts/build_rag_index.py
 
 # 3. Pobranie i konwersja Bielika do MLX (kwantyzacja 4-bit) -> models/
+# (dla wariantu 4.5B podmień hf-path/mlx-path na Bielik-4.5B-v3.0-Instruct)
+.venv/bin/hf download speakleash/Bielik-11B-v3.0-Instruct  # najpierw pełny snapshot, patrz uwaga niżej
 .venv/bin/mlx_lm.convert \
-  --hf-path speakleash/Bielik-4.5B-v3.0-Instruct \
-  --mlx-path models/Bielik-4.5B-v3.0-Instruct-mlx \
+  --hf-path speakleash/Bielik-11B-v3.0-Instruct \
+  --mlx-path models/Bielik-11B-v3.0-Instruct-mlx \
   -q
 
 # 4. Fine-tuning LoRA na data/finetune/{train,valid}.jsonl -> adapters/
 .venv/bin/mlx_lm.lora \
-  --model models/Bielik-4.5B-v3.0-Instruct-mlx \
+  --model models/Bielik-11B-v3.0-Instruct-mlx \
   --train \
   --data data/finetune \
   --batch-size 2 \
   --iters 200 \
   --mask-prompt \
-  --adapter-path adapters/bielik-kadry-lora
+  --adapter-path adapters/bielik11b-kadry-lora
 ```
 
-**Uwaga o kroku 4:** monitoruj `Val loss` w trakcie treningu. W naszym
-przebiegu najlepszy wynik walidacyjny wypadł już przy iteracji 50 —
-dalszy trening tylko przeuczał model na 35-elementowym zbiorze
-treningowym. Zalecane jest ręczne sprawdzenie kilku zapisanych
-checkpointów (`adapters/*/0000XXX_adapters.safetensors`) na pytaniach
-spoza dosłownej treści zbioru treningowego i wybranie najlepszego, a
-nie automatyczne poleganie na finalnej iteracji. Szczegóły w
-PROGRESS.md.
+**Uwaga o kroku 3:** uruchom najpierw `hf download` (pełny snapshot
+repo), a dopiero potem `mlx_lm.convert` -- w innym wypadku konwersja
+może się wywalić z `IncompleteSnapshotError`, bo `mlx_lm.convert` przy
+ładowaniu modelu pobiera tylko pliki potrzebne do inferencji, pomijając
+np. `.gitattributes`/`README.md`, a etap zapisu wymaga kompletnego
+zrzutu repo. Szczegóły w PROGRESS.md, krok 4a.
+
+**Uwaga o kroku 4:** monitoruj `Val loss` w trakcie treningu. W naszych
+przebiegach najlepszy wynik walidacyjny wypadał bardzo wcześnie
+(iteracja 50 dla 4.5B, iteracja 25 dla 11B) — dalszy trening tylko
+przeuczał model na 35-elementowym zbiorze treningowym. Zalecane jest
+ręczne sprawdzenie kilku zapisanych checkpointów
+(`adapters/*/0000XXX_adapters.safetensors`) na pytaniach spoza
+dosłownej treści zbioru treningowego i wybranie najlepszego, a nie
+automatyczne poleganie na finalnej iteracji. Szczegóły w PROGRESS.md,
+kroki 4b i 6.
 
 ## Użycie
 
