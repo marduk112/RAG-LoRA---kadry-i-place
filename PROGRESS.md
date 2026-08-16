@@ -693,6 +693,10 @@ uszkodzone, tylko te dwa akty nie skorzystały z ewentualnych poprawek
 numeracji (a rynek pracy, jako akt z 2025 r., prawdopodobnie i tak nie
 ma żadnej historycznej numeracji z indeksem górnym do poprawienia).
 
+Zmiany z tego kroku scommitowane i wypchnięte na `origin/main` jako
+`ed7d6bb` ("Napraw ekstrakcję artykułów z PDF: indeks górny, pominięte
+artykuły, tekst nieobowiązujący").
+
 ## Co dalej
 
 1. Do rozważenia: większy, bardziej zróżnicowany zbiór LoRA (więcej
