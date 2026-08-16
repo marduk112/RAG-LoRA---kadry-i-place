@@ -779,6 +779,53 @@ lokalnie, z pobraną bazą, więc łącznie z testami oznaczonymi `skipif`).
 
 Dopisano sekcję "Testy" do README.md z instrukcją uruchomienia.
 
+## Krok 15: upload pliku PDF jako dodatkowy kontekst (`scripts/file_index.py`)
+
+Cel: użytkownik zaproponował na początku sesji, żeby oprócz kontekstu
+rozmowy dało się też wgrać własny plik (np. umowę o pracę) jako
+dodatkowy kontekst obok RAG-a nad ustawami -- na start ograniczone do
+PDF-ów tekstowych (nie skanów/obrazów, OCR poza zakresem).
+
+**Nowy moduł `scripts/file_index.py`:** `SessionFileIndex` -- lekki,
+tymczasowy indeks żyjący tylko w pamięci na czas sesji (NIE zapisywany
+na dysk, w przeciwieństwie do `rag_search.RagIndex`), żeby nie mieszać
+dokumentów użytkownika z kuratorowaną bazą ustaw. Dzieli model
+embeddingowy z `RagIndex` (`SessionFileIndex(model=rag.model)`) --
+model ładowany tylko raz, nie dubluje ~kilkuset MB w pamięci.
+`add_pdf()` wyciąga tekst przez `pypdf`, dzieli na fragmenty (reużyte
+`split_long_text`/`MAX_CHUNK_CHARS`/`OVERLAP_CHARS` z
+`build_rag_index.py` -- ta sama logika co dla ustaw, żadnej duplikacji),
+liczy embeddingi. Pusty tekst (skan bez OCR) rzuca czytelny `ValueError`
+zamiast po cichu zaindeksować nic. Obsługuje jeden plik na raz (kolejny
+`add_pdf()` zastępuje poprzedni) -- prosty zakres na start.
+
+**Integracja z promptem:** `prompt.build_user_message()` przyjmuje
+teraz opcjonalny `file_results`, dokłada osobną sekcję "Fragmenty z
+wgranego przez użytkownika pliku" wyraźnie oddzieloną od "Fragmenty
+aktów prawnych". `SYSTEM_PROMPT` zaktualizowany o regułę: fragmenty z
+pliku użytkownika NIE są obowiązującym prawem i model ma je tak
+oznaczać w odpowiedzi (żeby np. zapis w prywatnej umowie nie został
+zacytowany tak, jakby to był przepis ustawy).
+
+**Komendy w każdym z trzech wariantów czatu** (`chat.py`,
+`chat_lmstudio.py`, `chat_cuda.py`, ten sam wzorzec co przy kroku 10):
+`--file <ścieżka>` (wgranie przy starcie) i `/plik <ścieżka>` (w trakcie
+rozmowy). Dla pytań rozpoznanych jako meta (`looks_like_meta_question`,
+krok 10) plik -- tak jak RAG nad ustawami -- jest pomijany, spójnie z
+istniejącą logiką.
+
+Zweryfikowano: 12 nowych testów jednostkowych (`tests/test_file_index.py`,
+`PdfReader` mockowany, deterministyczny `FakeModel` -- bez ciężkich
+zależności) oraz pełny test end-to-end: ręcznie skonstruowany, prawdziwy
+plik PDF (zweryfikowany, że `pypdf` faktycznie wyciąga z niego tekst)
+wgrany przez `SessionFileIndex` z prawdziwym modelem embeddingowym,
+wyszukiwanie w nim działa równolegle z głównym RAG-iem nad ustawami
+(różne, sensowne wyniki dla obu pul), i pełny przebieg przez żywy
+LM Studio (Bielik-11B): pytanie o okres wypowiedzenia w przykładowej
+umowie (4 miesiące) poprawnie zacytowane jako treść pliku użytkownika,
+z trafną uwagą, że to może odbiegać od Kodeksu pracy (art. 36) --
+model nie pomylił dwóch źródeł.
+
 ## Co dalej
 
 1. Do rozważenia: większy, bardziej zróżnicowany zbiór LoRA (więcej

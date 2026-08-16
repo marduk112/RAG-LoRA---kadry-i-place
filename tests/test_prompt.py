@@ -7,7 +7,14 @@ modelu embeddingowego) -- patrz PROGRESS.md, krok 10/11.
 
 import pytest
 
-from prompt import MAX_ARTICLE_CHARS, build_context, looks_like_meta_question, search_with_history, trim_history
+from prompt import (
+    MAX_ARTICLE_CHARS,
+    build_context,
+    build_user_message,
+    looks_like_meta_question,
+    search_with_history,
+    trim_history,
+)
 
 
 class FakeRag:
@@ -136,3 +143,26 @@ def test_search_with_history_empty_history_uses_plain_search():
     results = search_with_history(rag, [], "pytanie", top_k=5)
     assert results[0]["article"] == "1"
     assert rag.calls == ["pytanie"]
+
+
+# --- build_user_message (patrz też scripts/file_index.py -- upload plików) ---
+
+
+def test_build_user_message_without_file_results_has_no_file_section():
+    msg = build_user_message("pytanie", [make_result("1", 0.9)])
+    assert "Fragmenty aktów prawnych" in msg
+    assert "wgranego przez użytkownika pliku" not in msg
+
+
+def test_build_user_message_includes_file_section_when_present():
+    file_results = [{"source_file": "umowa.pdf", "text": "treść umowy", "score": 0.8}]
+    msg = build_user_message("pytanie", [make_result("1", 0.9)], file_results)
+    assert "Fragmenty aktów prawnych" in msg
+    assert "wgranego przez użytkownika pliku" in msg
+    assert "umowa.pdf" in msg
+    assert "treść umowy" in msg
+
+
+def test_build_user_message_omits_file_section_when_empty_list():
+    msg = build_user_message("pytanie", [make_result("1", 0.9)], [])
+    assert "wgranego przez użytkownika pliku" not in msg

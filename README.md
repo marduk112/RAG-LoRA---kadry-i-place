@@ -203,6 +203,26 @@ najlepsze dopasowanie (patrz PROGRESS.md, krok 11). Bez tego model
 potrafił "dopowiadać" nieistniejące szczegóły (np. zmyślony numer
 punktu w artykule), zamiast wprost przyznać brak groundingu.
 
+**Upload własnego pliku PDF** (we wszystkich trzech wariantach): wpisz
+`/plik <ścieżka>` w trybie interaktywnym albo podaj `--file <ścieżka>`
+przy starcie, żeby dołączyć np. własną umowę o pracę czy regulamin jako
+dodatkowy kontekst obok RAG-a. Obsługiwane są na razie tylko PDF-y
+tekstowe (tekst wyciągany wprost z pliku) — skany/obrazy (OCR) są poza
+obecnym zakresem i zwrócą czytelny błąd zamiast po cichu zignorować
+plik. Fragmenty z wgranego pliku są wyraźnie oznaczane w promptcie jako
+"treść pliku użytkownika" i model jest instruowany, żeby nie mylić ich
+z obowiązującym prawem — w testach poprawnie rozróżniał zapis w
+przykładowej umowie od przepisów Kodeksu pracy i zwracał uwagę na
+rozbieżność między nimi. Plik jest indeksowany tylko w pamięci na czas
+sesji (nigdy nie trafia do stałej bazy ustaw) i można go podmienić w
+dowolnym momencie kolejnym `/plik`.
+
+```bash
+.venv/bin/python scripts/chat.py --file umowa.pdf
+# albo w trakcie rozmowy:
+# Ty: /plik umowa.pdf
+```
+
 ### Alternatywa: RAG + model z LM Studio (`scripts/chat_lmstudio.py`)
 
 Jeśli masz już jakiś model załadowany w [LM Studio](https://lmstudio.ai/)

@@ -15,10 +15,16 @@ odpowiedzi trafiają do promptu przy kolejnych turach) -- wpisz /nowy,
 ostatnich --max-turns par pytanie/odpowiedź, żeby nie przepełnić okna
 kontekstu modelu (każda tura dokłada też fragmenty RAG).
 
+Można też wgrać własny plik PDF (tekstowy, nie skan) jako dodatkowy
+kontekst -- wpisz /plik <ścieżka> w trybie interaktywnym albo podaj
+--file przy starcie. Fragmenty z pliku są wyraźnie oznaczane jako
+"treść pliku użytkownika", nie mylone z obowiązującym prawem.
+
 Użycie:
     python scripts/chat_cuda.py
     python scripts/chat_cuda.py --prompt "pytanie..."
     python scripts/chat_cuda.py --no-adapter
+    python scripts/chat_cuda.py --file umowa.pdf
     python scripts/chat_cuda.py \\
         --model speakleash/Bielik-11B-v3.0-Instruct \\
         --adapter-path adapters-cuda/bielik11b-kadry-lora/final
@@ -30,6 +36,7 @@ import torch
 from peft import PeftModel
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 
+from file_index import SessionFileIndex
 from prompt import SYSTEM_PROMPT, build_user_message, looks_like_meta_question, search_with_history, trim_history
 from rag_search import RagIndex
 
@@ -54,7 +61,9 @@ def load_model(model_id: str, adapter_path: str | None):
     return model, tokenizer
 
 
-def answer(model, tokenizer, rag: RagIndex, history: list[dict], question: str, top_k: int) -> str:
+def answer(
+    model, tokenizer, rag: RagIndex, file_index: SessionFileIndex, history: list[dict], question: str, top_k: int
+) -> str:
     if history and looks_like_meta_question(question):
         # Pytanie o przebieg rozmowy -- pomijamy fragmenty RAG (wyszukane
         # od nowa na podstawie samej treści pytania, więc dla takich pytań
@@ -63,7 +72,8 @@ def answer(model, tokenizer, rag: RagIndex, history: list[dict], question: str, 
         current_turn = {"role": "user", "content": question}
     else:
         results = search_with_history(rag, history, question, top_k)
-        current_turn = {"role": "user", "content": build_user_message(question, results)}
+        file_results = file_index.search(question, top_k=3)
+        current_turn = {"role": "user", "content": build_user_message(question, results, file_results)}
     messages = [{"role": "system", "content": SYSTEM_PROMPT}] + history + [current_turn]
     inputs = tokenizer.apply_chat_template(
         messages, add_generation_prompt=True, return_tensors="pt", return_dict=True
@@ -94,6 +104,7 @@ def main():
     parser.add_argument("--no-adapter", action="store_true", help="Użyj bazowego modelu bez LoRA")
     parser.add_argument("--top-k", type=int, default=5, help="Liczba fragmentów RAG dołączanych do kontekstu")
     parser.add_argument("--max-turns", type=int, default=6, help="Ile ostatnich par pytanie/odpowiedź zachować w kontekście rozmowy")
+    parser.add_argument("--file", type=str, default=None, help="Ścieżka do pliku PDF (tekstowego) wgrywanego jako dodatkowy kontekst")
     args = parser.parse_args()
 
     adapter_path = None if args.no_adapter else args.adapter_path
@@ -102,12 +113,17 @@ def main():
 
     print("[INFO] Ładowanie indeksu RAG...")
     rag = RagIndex()
+    file_index = SessionFileIndex(model=rag.model)
+
+    if args.file:
+        n = file_index.add_pdf(args.file)
+        print(f"[INFO] Wgrano plik {args.file} ({n} fragmentów)")
 
     if args.prompt:
-        print(answer(model, tokenizer, rag, [], args.prompt, args.top_k))
+        print(answer(model, tokenizer, rag, file_index, [], args.prompt, args.top_k))
         return
 
-    print("\nAsystent kadrowo-płacowy (CUDA) gotowy. Wpisz pytanie (Ctrl+C aby zakończyć, /nowy aby zacząć nowy wątek).\n")
+    print("\nAsystent kadrowo-płacowy (CUDA) gotowy. Wpisz pytanie (Ctrl+C aby zakończyć, /nowy aby zacząć nowy wątek, /plik <ścieżka> aby wgrać PDF).\n")
     history: list[dict] = []
     while True:
         try:
@@ -121,7 +137,15 @@ def main():
             history = []
             print("[INFO] Rozpoczęto nowy wątek rozmowy.\n")
             continue
-        text = answer(model, tokenizer, rag, history, question, args.top_k)
+        if question.startswith("/plik "):
+            path = question[len("/plik "):].strip()
+            try:
+                n = file_index.add_pdf(path)
+                print(f"[INFO] Wgrano plik {path} ({n} fragmentów)\n")
+            except (FileNotFoundError, ValueError) as e:
+                print(f"[BŁĄD] {e}\n")
+            continue
+        text = answer(model, tokenizer, rag, file_index, history, question, args.top_k)
         print("Asystent:", text, "\n")
         history = trim_history(history, args.max_turns)
 

@@ -11,12 +11,16 @@ SYSTEM_PROMPT = """Jesteś asystentem kadrowo-płacowym, odpowiadasz po polsku n
 dotyczące polskiego prawa pracy i ubezpieczeń społecznych.
 
 Poniżej, przed każdym pytaniem użytkownika, otrzymasz fragmenty aktów \
-prawnych wyszukane jako potencjalnie pomocny kontekst. Zasady:
+prawnych wyszukane jako potencjalnie pomocny kontekst, a czasem też \
+fragmenty pliku wgranego przez użytkownika (np. jego umowy o pracę, \
+regulaminu). Zasady:
 1. Odpowiadaj WYŁĄCZNIE na podstawie dostarczonych fragmentów -- nie \
 korzystaj z własnej wiedzy o konkretnych liczbach, kwotach czy terminach.
 2. Jeśli dostarczone fragmenty nie zawierają odpowiedzi na pytanie, wprost \
-napisz, że nie znalazłeś tego w dostępnych aktach prawnych, i nie zgaduj.
-3. Cytuj numer artykułu i nazwę aktu, na którym opierasz odpowiedź.
+napisz, że nie znalazłeś tego w dostępnych materiałach, i nie zgaduj.
+3. Cytuj numer artykułu i nazwę aktu, na którym opierasz odpowiedź. \
+Fragmenty z wgranego pliku użytkownika wyraźnie oznaczaj jako treść \
+tego pliku, a NIE jako obowiązujące prawo -- to różne źródła.
 4. Nie jesteś substytutem porady prawnej ani księgowej -- w sprawach \
 spornych zasugeruj konsultację ze specjalistą."""
 
@@ -38,9 +42,19 @@ def build_context(results: list[dict]) -> str:
     return "\n\n".join(parts)
 
 
-def build_user_message(question: str, results: list[dict]) -> str:
-    context = build_context(results)
-    return f"Fragmenty aktów prawnych:\n\n{context}\n\n---\n\nPytanie: {question}"
+def build_file_context(file_results: list[dict]) -> str:
+    parts = []
+    for r in file_results:
+        parts.append(f"### Plik użytkownika: {r['source_file']}\n{r['text']}")
+    return "\n\n".join(parts)
+
+
+def build_user_message(question: str, results: list[dict], file_results: list[dict] | None = None) -> str:
+    parts = [f"Fragmenty aktów prawnych:\n\n{build_context(results)}"]
+    if file_results:
+        parts.append(f"Fragmenty z wgranego przez użytkownika pliku:\n\n{build_file_context(file_results)}")
+    parts.append(f"---\n\nPytanie: {question}")
+    return "\n\n".join(parts)
 
 
 _META_QUESTION_PATTERNS = [
