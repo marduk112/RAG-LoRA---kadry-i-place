@@ -559,6 +559,140 @@ jak zwykły `rag.search`), oraz pełny test end-to-end przez `chat.py`
 (MLX, Bielik-11B) -- Q4 teraz poprawnie cytuje art. 154 § 1 pkt 2 i § 3,
 bez zmyślonego "pkt 3".
 
+## Krok 12: audyt jakości ekstrakcji artykułów z PDF-ów (`scripts/download_acts.py`)
+
+Cel: użytkownik poprosił o audyt bazy RAG pod kątem "artykułów--potworów"
+(bardzo długich wpisów, jak znaleziony wcześniej art. 50 ustawy
+systemowej). Analiza rozkładu długości (`data/processed/all_articles.json`,
+1650 artykułów przed tym krokiem) pokazała 73 artykuły >6000 znaków --
+wszystkie sprawdzone (spot-check: PIT art. 21 -- katalog zwolnień
+podatkowych, 121k znaków; rynek pracy art. 2 -- katalog definicji, 24k
+znaków) okazały się prawdziwe, nie błąd parsowania; krok 10/11 (`MAX_ARTICLE_CHARS`)
+już je wszystkie obcina. Przy tej samej okazji sprawdzono też bardzo
+krótkie artykuły (34 sztuki <20 znaków -- to legalnie uchylone przepisy,
+"(uchylony)", nieszkodliwe) oraz duplikaty numeru (artykuł, akt) --
+20 par w Kodeksie pracy (31, 91, 111-113, 181-185, 221, 222, 231, 232,
+251, 261, 291-294), co doprowadziło do trzech powiązanych, poważniejszych
+znalezisk opisanych niżej.
+
+**Znalezisko 1: numeracja z indeksem górnym gubiona przez `pypdf`.**
+Kodeks pracy od lat jest nowelizowany przez wstawianie artykułów z
+indeksem górnym (np. Art. 11¹) między istniejące numery. Sprawdzone
+bezpośrednio w surowym PDF-ie: `pypdf.extract_text()` renderuje "Art. 11¹."
+i prawdziwy "Art. 111." jako identyczny tekst -- oba nagłówki wyglądają
+dosłownie tak samo. Zweryfikowano na poziomie pojedynczych znaków przez
+`pdfplumber` (`page.chars`, pola `size`/`top`): indeks górny ma
+wyraźnie mniejszą czcionkę (8.04 vs 12.0) i jest wyżej (top 729.28 vs
+730.73) -- jednoznacznie mierzalne, nie zgadywanie.
+
+**Naprawiono:** `find_article_numbers_pdfplumber()` -- skanuje znaki
+bezpośrednio z PDF-a, wykrywa nagłówki "Art. N." i rozróżnia normalne
+cyfry od indeksu górnego po rozmiarze czcionki (`SUPERSCRIPT_SIZE_RATIO
+= 0.85`), zapisując indeks górny prawdziwym znakiem Unicode (np. "11¹").
+W `process_act()` wynik jest zestawiany z artykułami wyodrębnionymi
+przez istniejący, sprawdzony pypdf+regex (`parse_articles`) -- **tylko
+gdy liczby się zgadzają**, numery są korygowane; w przeciwnym razie
+korekta jest pomijana z ostrzeżeniem (bezpiecznik chroniący przed
+uszkodzeniem danych, gdyby coś się nie zgadzało). Rezultat dla Kodeksu
+pracy: 204 poprawione numery (znacznie więcej niż 20 pierwotnie
+znalezionych duplikatów -- większość to artykuły bez kolizji z innym,
+po prostu wcześniej błędnie zapisane bez indeksu górnego).
+
+**Znalezisko 2: całe artykuły całkowicie pomijane (nie tylko źle
+numerowane).** Przy pierwszym uruchomieniu liczby się nie zgadzały
+(480 wg pdfplumber vs 475 wg pypdf dla Kodeksu pracy) -- dochodzenie
+pokazało, że Art. 22³ (monitoring poczty elektronicznej pracownika,
+realny, ważny przepis) w ogóle nie istniał jako osobny wpis: jego
+nagłówek trafiał się w środku akapitu bez złamania linii, a superskrypt
+renderował się ze spacją ("Art. 22 3." zamiast "Art. 223."), więc
+`ARTICLE_SPLIT_RE` (wymaga początku linii, bez spacji w numerze) nigdy
+go nie łapał -- cała treść artykułu została po cichu wchłonięta przez
+poprzedni artykuł (Art. 22²).
+
+**Naprawiono:** `recover_midtext_superscript_headers()` -- wykrywa
+wzorzec "Art. N M." (spacja między głównym numerem a indeksem górnym,
+1 lub więcej cyfr) w dowolnym miejscu tekstu, skleja numer i wymusza
+początek nowej linii przed nim. Zastosowane przed `parse_articles()`.
+Rezultat: liczba artykułów w Kodeksie pracy wzrosła z 475 do 480 (a po
+naprawieniu drugiego wzorca niżej -- do zgodności 480/480).
+
+**Znalezisko 3 (poważniejsze): tekst jeszcze nieobowiązujący włączany
+do bazy, jakby już obowiązywał.** Ustawa o systemie ubezpieczeń
+społecznych miała 207 vs 215 (niezgodność). Dochodzenie: Kancelaria
+Sejmu oznacza w tekście ujednoliconym prawo uchwalone, ale jeszcze
+nieobowiązujące (przyszła data wejścia w życie) nawiasami ostrymi
+"< >", a stary tekst, który te przepisy docelowo zastąpią (wciąż ważny
+do dnia wejścia w życie nowelizacji), nawiasami kwadratowymi "[ ]".
+Potwierdzony przypadek: Art. 85c-85j (zmiany w orzecznictwie lekarskim
+ZUS) były w całości oznaczone "< >", a mimo to trafiały do naszej bazy
+RAG jako zwykłe, obowiązujące artykuły -- asystent mógłby zacytować
+prawo, które jeszcze nie weszło w życie.
+
+**Naprawiono:** `strip_not_yet_in_force_text()` -- usuwa "< ... >" w
+całości (niezachłannie, `re.DOTALL`), a z "[ ... ]" zostawia samą
+treść w środku (to nadal ważne prawo, nawiasy to tylko adnotacja
+edytorska Kancelarii Sejmu). Zastosowane jako pierwszy krok czyszczenia
+tekstu, przed naprawą numeracji. Rezultat: ustawa systemowa spadła z
+207 do 191 artykułów (16 fragmentów jeszcze nieobowiązującego prawa
+usuniętych). Dodano też licznik niesparowanych nawiasów z ostrzeżeniem
+-- w tym akcie jest jedna para "<" bez pasującego ">" (prawdopodobnie
+utracony znak przy ekstrakcji PDF-a w okolicach Art. 68); podstawienie
+jest niezachłanne, więc niesparowany "<" po prostu nie zostaje
+dopasowany (nic się nie usuwa) zamiast ryzykować pochłonięcie za
+dużego fragmentu poprawnego tekstu.
+
+**Znalezisko 4 (przy okazji, niezwiązane z superskryptami): litery
+polskie w sufiksie numeru artykułu gubione przez główny regex.**
+`ARTICLE_SPLIT_RE` używał `[a-z]{0,3}` (tylko ASCII) dla sufiksu typu
+"22a"/"18c" -- artykuł "Art. 22ł." (ustawa o PIT, polska litera "ł")
+nigdy nie pasował do wzorca i był całkowicie pomijany, tak samo jak
+znalezisko 2 (treść wchłaniana przez poprzedni artykuł). **Naprawiono:**
+`[a-z]{0,3}` -> `[a-ząćęłńóśźż]{0,3}` w `ARTICLE_SPLIT_RE` i
+`MIDTEXT_SUPERSCRIPT_HEADER_RE`.
+
+**Stan końcowy (zweryfikowany przez pełne, realne uruchomienie
+`download_acts.py` + `build_rag_index.py`, nie tylko offline na
+zcache'owanych PDF-ach):**
+- Kodeks pracy: 480/480 zgodność, 204 poprawione numery.
+- Ustawa o systemie ubezpieczeń społecznych: 191/191 zgodność (207 -> 191
+  po usunięciu tekstu nieobowiązującego), 0 poprawek numeracji potrzebnych.
+- ustawa_o_minimalnym_wynagrodzeniu, ustawa_zasilkowa, ustawa_o_ppk:
+  zgodność bez zmian (te akty nie mają numeracji z indeksem górnym).
+- ustawa_o_pit: 267/268 -- **pozostała rozbieżność** (1 artykuł, "Art. 52zb",
+  prawdopodobnie ten sam typ problemu co znalezisko 2, ale rzadszy
+  wariant nie objęty obecną naprawą) -- korekta numeracji bezpiecznie
+  pominięta dla tego aktu (nic nie ucierpiało, po prostu nie skorzystał
+  z poprawek).
+- ustawa_o_rynku_pracy: 461/464 -- **pozostała rozbieżność**, ale z innej
+  przyczyny: `find_article_numbers_pdfplumber` fałszywie wykrywa
+  cytowane w treści aktu nagłówki innych, nowelizowanych ustaw (np.
+  „Art. 7a." w cudzysłowie, wewnątrz opisu zmiany innej ustawy) --
+  fałszywy alarm w NOWYM narzędziu audytowym, nie błąd w danych;
+  oryginalny regex (`^Art\.`) poprawnie je pomija dzięki wymogowi
+  początku linii. Korekta numeracji bezpiecznie pominięta.
+- `data/processed/all_articles.json`: 1650 -> 1640 artykułów (+5 Kodeks
+  pracy odzyskane, +1 PIT odzyskany, -16 ustawa systemowa usunięte jako
+  nieobowiązujące).
+- `data/processed/rag_index.npy`: 4425 -> 4362 fragmentów po przebudowie.
+
+**Zweryfikowano żywymi zapytaniami RAG po przebudowie indeksu:**
+"monitoring poczty elektronicznej pracownika" -> poprawnie zwraca art.
+22³ (score 0.847) jako najlepszy wynik; "Pracodawca jest obowiązany
+szanować godność pracownika" -> poprawnie zwraca art. 11¹ (score
+0.913); "badanie przez lekarza orzecznika ZUS" -> wyniki NIE zawierają
+już żadnego z usuniętych art. 85c-85j.
+
+**Nowa zależność:** `pdfplumber==0.11.10` dodana do
+`requirements-common.txt` -- używana tylko przy budowaniu bazy
+(`download_acts.py`), nie w runtime chatu.
+
+**Co świadomie zostawiono:** dwa rzadkie przypadki brzegowe opisane
+wyżej (PIT: 1 artykuł, rynek pracy: fałszywy alarm w audycie) --
+bezpiecznik (porównanie liczby nagłówków) gwarantuje, że nic nie zostało
+uszkodzone, tylko te dwa akty nie skorzystały z ewentualnych poprawek
+numeracji (a rynek pracy, jako akt z 2025 r., prawdopodobnie i tak nie
+ma żadnej historycznej numeracji z indeksem górnym do poprawienia).
+
 ## Co dalej
 
 1. Do rozważenia: większy, bardziej zróżnicowany zbiór LoRA (więcej

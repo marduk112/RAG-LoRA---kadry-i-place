@@ -278,7 +278,7 @@ przetestować szybciej przez:
 
 ## Zakres wiedzy i ograniczenia
 
-Baza wiedzy obejmuje obecnie siedem ustaw (1650 artykułów):
+Baza wiedzy obejmuje obecnie siedem ustaw (1640 artykułów):
 - Kodeks pracy
 - Ustawa o systemie ubezpieczeń społecznych
 - Ustawa o minimalnym wynagrodzeniu za pracę
@@ -295,6 +295,26 @@ Poza tym zakresem (np. VAT, ZUS dla działalności gospodarczej,
 prawo spółek) model jest trenowany tak, by przyznać się do niewiedzy
 zamiast zgadywać — ale to nie jest gwarancja stuprocentowa, zwłaszcza
 dla pytań mieszających kilka tematów naraz.
+
+**Poprawna numeracja artykułów z indeksem górnym (np. Art. 11¹).**
+Kodeks pracy od lat jest nowelizowany przez wstawianie nowych artykułów
+z indeksem górnym między istniejące numery, zamiast przenumerowania
+całego kodeksu — `pypdf` (podstawowa biblioteka do ekstrakcji PDF)
+gubi to formatowanie, więc np. "Art. 11¹" i prawdziwy, trzycyfrowy
+"Art. 111" stawały się nierozróżnialne w wydobytym tekście. Naprawione
+przez dodatkową analizę geometrii znaków w PDF-ie (`pdfplumber`:
+rozmiar i pozycja czcionki wykrywają indeks górny) — dotyczyło 204
+artykułów w Kodeksie pracy. Przy okazji naprawiono też dwa pokrewne
+problemy: (1) kilka artykułów było całkowicie pomijanych, bo ich
+nagłówek trafiał się w środku akapitu bez złamania linii (np. Art. 22³
+— monitoring poczty elektronicznej pracownika — był wtopiony w treść
+Art. 22²); (2) fragmenty prawa uchwalonego, ale jeszcze nieobowiązującego
+(oznaczane w tekście ujednoliconym nawiasami "< >") były błędnie
+włączane do indeksu, jakby już obowiązywały — 16 takich artykułów
+usunięto z ustawy o systemie ubezpieczeń społecznych (Art. 85c-85j,
+przyszłe zmiany w orzecznictwie lekarskim ZUS). Szczegóły i pozostałe,
+rzadkie przypadki brzegowe (2 akty, po jednym pominiętym artykule) w
+PROGRESS.md, krok 12.
 
 **Uwaga przy dodawaniu kolejnych aktów:** zawsze zweryfikuj status
 aktu przez `GET https://api.sejm.gov.pl/eli/acts/{publisher}/{year}/{position}`

@@ -3,6 +3,7 @@
 # Linux, Windows).
 sentence-transformers==5.7.0
 pypdf==6.16.1
+pdfplumber==0.11.10
 numpy==2.5.2
 huggingface_hub==1.27.0
 requests==2.34.2

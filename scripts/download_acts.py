@@ -40,8 +40,10 @@ import io
 import json
 import re
 import time
+from collections import Counter
 from pathlib import Path
 
+import pdfplumber
 import requests
 from pypdf import PdfReader
 
@@ -116,7 +118,77 @@ SECTION_HEADING_PATTERNS = [
     re.compile(r"^Tytu[łl]\b", re.IGNORECASE),
 ]
 
-ARTICLE_SPLIT_RE = re.compile(r"(?m)^Art\.\s*(\d+[a-z]{0,3})\.\s*")
+ARTICLE_SPLIT_RE = re.compile(r"(?m)^Art\.\s*(\d+[a-ząćęłńóśźż]{0,3})\.\s*")
+
+SUPERSCRIPT_DIGITS = str.maketrans("0123456789", "⁰¹²³⁴⁵⁶⁷⁸⁹")
+SUPERSCRIPT_SIZE_RATIO = 0.85  # znak uznajemy za indeks górny, gdy jego czcionka jest mniejsza niż ten ułamek rozmiaru bazowego strony
+
+
+def find_article_numbers_pdfplumber(pdf_bytes: bytes) -> list[str]:
+    """Wykrywa numery artykułów bezpośrednio z geometrii znaków w PDF-ie
+    (rozmiar czcionki, pozycja), żeby odróżnić prawdziwe numery z
+    indeksem górnym (np. "Art. 11¹" -- artykuły wstawiane między
+    istniejące numery bez przenumerowania całego kodeksu) od zwykłych
+    numerów wielocyfrowych (np. "Art. 111"), które `pypdf.extract_text()`
+    spłaszcza do identycznego tekstu (potwierdzone bezpośrednio w
+    surowym PDF-ie Kodeksu pracy -- patrz PROGRESS.md, krok 12).
+
+    Zwraca listę numerów w kolejności występowania w dokumencie, z
+    prawdziwym indeksem górnym zapisanym jako znak Unicode (np. "11¹").
+    Pomija nagłówki wewnątrz "< ... >" (tekst jeszcze nieobowiązujący --
+    ten sam fragment usuwa `strip_not_yet_in_force_text`), żeby liczba
+    wykrytych tutaj nagłówków zgadzała się z liczbą artykułów po tamtej
+    poprawce. Używana wyłącznie do KOREKTY numeracji już wyodrębnionych
+    przez `parse_articles()` -- jeśli mimo to liczby się nie zgadzają,
+    wołający ma pominąć korektę (patrz `process_act`)."""
+    numbers: list[str] = []
+    chars: list[dict] = []
+    with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
+        for page in pdf.pages:
+            chars.extend(page.chars)
+    if not chars:
+        return numbers
+    body_size = Counter(round(c["size"], 1) for c in chars).most_common(1)[0][0]
+    i, n = 0, len(chars)
+    in_not_yet_in_force = False  # wewnątrz "< ... >" -- patrz strip_not_yet_in_force_text, ten sam tekst tam jest usuwany
+    while i < n:
+        text = chars[i]["text"]
+        if text == "<":
+            in_not_yet_in_force = True
+            i += 1
+            continue
+        if text == ">":
+            in_not_yet_in_force = False
+            i += 1
+            continue
+        if in_not_yet_in_force or i >= n - 4 or not (
+            chars[i]["text"] == "A" and chars[i + 1]["text"] == "r"
+            and chars[i + 2]["text"] == "t" and chars[i + 3]["text"] == "."
+        ):
+            i += 1
+            continue
+        j = i + 4
+        while j < n and chars[j]["text"] == " ":
+            j += 1
+        digit_chars = []
+        while j < n and chars[j]["text"].isdigit():
+            digit_chars.append(chars[j])
+            j += 1
+        # opcjonalny sufiks literowy (np. "30a", "18c") -- bez indeksu górnego,
+        # ale MUSI trafić do wyniku, inaczej "183a"/"183b"/"183c" zlewają się w jedno
+        letter_suffix = ""
+        while j < n and chars[j]["text"].isalpha() and chars[j]["text"].islower():
+            letter_suffix += chars[j]["text"]
+            j += 1
+        if digit_chars and j < n and chars[j]["text"] == ".":
+            normal = "".join(c["text"] for c in digit_chars if c["size"] >= body_size * SUPERSCRIPT_SIZE_RATIO)
+            super_ = "".join(c["text"] for c in digit_chars if c["size"] < body_size * SUPERSCRIPT_SIZE_RATIO)
+            if normal:
+                numbers.append(normal + super_.translate(SUPERSCRIPT_DIGITS) + letter_suffix)
+            i = j + 1
+        else:
+            i += 1
+    return numbers
 
 
 def fetch_meta(act: dict) -> dict:
@@ -163,6 +235,59 @@ def pdf_to_clean_text(pdf_bytes: bytes) -> str:
     return "\n".join(lines)
 
 
+NOT_YET_IN_FORCE_RE = re.compile(r"<.*?>", re.DOTALL)
+SUPERSEDED_STILL_VALID_RE = re.compile(r"\[(.*?)\]", re.DOTALL)
+
+
+def strip_not_yet_in_force_text(text: str) -> str:
+    """Kancelaria Sejmu oznacza w tekście ujednoliconym fragmenty prawa
+    uchwalonego, ale jeszcze nieobowiązującego (przyszła data wejścia w
+    życie) nawiasami ostrymi "< >", a fragmenty aktualnie obowiązujące,
+    które te przepisy docelowo zastąpią, nawiasami kwadratowymi "[ ]"
+    (stary tekst, wciąż ważny do dnia wejścia w życie nowelizacji).
+
+    Asystent ma podawać WYŁĄCZNIE aktualnie obowiązujące prawo, więc
+    "< >" trzeba usunąć w całości (razem z zawartością), a z "[ ]"
+    zostawić samą treść w środku (to nadal ważne prawo, nawiasy to
+    tylko adnotacja edytorska). Potwierdzony przypadek: Art. 85c-85j
+    ustawy systemowej (nieobowiązujące jeszcze zmiany w orzecznictwie
+    lekarskim ZUS) były przed tą poprawką po cichu wchłaniane jako
+    treść poprzedniego, prawdziwego artykułu (patrz PROGRESS.md, krok
+    12) -- czyli przedstawiane tak, jakby już obowiązywały.
+
+    Podstawienie jest nie-zachłanne (`.*?`), więc niesparowany "<" bez
+    odpowiadającego ">" po prostu nie zostanie dopasowany (nic się nie
+    usuwa) zamiast ryzykować pochłonięcie zbyt dużego fragmentu poprawnego
+    tekstu -- ale wtedy wypisujemy ostrzeżenie do ręcznego sprawdzenia."""
+    if text.count("<") != text.count(">"):
+        print(
+            "[UWAGA] niesparowane nawiasy < > w tekście -- część fragmentu "
+            "'jeszcze nieobowiązującego' mogła nie zostać usunięta, sprawdź ręcznie"
+        )
+    if text.count("[") != text.count("]"):
+        print("[UWAGA] niesparowane nawiasy [ ] w tekście -- sprawdź ręcznie")
+    text = NOT_YET_IN_FORCE_RE.sub("", text)
+    text = SUPERSEDED_STILL_VALID_RE.sub(r"\1", text)
+    return text
+
+
+MIDTEXT_SUPERSCRIPT_HEADER_RE = re.compile(r"Art\. (\d+) (\d+[a-ząćęłńóśźż]{0,3})\.")
+
+
+def recover_midtext_superscript_headers(clean_text: str) -> str:
+    """`pypdf` czasem wstawia spację między głównym numerem a indeksem
+    górnym artykułu, gdy nagłówek trafia się w środku akapitu (bez
+    łamania linii) -- np. "Art. 22 3." zamiast "Art. 223." tak jak przy
+    normalnie złamanych nagłówkach (bez spacji). Taki nagłówek nigdy nie
+    trafia na `ARTICLE_SPLIT_RE` (wymaga początku linii), więc cała
+    treść artykułu zostaje pochłonięta przez poprzedni artykuł --
+    potwierdzony przypadek: Art. 22³ Kodeksu pracy (monitoring poczty
+    elektronicznej) całkowicie zniknął jako osobny wpis, wtopiony w
+    Art. 22² (patrz PROGRESS.md, krok 12). Sklejamy numer i wymuszamy
+    początek nowej linii, żeby split go złapał."""
+    return MIDTEXT_SUPERSCRIPT_HEADER_RE.sub(r"\nArt. \1\2.", clean_text)
+
+
 def normalize_text(s: str) -> str:
     s = s.replace("\xa0", " ")
     s = re.sub(r"[ \t]+", " ", s)
@@ -202,10 +327,30 @@ def process_act(act: dict) -> dict:
 
     print(f"[{act['short']}] wyciągam i czyszczę tekst z PDF...")
     clean_text = pdf_to_clean_text(pdf_bytes)
+    clean_text = strip_not_yet_in_force_text(clean_text)
+    clean_text = recover_midtext_superscript_headers(clean_text)
 
     print(f"[{act['short']}] tnę na artykuły...")
     articles = parse_articles(clean_text)
     print(f"[{act['short']}] znaleziono {len(articles)} artykułów")
+
+    print(f"[{act['short']}] sprawdzam numerację pod kątem indeksów górnych...")
+    detected_numbers = find_article_numbers_pdfplumber(pdf_bytes)
+    if len(detected_numbers) == len(articles):
+        fixed = 0
+        for article, detected in zip(articles, detected_numbers):
+            if detected != article["article"]:
+                article["text"] = article["text"].replace(f"Art. {article['article']}.", f"Art. {detected}.", 1)
+                article["article"] = detected
+                fixed += 1
+        if fixed:
+            print(f"[{act['short']}] poprawiono numerację indeksu górnego w {fixed} artykułach")
+    else:
+        print(
+            f"[{act['short']}] UWAGA: liczba nagłówków wykrytych przez pdfplumber "
+            f"({len(detected_numbers)}) != liczba artykułów z pypdf ({len(articles)}) "
+            "-- pomijam korektę indeksu górnego dla tego aktu, numeracja zostaje jak z pypdf"
+        )
 
     source_url = (
         f"{API_BASE}/acts/{act['publisher']}/{act['year']}/{act['position']}/text/{kind}/{file_name}"
