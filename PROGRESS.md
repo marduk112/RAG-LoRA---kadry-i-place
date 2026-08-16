@@ -697,6 +697,46 @@ Zmiany z tego kroku scommitowane i wypchnięte na `origin/main` jako
 `ed7d6bb` ("Napraw ekstrakcję artykułów z PDF: indeks górny, pominięte
 artykuły, tekst nieobowiązujący").
 
+## Krok 13: domknięcie dwóch ostatnich przypadków brzegowych z kroku 12
+
+Cel: krok 12 zostawił dwie znane rozbieżności (PIT 267/268, rynek pracy
+461/464) jako świadomie pominięte -- bezpiecznik chronił przed
+uszkodzeniem danych, ale użytkownik poprosił o ich domknięcie.
+
+**PIT (brakujący Art. 52zb):** przyczyna inna niż w kroku 12 -- nagłówek
+był poprawnie złamany do nowej linii, ale `pypdf` wstawił spację TUŻ
+PRZED kropką kończącą numer ("Art. 52zb ." zamiast "Art. 52zb."), więc
+`ARTICLE_SPLIT_RE` (wymaga kropki bezpośrednio po numerze) nie łapał
+tego nagłówka -- treść po cichu wchłonięta przez poprzedni artykuł,
+ten sam mechanizm co w kroku 12, inny wariant usterki. **Naprawiono:**
+`fix_stray_space_before_period()` -- usuwa spację między numerem a
+kropką. Rezultat: PIT 267 -> 268 artykułów, zgodność 268/268.
+
+**Rynek pracy (fałszywy alarm, nie błąd danych):** `find_article_numbers_pdfplumber`
+wykrywał też "Art. 7a." wewnątrz cudzysłowu („Art. 7a. 1. Podmiotowi...")
+-- to cytat treści nowelizowanego przepisu z INNEJ ustawy (fragment
+opisujący, jak inna ustawa ma zostać zmieniona: "po art. 7 dodaje się
+art. 7a w brzmieniu: „Art. 7a. ..."), a nie prawdziwy artykuł tego aktu.
+Sprawdzone na poziomie znaków (`pdfplumber`): znak bezpośrednio przed
+"A" to „ (ten sam `top`, czyli ta sama linia -- to NIE była kwestia
+złamania linii, tylko brakującego rozpoznania cudzysłowu). Oryginalny
+`ARTICLE_SPLIT_RE` poprawnie to pomijał już wcześniej (stąd "błąd" był
+tylko w nowym narzędziu audytowym z kroku 12, nie w faktycznych danych).
+**Naprawiono:** dodano `QUOTE_CHARS` (`„ " " " »`) -- pomijamy dopasowanie,
+jeśli poprzedni znak to cudzysłów. Rezultat: rynek pracy 461/464 -> 461/461.
+
+**Stan końcowy po pełnym, realnym uruchomieniu pipeline'u:** wszystkie
+siedem aktów ma zgodność 1:1 między liczbą nagłówków wykrytych przez
+niezależną analizę geometrii PDF-a (`pdfplumber`) a liczbą artykułów
+wyodrębnionych przez `pypdf`+regex -- żaden akt nie korzysta już z
+bezpiecznika/pomijania korekty. `data/processed/all_articles.json`:
+1640 -> 1641 (odzyskany Art. 52zb). `rag_index.npy`: bez zmian liczby
+fragmentów (4362) -- Art. 52zb mieści się w istniejącym podziale.
+Zweryfikowano: unit-test offline na wszystkich 7 zcache'owanych PDF-ach
+(pełna zgodność), pełne uruchomienie `download_acts.py` +
+`build_rag_index.py` na żywych danych z ELI API, oraz obecność Art. 52zb
+w przebudowanym `rag_index_meta.json`.
+
 ## Co dalej
 
 1. Do rozważenia: większy, bardziej zróżnicowany zbiór LoRA (więcej

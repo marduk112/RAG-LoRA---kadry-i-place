@@ -278,7 +278,7 @@ przetestować szybciej przez:
 
 ## Zakres wiedzy i ograniczenia
 
-Baza wiedzy obejmuje obecnie siedem ustaw (1640 artykułów):
+Baza wiedzy obejmuje obecnie siedem ustaw (1641 artykułów):
 - Kodeks pracy
 - Ustawa o systemie ubezpieczeń społecznych
 - Ustawa o minimalnym wynagrodzeniu za pracę
@@ -312,9 +312,10 @@ Art. 22²); (2) fragmenty prawa uchwalonego, ale jeszcze nieobowiązującego
 (oznaczane w tekście ujednoliconym nawiasami "< >") były błędnie
 włączane do indeksu, jakby już obowiązywały — 16 takich artykułów
 usunięto z ustawy o systemie ubezpieczeń społecznych (Art. 85c-85j,
-przyszłe zmiany w orzecznictwie lekarskim ZUS). Szczegóły i pozostałe,
-rzadkie przypadki brzegowe (2 akty, po jednym pominiętym artykule) w
-PROGRESS.md, krok 12.
+przyszłe zmiany w orzecznictwie lekarskim ZUS). Szczegóły w PROGRESS.md,
+krok 12-13 — po pełnym audycie wszystkie siedem ustaw ma teraz w 100%
+zweryfikowaną numerację artykułów (liczba nagłówków z niezależnej analizy
+geometrii PDF-a zgadza się z liczbą wyodrębnionych artykułów w każdym akcie).
 
 **Uwaga przy dodawaniu kolejnych aktów:** zawsze zweryfikuj status
 aktu przez `GET https://api.sejm.gov.pl/eli/acts/{publisher}/{year}/{position}`

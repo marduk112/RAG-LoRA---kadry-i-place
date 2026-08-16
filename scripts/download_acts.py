@@ -122,6 +122,7 @@ ARTICLE_SPLIT_RE = re.compile(r"(?m)^Art\.\s*(\d+[a-ząćęłńóśźż]{0,3})\.
 
 SUPERSCRIPT_DIGITS = str.maketrans("0123456789", "⁰¹²³⁴⁵⁶⁷⁸⁹")
 SUPERSCRIPT_SIZE_RATIO = 0.85  # znak uznajemy za indeks górny, gdy jego czcionka jest mniejsza niż ten ułamek rozmiaru bazowego strony
+QUOTE_CHARS = {"„", '"', "“", "”", "»"}  # "Art. N." w cudzysłowie to zwykle cytat nowelizowanego przepisu innej ustawy, nie prawdziwy nagłówek tego aktu
 
 
 def find_article_numbers_pdfplumber(pdf_bytes: bytes) -> list[str]:
@@ -136,9 +137,16 @@ def find_article_numbers_pdfplumber(pdf_bytes: bytes) -> list[str]:
     Zwraca listę numerów w kolejności występowania w dokumencie, z
     prawdziwym indeksem górnym zapisanym jako znak Unicode (np. "11¹").
     Pomija nagłówki wewnątrz "< ... >" (tekst jeszcze nieobowiązujący --
-    ten sam fragment usuwa `strip_not_yet_in_force_text`), żeby liczba
-    wykrytych tutaj nagłówków zgadzała się z liczbą artykułów po tamtej
-    poprawce. Używana wyłącznie do KOREKTY numeracji już wyodrębnionych
+    ten sam fragment usuwa `strip_not_yet_in_force_text`) oraz nagłówki
+    bezpośrednio poprzedzone znakiem cudzysłowu (`QUOTE_CHARS`) -- to
+    zwykle cytat treści nowelizowanego przepisu z INNEJ ustawy (np.
+    „Art. 7a. 1. Podmiotowi..." wewnątrz opisu "po art. 7 dodaje się
+    art. 7a w brzmieniu:"), a nie prawdziwy artykuł tego aktu; oryginalny
+    `ARTICLE_SPLIT_RE` poprawnie takie cytaty pomija dzięki wymogowi
+    początku linii, więc bez tego wykluczenia liczba nagłówków się nie
+    zgadzała (patrz PROGRESS.md, krok 12/13). Żeby liczba wykrytych
+    tutaj nagłówków zgadzała się z liczbą artykułów po tamtej poprawce.
+    Używana wyłącznie do KOREKTY numeracji już wyodrębnionych
     przez `parse_articles()` -- jeśli mimo to liczby się nie zgadzają,
     wołający ma pominąć korektę (patrz `process_act`)."""
     numbers: list[str] = []
@@ -161,7 +169,8 @@ def find_article_numbers_pdfplumber(pdf_bytes: bytes) -> list[str]:
             in_not_yet_in_force = False
             i += 1
             continue
-        if in_not_yet_in_force or i >= n - 4 or not (
+        preceded_by_quote = i > 0 and chars[i - 1]["text"] in QUOTE_CHARS
+        if in_not_yet_in_force or preceded_by_quote or i >= n - 4 or not (
             chars[i]["text"] == "A" and chars[i + 1]["text"] == "r"
             and chars[i + 2]["text"] == "t" and chars[i + 3]["text"] == "."
         ):
@@ -288,6 +297,20 @@ def recover_midtext_superscript_headers(clean_text: str) -> str:
     return MIDTEXT_SUPERSCRIPT_HEADER_RE.sub(r"\nArt. \1\2.", clean_text)
 
 
+STRAY_SPACE_BEFORE_PERIOD_RE = re.compile(r"(Art\. \d+[a-ząćęłńóśźż]{0,3}) \.")
+
+
+def fix_stray_space_before_period(clean_text: str) -> str:
+    """`pypdf` czasem wstawia dodatkową spację tuż przed kropką kończącą
+    nagłówek artykułu (np. "Art. 52zb ." zamiast "Art. 52zb.") -- mimo
+    poprawnego złamania linii przed nagłówkiem, `ARTICLE_SPLIT_RE` wymaga
+    kropki bezpośrednio po numerze, więc taki artykuł (potwierdzony
+    przypadek: Art. 52zb ustawy o PIT) był po cichu wchłaniany przez
+    poprzedni, tak samo jak w `recover_midtext_superscript_headers`
+    (patrz PROGRESS.md, krok 13)."""
+    return STRAY_SPACE_BEFORE_PERIOD_RE.sub(r"\1.", clean_text)
+
+
 def normalize_text(s: str) -> str:
     s = s.replace("\xa0", " ")
     s = re.sub(r"[ \t]+", " ", s)
@@ -329,6 +352,7 @@ def process_act(act: dict) -> dict:
     clean_text = pdf_to_clean_text(pdf_bytes)
     clean_text = strip_not_yet_in_force_text(clean_text)
     clean_text = recover_midtext_superscript_headers(clean_text)
+    clean_text = fix_stray_space_before_period(clean_text)
 
     print(f"[{act['short']}] tnę na artykuły...")
     articles = parse_articles(clean_text)
