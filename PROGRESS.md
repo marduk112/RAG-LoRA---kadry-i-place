@@ -395,6 +395,122 @@ sprawdzone w `config.json` pobranego modelu). Upublicznione mimo
 braku testu na wyraźną prośbę użytkownika, z jasnym oznaczeniem
 "NIEPRZETESTOWANE" w kodzie i README.
 
+## Krok 10: kontekst rozmowy (multi-turn) we wszystkich wariantach czatu
+
+Cel: do tej pory każde pytanie w trybie interaktywnym było niezależne
+-- `answer()` budowało prompt tylko z systemowej wiadomości i
+aktualnego pytania, więc model nie pamiętał poprzednich tur (np.
+pytanie "a po 15 latach?" bez powtórzenia kontekstu nie miało do
+czego się odnieść).
+
+**Zmiana:** `answer()` w `chat.py`, `chat_lmstudio.py` i `chat_cuda.py`
+przyjmuje teraz `history: list[dict]` -- listę wiadomości `user`/
+`assistant` z poprzednich tur, mutowaną in-place (dopisywane pytanie
+z wstrzykniętym kontekstem RAG przed wywołaniem modelu, odpowiedź po).
+RAG wyszukuje fragmenty tylko na podstawie bieżącego pytania (nie
+całej historii) -- każda tura i tak dokłada własne fragmenty do
+promptu, więc historia rośnie szybciej niż liczba wiadomości.
+
+Żeby nie przepełnić okna kontekstu modelu (istotne zwłaszcza przy
+lokalnych 4.5B/11B), dodano:
+- `trim_history()` w `scripts/prompt.py` -- ucina historię do
+  ostatnich `--max-turns` par pytanie/odpowiedź (domyślnie 6),
+  wywoływane po każdej turze w pętli interaktywnej.
+- komendę `/nowy` w trybie interaktywnym -- czyści historię ręcznie,
+  przydatne przy zmianie tematu (RAG i tak przeszukuje tylko bieżące
+  pytanie, ale stara historia w promptcie mogłaby zdezorientować model
+  przy całkowicie innym temacie).
+
+Tryb `--prompt` (pojedyncze pytanie) używa pustej historii -- zachowanie
+bez zmian.
+
+Zweryfikowano: `py_compile` na wszystkich czterech plikach, unit-test
+`trim_history` (okno przesuwne, sprawdzone na 10 turach z max_turns=3),
+oraz test `chat_lmstudio.answer()` z podmienionym `requests.post` --
+potwierdzono, że historia poprawnie akumuluje się między wywołaniami i
+że kolejne zapytanie do serwera zawiera pełną dotychczasową historię.
+
+**Test end-to-end na żywym serwerze LM Studio (Bielik-11B) znalazł dwa
+realne problemy:**
+
+1. **Przepełnienie kontekstu przez pojedynczy, bardzo długi artykuł.**
+   Art. 50 ustawy systemowej ma w źródłowym PDF-ie ok. 51k znaków
+   między nagłówkiem a Art. 51 (sprawdzone bezpośrednio w PDF, nie
+   błąd naszego parsera -- to efekt wielu nowelizacji "informacji o
+   stanie konta" w ZUS, ust. 1a-1f, 2a... aż do 32). Sam ten jeden
+   wynik RAG w top-k=5 potrafił wygenerować >44k tokenów promptu i
+   przekroczyć limit 32k tokenów serwera LM Studio -- już przy drugiej
+   turze rozmowy. **Naprawiono:** `build_context()` w `scripts/prompt.py`
+   ucina tekst artykułu powyżej `MAX_ARTICLE_CHARS = 6000` znaków i
+   dopisuje link do `source_url` z pełną treścią. Zweryfikowano, że ten
+   sam wcześniej awaryjny scenariusz (pytanie o urlop, potem "a po 15
+   latach?") po poprawce przechodzi end-to-end bez błędu 400, a model
+   poprawnie rozpoznaje kontynuację tematu z historii.
+
+2. **Model bywa nadmiernie asekuracyjny po jednej odmowie w tej samej
+   rozmowie -- naprawione, ale nie przez prompt.** Gdy któraś tura w
+   rozmowie kończy się odpowiedzią "nie znalazłem w dostarczonych
+   fragmentach", kolejne pytanie -- nawet niezwiązane z poprzednim i
+   niewymagające RAG (np. prośba o zacytowanie czegoś z pierwszej tury
+   rozmowy) -- ma podwyższoną szansę też skończyć się odmową, mimo że
+   odpowiedź jest wprost obecna w historii. Odtworzone powtarzalnie w
+   testach.
+
+   Kolejność prób i co nie zadziałało:
+   - Dopisanie do `SYSTEM_PROMPT` reguły zezwalającej na korzystanie z
+     historii przy pytaniach o przebieg rozmowy -- **nie pomogło**
+     (odpowiedź była nawet gorsza).
+   - Mocniejsza, bardziej jednoznaczna wersja tej reguły ("zignoruj
+     fragmenty poniżej, jeśli pytanie dotyczy tej rozmowy") -- **też
+     nie pomogło**.
+   - Większy, architektonicznie odmienny model (`qwen/qwen3.6-35b-a3b`,
+     MoE, tryb "thinking") załadowany w tym samym LM Studio -- **ten
+     sam wzorzec błędu**, mimo zadeklarowanego okna kontekstowego
+     262144 tokenów i realnego zużycia rzędu kilku-kilkunastu tysięcy
+     tokenów. Wyklucza to rozmiar modelu/okna kontekstowego jako
+     przyczynę. (Przy okazji: modele "thinking" zużywają budżet
+     `max_tokens` na wewnętrzne rozumowanie (`reasoning_content`) zanim
+     wygenerują właściwą odpowiedź w `content` -- sztywne
+     `max_tokens=500` w `chat_lmstudio.py` wystarcza dla Bielika, ale
+     nie dla takich modeli; nieistotne dla obecnego zakresu, bo
+     `chat_lmstudio.py` nie jest projektowany pod modele "thinking".)
+   - Zmiana kolejności bloków w wiadomości (pytanie najpierw, fragmenty
+     RAG jako dodatek na końcu, zamiast pytania owiniętego fragmentami)
+     -- **wypadło gorzej**: model zignorował samo pytanie i kontynuował
+     poprzedni temat z historii. Odrzucone też dlatego, że dotyczyłoby
+     KAŻDej tury (też pojedynczych pytań), więc ryzykowałoby regresję
+     tam, gdzie dziś działa dobrze.
+
+   Rzeczywista przyczyna okazała się strukturalna, nie leksykalna: przy
+   pytaniu wysłanym jako czyste zdanie, bez owijania blokiem "Fragmenty
+   aktów prawnych: ... Pytanie: ..." (dokładnie tak, jak działa zwykły
+   czat w GUI LM Studio -- bez RAG, bez wstrzykiwanego kontekstu), model
+   **poprawnie** korzystał z historii, mimo tego samego, niezmienionego
+   `SYSTEM_PROMPT` i mimo wcześniejszej odmowy w poprzedniej turze. Sama
+   obecność bloku "oto fragmenty" zaburzała model niezależnie od tego,
+   co dokładnie mówiły instrukcje o jego użyciu.
+
+   **Naprawiono:** `prompt.looks_like_meta_question()` -- heurystyka
+   (lista wzorców regex po polsku: "o czym mówiliśmy", "przypomnij",
+   "podsumuj rozmowę", "pierwszym pytaniu" itd.) wykrywająca pytania o
+   przebieg TEJ rozmowy. `answer()` w `chat.py`/`chat_lmstudio.py`/
+   `chat_cuda.py` pomija dla nich wstrzykiwanie fragmentów RAG --
+   pytanie idzie czysto, jak w GUI -- **tylko gdy historia jest już
+   niepusta**; każde inne pytanie (w tym wszystkie pojedyncze przez
+   `--prompt` i pierwsza tura rozmowy) przechodzi dokładnie dotychczasową
+   ścieżką, bez zmian. To nie jest klasyfikator ML i nie złapie każdego
+   sformułowania -- nierozpoznane pytanie meta po prostu wraca do
+   opisanego wyżej ryzyka. Zweryfikowano: unit-test heurystyki (8
+   przypadków, w tym pytania graniczne jak "A po 15 latach?", które MUSI
+   zostać rozpoznane jako pytanie o fakt, nie meta), oraz pełny test
+   end-to-end przez prawdziwy `chat_lmstudio.answer()` (Bielik-11B) --
+   Q1/Q2 (pytania prawne) bez zmian, Q3 (pytanie meta po odmowie w Q2)
+   teraz poprawnie cytuje przepis z pierwszej tury.
+
+Nie przetestowano end-to-end na modelu MLX (`chat.py`) ani CUDA
+(`chat_cuda.py`) -- tylko na LM Studio (koszt ładowania pełnego modelu
+lokalnie w MLX to kilkadziesiąt sekund do minut na turę).
+
 ## Co dalej
 
 1. Do rozważenia: większy, bardziej zróżnicowany zbiór LoRA (więcej

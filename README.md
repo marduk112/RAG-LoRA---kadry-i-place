@@ -175,6 +175,26 @@ graniczne (patrz PROGRESS.md, krok 6) kosztem szybkości (~26 tok/s vs
 ~50+ tok/s) i pamięci (~8.3GB vs ~4-5GB peak). Użyj `--model` +
 `--adapter-path` jak wyżej, żeby przełączyć się na szybszy 4.5B.
 
+**Kontekst rozmowy:** tryb interaktywny (we wszystkich trzech
+wariantach — `chat.py`, `chat_lmstudio.py`, `chat_cuda.py`) pamięta
+poprzednie pytania i odpowiedzi w ramach jednej sesji. Wpisz `/nowy`,
+żeby zacząć nowy wątek i wyczyścić historię, albo ogranicz jej długość
+flagą `--max-turns` (domyślnie 6 par pytanie/odpowiedź) — dłuższa
+historia + fragmenty RAG doklejane w każdej turze mogą zapełnić okno
+kontekstu modelu.
+
+**Pytania o przebieg rozmowy** (np. "przypomnij, o czym mówiliśmy",
+"zacytuj to z pierwszego pytania") są rozpoznawane heurystycznie i
+odpowiadane na podstawie historii rozmowy, bez wstrzykiwania fragmentów
+RAG — w testach okazało się, że doklejanie fragmentów wyszukanych od
+nowa (i przez to często niezwiązanych z takim pytaniem) potrafiło
+skutecznie zablokować modelowi dostęp do własnej historii, szczególnie
+po wcześniejszej odmowie w tej samej rozmowie (patrz PROGRESS.md, krok
+10 — tam też opis nieudanych prób naprawy samą redakcją system promptu
+i większym modelem). Rozpoznawanie nie jest wyczerpujące — przy
+nietypowym sformułowaniu takiego pytania może nadal paść odmowa; w
+takiej sytuacji pomaga `/nowy`.
+
 ### Alternatywa: RAG + model z LM Studio (`scripts/chat_lmstudio.py`)
 
 Jeśli masz już jakiś model załadowany w [LM Studio](https://lmstudio.ai/)

@@ -18,6 +18,12 @@ skrypt daje sam RAG + Twój model z LM Studio, bez dotrenowanego stylu.
 Wymaga uruchomionego serwera lokalnego w LM Studio: zakładka
 "Developer" -> "Start Server" (domyślnie http://localhost:1234).
 
+Tryb interaktywny pamięta kontekst rozmowy (poprzednie pytania i
+odpowiedzi trafiają do promptu przy kolejnych turach) -- wpisz /nowy,
+żeby zacząć nowy wątek i wyczyścić historię. Historia jest ucinana do
+ostatnich --max-turns par pytanie/odpowiedź, żeby nie przepełnić okna
+kontekstu modelu (każda tura dokłada też fragmenty RAG).
+
 Użycie:
     python scripts/chat_lmstudio.py                      # tryb interaktywny
     python scripts/chat_lmstudio.py --prompt "pytanie..."
@@ -30,7 +36,7 @@ import sys
 
 import requests
 
-from prompt import SYSTEM_PROMPT, build_user_message
+from prompt import SYSTEM_PROMPT, build_user_message, looks_like_meta_question, trim_history
 from rag_search import RagIndex
 
 DEFAULT_URL = "http://localhost:1234/v1"
@@ -54,19 +60,32 @@ def detect_model(base_url: str) -> str:
     return ids[0]
 
 
-def answer(base_url: str, model_id: str, rag: RagIndex, question: str, top_k: int) -> str:
-    results = rag.search(question, top_k=top_k)
-    messages = [
-        {"role": "system", "content": SYSTEM_PROMPT},
-        {"role": "user", "content": build_user_message(question, results)},
-    ]
+def answer(base_url: str, model_id: str, rag: RagIndex, history: list[dict], question: str, top_k: int) -> str:
+    if history and looks_like_meta_question(question):
+        # Pytanie o przebieg rozmowy -- pomijamy fragmenty RAG (wyszukane
+        # od nowa na podstawie samej treści pytania, więc dla takich pytań
+        # bywają nietrafione i zaburzają korzystanie z historii; patrz
+        # prompt.looks_like_meta_question i PROGRESS.md, krok 10).
+        current_turn = {"role": "user", "content": question}
+    else:
+        results = rag.search(question, top_k=top_k)
+        current_turn = {"role": "user", "content": build_user_message(question, results)}
+    messages = [{"role": "system", "content": SYSTEM_PROMPT}] + history + [current_turn]
     resp = requests.post(
         f"{base_url}/chat/completions",
         json={"model": model_id, "messages": messages, "max_tokens": 500, "temperature": 0.2},
         timeout=300,
     )
     resp.raise_for_status()
-    return resp.json()["choices"][0]["message"]["content"]
+    text = resp.json()["choices"][0]["message"]["content"]
+    # W historii trzymamy samo pytanie (bez fragmentów RAG) -- fragmenty
+    # doklejane są od nowa przy każdej turze, więc trzymanie ich też w
+    # historii bardzo szybko przepełnia okno kontekstu (patrz PROGRESS.md,
+    # krok 10 -- realny błąd znaleziony w testach: 2 tury = przekroczenie
+    # limitu kontekstu LM Studio).
+    history.append({"role": "user", "content": question})
+    history.append({"role": "assistant", "content": text})
+    return text
 
 
 def main():
@@ -75,6 +94,7 @@ def main():
     parser.add_argument("--url", type=str, default=DEFAULT_URL, help="Bazowy URL lokalnego serwera LM Studio")
     parser.add_argument("--model", type=str, default=None, help="ID modelu w LM Studio (domyślnie: auto-wykrycie)")
     parser.add_argument("--top-k", type=int, default=5, help="Liczba fragmentów RAG dołączanych do kontekstu")
+    parser.add_argument("--max-turns", type=int, default=6, help="Ile ostatnich par pytanie/odpowiedź zachować w kontekście rozmowy")
     args = parser.parse_args()
 
     model_id = args.model or detect_model(args.url)
@@ -84,10 +104,11 @@ def main():
     rag = RagIndex()
 
     if args.prompt:
-        print(answer(args.url, model_id, rag, args.prompt, args.top_k))
+        print(answer(args.url, model_id, rag, [], args.prompt, args.top_k))
         return
 
-    print("\nAsystent kadrowo-płacowy (LM Studio) gotowy. Wpisz pytanie (Ctrl+C aby zakończyć).\n")
+    print("\nAsystent kadrowo-płacowy (LM Studio) gotowy. Wpisz pytanie (Ctrl+C aby zakończyć, /nowy aby zacząć nowy wątek).\n")
+    history: list[dict] = []
     while True:
         try:
             question = input("Ty: ").strip()
@@ -96,8 +117,13 @@ def main():
             break
         if not question:
             continue
-        text = answer(args.url, model_id, rag, question, args.top_k)
+        if question == "/nowy":
+            history = []
+            print("[INFO] Rozpoczęto nowy wątek rozmowy.\n")
+            continue
+        text = answer(args.url, model_id, rag, history, question, args.top_k)
         print("Asystent:", text, "\n")
+        history = trim_history(history, args.max_turns)
 
 
 if __name__ == "__main__":
