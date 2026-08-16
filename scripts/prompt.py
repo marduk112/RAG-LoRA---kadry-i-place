@@ -70,6 +70,45 @@ def looks_like_meta_question(question: str) -> bool:
     return bool(_META_QUESTION_RE.search(question))
 
 
+ELLIPTICAL_SCORE_THRESHOLD = 0.75
+
+
+MAX_LOOKBACK_QUESTIONS = 3
+
+
+def search_with_history(rag, history: list[dict], question: str, top_k: int) -> list[dict]:
+    """RAG search z fallbackiem dla pytań eliptycznych typu "a po 15
+    latach?", które same w sobie nie mają wystarczających słów
+    kluczowych do trafnego wyszukania (np. brak słowa "urlop") -- w
+    testach takie pytanie w ogóle nie trafiało na właściwy artykuł, a
+    model bez groundingu z RAG "dopowiadał" nieistniejące szczegóły z
+    pamięci historii (patrz PROGRESS.md, krok 10/11).
+
+    Jeśli najlepszy wynik dla samego pytania jest słaby
+    (< ELLIPTICAL_SCORE_THRESHOLD) i jest już jakaś historia rozmowy,
+    próbujemy też wyszukań z doklejonym KAŻDYM z ostatnich
+    MAX_LOOKBACK_QUESTIONS pytań użytkownika osobno (nie tylko
+    bezpośrednio poprzednim -- ono może być z zupełnie innego,
+    zakończonego odmową wątku, np. "ile wynosi minimalne wynagrodzenie"
+    tuż przed "a po 15 latach?", podczas gdy faktycznie powiązane
+    pytanie o urlop było dwie tury wcześniej) i zostajemy przy tym
+    wariancie, który dał najlepszy najlepszy wynik. Nie robimy tego
+    bezwarunkowo ani zbiorczo (całą historią naraz) -- doklejanie
+    niezwiązanego pytania do zapytania psuje trafność (sprawdzone
+    empirycznie), dlatego każde poprzednie pytanie jest próbowane
+    osobno."""
+    results = rag.search(question, top_k=top_k)
+    if not history or not results or results[0]["score"] >= ELLIPTICAL_SCORE_THRESHOLD:
+        return results
+    best_results, best_score = results, results[0]["score"]
+    prior_questions = [m["content"] for m in history if m["role"] == "user"][-MAX_LOOKBACK_QUESTIONS:]
+    for prior in prior_questions:
+        candidate = rag.search(f"{prior} {question}", top_k=top_k)
+        if candidate and candidate[0]["score"] > best_score:
+            best_results, best_score = candidate, candidate[0]["score"]
+    return best_results
+
+
 def trim_history(history: list[dict], max_turns: int) -> list[dict]:
     """Zachowuje tylko ostatnie `max_turns` par (user, assistant) w historii
     rozmowy, żeby nie przepełnić okna kontekstu modelu -- każda tura dokłada

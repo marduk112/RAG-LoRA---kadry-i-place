@@ -36,7 +36,7 @@ import sys
 
 import requests
 
-from prompt import SYSTEM_PROMPT, build_user_message, looks_like_meta_question, trim_history
+from prompt import SYSTEM_PROMPT, build_user_message, looks_like_meta_question, search_with_history, trim_history
 from rag_search import RagIndex
 
 DEFAULT_URL = "http://localhost:1234/v1"
@@ -68,7 +68,7 @@ def answer(base_url: str, model_id: str, rag: RagIndex, history: list[dict], que
         # prompt.looks_like_meta_question i PROGRESS.md, krok 10).
         current_turn = {"role": "user", "content": question}
     else:
-        results = rag.search(question, top_k=top_k)
+        results = search_with_history(rag, history, question, top_k)
         current_turn = {"role": "user", "content": build_user_message(question, results)}
     messages = [{"role": "system", "content": SYSTEM_PROMPT}] + history + [current_turn]
     resp = requests.post(

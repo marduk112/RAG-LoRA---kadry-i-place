@@ -195,6 +195,14 @@ i większym modelem). Rozpoznawanie nie jest wyczerpujące — przy
 nietypowym sformułowaniu takiego pytania może nadal paść odmowa; w
 takiej sytuacji pomaga `/nowy`.
 
+**Pytania uzupełniające** (np. "a po 15 latach?" jako kontynuacja
+pytania o urlop) same w sobie bywają zbyt krótkie, żeby RAG trafił na
+właściwy przepis — w takim wypadku wyszukiwanie próbuje doklejać po
+kolei ostatnie kilka pytań z historii i zostaje przy tym, które dało
+najlepsze dopasowanie (patrz PROGRESS.md, krok 11). Bez tego model
+potrafił "dopowiadać" nieistniejące szczegóły (np. zmyślony numer
+punktu w artykule), zamiast wprost przyznać brak groundingu.
+
 ### Alternatywa: RAG + model z LM Studio (`scripts/chat_lmstudio.py`)
 
 Jeśli masz już jakiś model załadowany w [LM Studio](https://lmstudio.ai/)

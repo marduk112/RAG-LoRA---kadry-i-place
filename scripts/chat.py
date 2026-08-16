@@ -30,7 +30,7 @@ from pathlib import Path
 
 from mlx_lm import generate, load
 
-from prompt import SYSTEM_PROMPT, build_user_message, looks_like_meta_question, trim_history
+from prompt import SYSTEM_PROMPT, build_user_message, looks_like_meta_question, search_with_history, trim_history
 from rag_search import RagIndex
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -46,7 +46,7 @@ def answer(model, tokenizer, rag: RagIndex, history: list[dict], question: str, 
         # prompt.looks_like_meta_question i PROGRESS.md, krok 10).
         current_turn = {"role": "user", "content": question}
     else:
-        results = rag.search(question, top_k=top_k)
+        results = search_with_history(rag, history, question, top_k)
         current_turn = {"role": "user", "content": build_user_message(question, results)}
     messages = [{"role": "system", "content": SYSTEM_PROMPT}] + history + [current_turn]
     prompt = tokenizer.apply_chat_template(messages, add_generation_prompt=True)

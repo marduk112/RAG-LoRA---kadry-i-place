@@ -511,6 +511,54 @@ Nie przetestowano end-to-end na modelu MLX (`chat.py`) ani CUDA
 (`chat_cuda.py`) -- tylko na LM Studio (koszt ładowania pełnego modelu
 lokalnie w MLX to kilkadziesiąt sekund do minut na turę).
 
+**Późniejszy test na żywo lokalnie przez `chat.py` (MLX, Bielik-11B +
+`bielik11b-kadry-lora-iter25`)** potwierdził krok 10 na tym backendzie
+(pytanie meta po odmowie -- poprawnie odtworzone), ale przy okazji
+znalazł kolejny, osobny problem opisany niżej w kroku 11.
+
+## Krok 11: RAG nie znajduje właściwego artykułu dla pytań eliptycznych ("a po 15 latach?")
+
+Przy pełnym teście 4-pytaniowym przez `chat.py` (Q1: urlop po 10 latach
+-> OK; Q2: minimalne wynagrodzenie w 2025 -> poprawna odmowa; Q3:
+pytanie meta -> OK po kroku 10; **Q4: "A po 15 latach?"**) model
+odpowiedział merytorycznie nieźle (26 dni się nie zmienia), ale dopisał
+nieistniejący "art. 154 § 1 pkt 3" -- w Kodeksie pracy są tylko dwa
+punkty (20 dni / 26 dni), nie ma trzeciego.
+
+**Przyczyna:** `rag.search("A po 15 latach?")` samo w sobie w ogóle nie
+trafia na art. 154 -- najlepszy wynik to score 0.729, kompletnie inny
+temat (brak słowa "urlop" w pytaniu). Model dostał więc nietrafione
+fragmenty, poprawnie zgadł z historii rozmowy że to kontynuacja pytania
+o urlop (dobry sygnał dla samej ciągłości rozmowy), ale bez świeżego
+groundingu zaczął "dopowiadać" nieistniejący szczegół.
+
+**Naprawiono:** `prompt.search_with_history()` -- gdy najlepszy wynik
+samego pytania jest słaby (< `ELLIPTICAL_SCORE_THRESHOLD = 0.75`) i
+jest już historia, próbuje wyszukań z doklejonym KAŻDYM z ostatnich
+`MAX_LOOKBACK_QUESTIONS = 3` pytań użytkownika osobno (nie zbiorczo
+całą historią, nie tylko bezpośrednio poprzednim) i zostaje przy
+wariancie z najlepszym wynikiem. Pierwsza wersja próbowała tylko
+bezpośrednio poprzedniego pytania i **zawiodła w tym samym scenariuszu**
+-- poprzednia tura (Q2) dotyczyła innego, zakończonego odmową tematu, a
+faktycznie powiązane pytanie (Q1) było dwie tury wcześniej; sklejenie z
+Q2 zamiast Q1 przesuwało wynik na fragmenty o minimalnym wynagrodzeniu.
+Sprawdzanie każdego z ostatnich pytań osobno (zamiast jednego, zamiast
+wszystkich naraz) naprawia to bez ryzyka rozmycia zapytania zbyt dużą
+ilością niepowiązanego tekstu.
+
+Świadomie warunkowe (próg score'u), nie bezwarunkowe: doklejanie
+poprzedniego pytania do KAŻDEGO zapytania psuje trafność, gdy kolejne
+pytanie to nowy, niezwiązany temat -- sprawdzone empirycznie (sklejenie
+"urlop" + "minimalne wynagrodzenie" przesuwa poprawny wynik dla pytania
+o wynagrodzenie na błędny artykuł o urlopie).
+
+Zweryfikowano: unit-testy `search_with_history` (pytanie eliptyczne
+trafia na art. 154 mimo niezwiązanej tury pośredniej; nowy temat nie
+zostaje zepsuty przez historię o urlopie; pusta historia = zachowanie
+jak zwykły `rag.search`), oraz pełny test end-to-end przez `chat.py`
+(MLX, Bielik-11B) -- Q4 teraz poprawnie cytuje art. 154 § 1 pkt 2 i § 3,
+bez zmyślonego "pkt 3".
+
 ## Co dalej
 
 1. Do rozważenia: większy, bardziej zróżnicowany zbiór LoRA (więcej
