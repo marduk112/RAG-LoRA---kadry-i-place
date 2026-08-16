@@ -2,6 +2,7 @@
 .venv/
 __pycache__/
 *.pyc
+.pytest_cache/
 
 # Wagi modeli -- za duże na git (kilka-kilkanaście GB), pobieralne
 # ponownie przez `mlx_lm.convert` (patrz README.md, sekcja "Odtworzenie

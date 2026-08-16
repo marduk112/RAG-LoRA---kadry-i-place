@@ -737,6 +737,48 @@ Zweryfikowano: unit-test offline na wszystkich 7 zcache'owanych PDF-ach
 `build_rag_index.py` na żywych danych z ELI API, oraz obecność Art. 52zb
 w przebudowanym `rag_index_meta.json`.
 
+## Krok 14: pierwsze testy automatyczne (`tests/`, pytest)
+
+Cel: cała weryfikacja logiki napisanej w krokach 10-13 (kontekst
+rozmowy, wykrywanie pytań meta, fallback wyszukiwania RAG, ekstrakcja
+artykułów z PDF) była do tej pory wyłącznie ręczna -- żywe testy przez
+skrypty w trakcie sesji, bez niczego zapisanego, co pilnowałoby przed
+regresją przy kolejnych zmianach.
+
+**Dodano:**
+- `requirements-dev.txt` -- `pytest==8.4.2`, osobno od
+  `requirements-common.txt` (niepotrzebne do samego korzystania z
+  asystenta).
+- `conftest.py` (root) -- dodaje `scripts/` do `sys.path`, bo to
+  celowo nie jest pakiet (zbiór niezależnych CLI, importujących się
+  nawzajem po nazwie modułu).
+- `tests/test_prompt.py` -- `trim_history` (okno przesuwne),
+  `looks_like_meta_question` (8 przypadków, w tym pytania graniczne
+  jak "A po 15 latach?", które MUSI zostać rozpoznane jako pytanie o
+  fakt, nie meta), `build_context` (obcinanie długich artykułów),
+  `search_with_history` (w tym reprodukcja realnego przypadku: fallback
+  musi pominąć niezwiązaną, bezpośrednio poprzednią turę i sięgnąć do
+  wcześniejszej, faktycznie powiązanej). Używa lekkiego `FakeRag`
+  (zwraca predefiniowane wyniki) zamiast prawdziwego `RagIndex` --
+  żadnych ciężkich zależności (embedding model) przy uruchamianiu testów.
+- `tests/test_download_acts.py` -- testy jednostkowe na małych,
+  ręcznie skonstruowanych fragmentach tekstu dla
+  `strip_not_yet_in_force_text`, `recover_midtext_superscript_headers`,
+  `fix_stray_space_before_period`, `ARTICLE_SPLIT_RE`/`parse_articles`
+  (w tym regresja polskiej litery w sufiksie, znalezisko 4 z kroku 12).
+  Osobno, oznaczone `@pytest.mark.skipif` (pomijane, jeśli nie ma
+  lokalnie pobranej bazy -- `data/raw/`, `data/processed/` są
+  gitignored): regresje DOKŁADNIE tych błędów znalezionych w audycie --
+  `find_article_numbers_pdfplumber` zgadza się z `parse_articles` dla
+  Kodeksu pracy, brak zdublowanych numerów artykułów, obecność Art. 22³
+  (nie wtopiony w Art. 22²), brak Art. 85c-85j (jeszcze nieobowiązujące)
+  w ustawie systemowej, obecność Art. 52zb w PIT.
+
+**Zweryfikowano:** `pytest -v` -- 28/28 testów przechodzi (uruchomione
+lokalnie, z pobraną bazą, więc łącznie z testami oznaczonymi `skipif`).
+
+Dopisano sekcję "Testy" do README.md z instrukcją uruchomienia.
+
 ## Co dalej
 
 1. Do rozważenia: większy, bardziej zróżnicowany zbiór LoRA (więcej

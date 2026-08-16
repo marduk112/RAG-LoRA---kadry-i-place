@@ -347,6 +347,22 @@ uwagi):
 Warto uruchamiać okresowo (np. raz na kwartał) i zawsze przed
 dodaniem kolejnego aktu do `ACTS`.
 
+## Testy
+
+```bash
+.venv/bin/pip install -r requirements-common.txt -r requirements-dev.txt
+.venv/bin/pytest
+```
+
+Testy w `tests/` pokrywają logikę kontekstu rozmowy i ekstrakcji
+artykułów z PDF-ów (`scripts/prompt.py`, `scripts/download_acts.py`) --
+głównie na małych, ręcznie skonstruowanych fragmentach tekstu, więc
+większość działa bez pobranej bazy. Kilka testów to regresje konkretnych
+błędów znalezionych w audycie (patrz PROGRESS.md, krok 12-13, np. "czy
+Art. 22³ Kodeksu pracy nie jest wciąż wtopiony w Art. 22²") — te
+wymagają lokalnie pobranej bazy (`data/raw/`, `data/processed/`) i są
+automatycznie pomijane (`skipped`), jeśli jej nie ma.
+
 ## Zastrzeżenie prawne
 
 To narzędzie ma charakter pomocniczy i edukacyjny. Odpowiedzi opierają

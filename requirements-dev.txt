@@ -1,0 +1,5 @@
+# Zależności tylko do developmentu (uruchamiania testów) -- nie
+# potrzebne do samego korzystania z asystenta. Instaluj razem z
+# requirements-common.txt:
+#   pip install -r requirements-common.txt -r requirements-dev.txt
+pytest==8.4.2
