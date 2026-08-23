@@ -1,0 +1,576 @@
+{
+  "address": "WDU20250000620",
+  "announcementDate": "2025-03-20",
+  "changeDate": "2026-06-25T00:00:00",
+  "displayAddress": "Dz.U. 2025 poz. 620",
+  "pos": 620,
+  "promulgation": "2025-05-12",
+  "publisher": "DU",
+  "status": "obowiązujący",
+  "textHTML": false,
+  "textPDF": true,
+  "title": "Ustawa z dnia 20 marca 2025 r. o rynku pracy i służbach zatrudnienia",
+  "type": "Ustawa",
+  "volume": 0,
+  "year": 2025,
+  "authorizedBody": [],
+  "comments": "1) art. 392 pkt 2 lit. b oraz art. 458 wchodzą w życie z dniem 13 maja 2025 r.;\n2) art. 106, art. 128 ust. 2, art. 203 oraz art. 300 ust. 3 pkt 11 wchodzą w życie z dniem 1 stycznia 2026 r.",
+  "directives": [
+    {
+      "address": "32000L0043",
+      "date": "2000-06-29",
+      "title": "DYREKTYWA RADY NR 2000/43/WE z dnia 29 czerwca 2000 roku w sprawie wdrożenia zasady równego traktowania osób bez względu na pochodzenie rasowe lub etniczne"
+    },
+    {
+      "address": "32000L0078",
+      "date": "2000-11-27",
+      "title": "DYREKTYWA RADY NR 2000/78/WE z dnia 27 listopada 2000 roku w sprawie ustanowienia ogólnych ram równego traktowania przy zatrudnieniu i wykonywaniu zawodu"
+    },
+    {
+      "address": "32004L0038",
+      "date": "2004-04-29",
+      "title": "DYREKTYWA 2004/38/WE PARLAMENTU EUROPEJSKIEGO I RADY z dnia 29 kwietnia 2004 r. w sprawie prawa obywateli Unii i członków ich rodzin do swobodnego przemieszczania się i pobytu na terytorium Państw Członkowskich, zmieniająca rozporządzenie (EWG) nr 1612/68 i uchylająca dyrektywy 64/221/EWG, 68/360/EWG, 72/194/EWG, 73/148/EWG, 75/34/EWG, 75/35/EWG, 90/364/EWG, 90/365/EWG i 93/96/EWG"
+    },
+    {
+      "address": "32016L0801",
+      "date": "2016-05-11",
+      "title": "Dyrektywa Parlamentu Europejskiego i Rady (UE) 2016/801 z dnia 11 maja 2016 r. w sprawie warunków wjazdu i pobytu obywateli państw trzecich w celu prowadzenia badań naukowych, odbycia studiów, szkoleń, udziału w wolontariacie, programach wymiany młodzieży szkolnej lub projektach edukacyjnych oraz podjęcia pracy w charakterze au pair"
+    },
+    {
+      "address": "32006L0054",
+      "date": "2006-07-05",
+      "title": "Dyrektywa 2006/54/WE Parlamentu Europejskiego i Rady z dnia 5 lipca 2006 r. w sprawie wprowadzenia w życie zasady równości szans oraz równego traktowania kobiet i mężczyzn w dziedzinie zatrudnienia i pracy (wersja przeredagowana)"
+    },
+    {
+      "address": "32008L0104",
+      "date": "2008-11-19",
+      "title": "DYREKTYWA PARLAMENTU EUROPEJSKIEGO I RADY 2008/104/WE z dnia 19 listopada 2008 r. w sprawie pracy tymczasowej"
+    },
+    {
+      "address": "32011L0095",
+      "date": "2011-12-13",
+      "title": "DYREKTYWA PARLAMENTU EUROPEJSKIEGO I RADY 2011/95/UE z dnia 13 grudnia 2011 r. w sprawie norm dotyczących kwalifikowania obywateli państw trzecich lub bezpaństwowców jako beneficjentów ochrony międzynarodowej, jednolitego statusu uchodźców lub osób kwalifikujących się do otrzymania ochrony uzupełniającej oraz zakresu udzielanej ochrony (wersja przekształcona)"
+    },
+    {
+      "address": "32011L0098",
+      "date": "2011-12-13",
+      "title": "DYREKTYWA PARLAMENTU EUROPEJSKIEGO I RADY 2011/98/UE z dnia 13 grudnia 2011 r. w sprawie procedury jednego wniosku o jedno zezwolenie dla obywateli państw trzecich na pobyt i pracę na terytorium państwa członkowskiego oraz w sprawie wspólnego zbioru praw dla pracowników z państw trzecich przebywających legalnie w państwie członkowskim"
+    },
+    {
+      "address": "32014L0036",
+      "date": "2014-02-26",
+      "title": "Dyrektywa Parlamentu Europejskiego i Rady 2014/36/UE z dnia 26 lutego 2014 r. w sprawie warunków wjazdu i pobytu obywateli państw trzecich w celu zatrudnienia w charakterze pracownika sezonowego"
+    },
+    {
+      "address": "32014L0054",
+      "date": "2014-04-16",
+      "title": "Dyrektywa Parlamentu Europejskiego i Rady 2014/54/UE z dnia 16 kwietnia 2014 r. w sprawie środków ułatwiających korzystanie z praw przyznanych pracownikom w kontekście swobodnego przepływu pracowników  Tekst mający znaczenie dla EOG"
+    },
+    {
+      "address": "32014L0066",
+      "date": "2014-05-15",
+      "title": "Dyrektywa Parlamentu Europejskiego i Rady 2014/66/UE z dnia 15 maja 2014 r. w sprawie warunków wjazdu i pobytu obywateli państw trzecich w ramach przeniesienia wewnątrz przedsiębiorstwa"
+    },
+    {
+      "address": "32021L1883",
+      "date": "2021-10-20",
+      "title": "Dyrektywa Parlamentu Europejskiego i Rady (UE) 2021/1883 z dnia 20 października 2021 r. w sprawie warunków wjazdu i pobytu obywateli państw trzecich w celu zatrudnienia w zawodzie wymagającym wysokich kwalifikacji oraz uchylenia dyrektywy Rady 2009/50/WE"
+    },
+    {
+      "address": "32016R0589",
+      "date": "2016-04-13",
+      "title": "Rozporządzenie Parlamentu Europejskiego i Rady (UE) 2016/589 z dnia 13 kwietnia 2016 r. w sprawie europejskiej sieci służb zatrudnienia (EURES), dostępu pracowników do usług w zakresie mobilności i dalszej integracji rynków pracy oraz zmiany rozporządzeń (UE) nr 492/2011 i (UE) nr 1296/2013 (Tekst mający znaczenie dla EOG)"
+    },
+    {
+      "address": "32009R0987",
+      "date": "2009-09-16",
+      "title": "ROZPORZĄDZENIE PARLAMENTU EUROPEJSKIEGO I RADY (WE) NR 987/2009 z dnia 16 września 2009 r. dotyczące wykonywania rozporządzenia (WE) nr 883/2004 w sprawie koordynacji systemów zabezpieczenia społecznego (Tekst mający znaczenie dla EOG i dla Szwajcarii)"
+    }
+  ],
+  "entryIntoForce": "2025-06-01",
+  "inForce": "IN_FORCE",
+  "keywords": [
+    "praca",
+    "pracodawca",
+    "zasiłki",
+    "prawo pracy",
+    "działalność gospodarcza",
+    "bezrobocie",
+    "pracownicy urzędów państwowych",
+    "urzędy pracy",
+    "praca i ubezpieczenia społeczne",
+    "zasiłek dla bezrobotnych",
+    "ubezpieczenia społeczne",
+    "pracownicy",
+    "samorząd terytorialny",
+    "kredyty i pożyczki"
+  ],
+  "keywordsNames": [
+    "Fundusz Pracy",
+    "Państwowa Inspekcja Pracy"
+  ],
+  "obligated": [
+    "MIN. WŁAŚCIWY DS PRACY"
+  ],
+  "previousTitle": [],
+  "prints": [
+    {
+      "link": "https://www.sejm.gov.pl/Sejm10.nsf/PrzebiegProc.xsp?nr=948",
+      "linkPrintAPI": "https://api.sejm.gov.pl/sejm/term10/prints/948",
+      "linkProcessAPI": "https://api.sejm.gov.pl/sejm/term10/processes/948",
+      "number": "948",
+      "term": 10
+    }
+  ],
+  "references": {
+    "Akty uchylone": [
+      {
+        "id": "DU/2025/214",
+        "date": "2025-06-01"
+      },
+      {
+        "id": "DU/2004/1001",
+        "date": "2025-06-01"
+      }
+    ],
+    "Akty uznane za uchylone": [
+      {
+        "id": "DU/2024/952",
+        "date": "2025-06-01"
+      },
+      {
+        "id": "DU/2024/1054",
+        "date": "2025-12-02"
+      },
+      {
+        "id": "DU/2023/963",
+        "date": "2025-12-02"
+      },
+      {
+        "id": "DU/2023/2327",
+        "date": "2025-06-01"
+      },
+      {
+        "id": "DU/2022/2203",
+        "date": "2025-06-01"
+      },
+      {
+        "id": "DU/2020/667",
+        "date": "2025-06-01"
+      },
+      {
+        "id": "DU/2019/876",
+        "date": "2025-06-01"
+      },
+      {
+        "id": "DU/2018/666",
+        "date": "2025-06-01"
+      },
+      {
+        "id": "DU/2018/1264",
+        "date": "2025-06-01"
+      },
+      {
+        "id": "DU/2017/2447",
+        "date": "2025-06-01"
+      },
+      {
+        "id": "DU/2017/2347",
+        "date": "2025-06-01"
+      },
+      {
+        "id": "DU/2017/1064",
+        "date": "2025-06-01"
+      },
+      {
+        "id": "DU/2014/864",
+        "date": "2025-06-01"
+      },
+      {
+        "id": "DU/2014/781",
+        "date": "2026-01-01"
+      },
+      {
+        "id": "DU/2014/640",
+        "date": "2025-06-01"
+      },
+      {
+        "id": "DU/2014/638",
+        "date": "2025-06-01"
+      },
+      {
+        "id": "DU/2014/497",
+        "date": "2025-06-01"
+      },
+      {
+        "id": "DU/2014/1189",
+        "date": "2025-06-01"
+      },
+      {
+        "id": "DU/2013/699",
+        "date": "2025-06-01"
+      },
+      {
+        "id": "DU/2013/1534",
+        "date": "2025-06-01"
+      },
+      {
+        "id": "DU/2012/1535",
+        "date": "2026-01-01"
+      },
+      {
+        "id": "DU/2011/754",
+        "date": "2025-12-02"
+      },
+      {
+        "id": "DU/2010/1620",
+        "date": "2026-01-01"
+      },
+      {
+        "id": "DU/2010/1560",
+        "date": "2025-06-01"
+      },
+      {
+        "id": "DU/2010/1174",
+        "date": "2025-06-01"
+      },
+      {
+        "id": "DU/2009/85",
+        "date": "2025-06-01"
+      },
+      {
+        "id": "DU/2009/1118",
+        "date": "2025-06-01"
+      },
+      {
+        "id": "DU/2004/2604",
+        "date": "2025-06-01"
+      },
+      {
+        "id": "DU/2004/2365",
+        "date": "2026-01-01"
+      }
+    ],
+    "Akty wykonawcze": [
+      {
+        "id": "MP/2026/290"
+      },
+      {
+        "id": "MP/2026/268"
+      },
+      {
+        "id": "MP/2025/510"
+      },
+      {
+        "id": "MP/2025/509"
+      },
+      {
+        "id": "MP/2025/1286"
+      },
+      {
+        "id": "DU/2026/842"
+      },
+      {
+        "id": "DU/2026/476"
+      },
+      {
+        "id": "DU/2025/1662"
+      },
+      {
+        "id": "DU/2025/1645"
+      },
+      {
+        "id": "DU/2025/1641"
+      },
+      {
+        "id": "DU/2025/1632"
+      },
+      {
+        "id": "DU/2025/1631"
+      },
+      {
+        "id": "DU/2025/1624"
+      },
+      {
+        "id": "DU/2025/1621"
+      },
+      {
+        "id": "DU/2025/1549"
+      },
+      {
+        "id": "DU/2025/1536"
+      },
+      {
+        "id": "DU/2025/1534"
+      },
+      {
+        "id": "DU/2025/1499"
+      },
+      {
+        "id": "DU/2025/1193"
+      }
+    ],
+    "Akty zmieniające": [
+      {
+        "id": "DU/2026/734",
+        "date": "2026-06-20"
+      },
+      {
+        "id": "DU/2026/507",
+        "date": "2026-10-14"
+      },
+      {
+        "id": "DU/2026/451",
+        "date": "2026-07-01"
+      },
+      {
+        "id": "DU/2025/1794",
+        "date": "2026-04-27"
+      },
+      {
+        "id": "DU/2025/1746",
+        "date": "2025-12-11"
+      }
+    ],
+    "Akty zmienione": [
+      {
+        "id": "DU/2022/655",
+        "date": "2025-06-01"
+      },
+      {
+        "id": "DU/2022/583",
+        "date": "2025-06-01"
+      },
+      {
+        "id": "DU/2022/2754",
+        "date": "2025-06-01"
+      },
+      {
+        "id": "DU/2022/1812",
+        "date": "2025-06-01"
+      },
+      {
+        "id": "DU/2019/303",
+        "date": "2025-06-01"
+      },
+      {
+        "id": "DU/2019/2197",
+        "date": "2025-06-01"
+      },
+      {
+        "id": "DU/2019/2019",
+        "date": "2025-06-01"
+      },
+      {
+        "id": "DU/2019/1818",
+        "date": "2025-06-01"
+      },
+      {
+        "id": "DU/2018/1668",
+        "date": "2025-06-01"
+      },
+      {
+        "id": "DU/2017/59",
+        "date": "2025-06-01"
+      },
+      {
+        "id": "DU/2016/1920",
+        "date": "2025-06-01"
+      },
+      {
+        "id": "DU/2015/1569",
+        "date": "2025-06-01"
+      },
+      {
+        "id": "DU/2013/1291",
+        "date": "2025-06-01"
+      },
+      {
+        "id": "DU/2011/654",
+        "date": "2025-06-01"
+      },
+      {
+        "id": "DU/2011/235",
+        "date": "2025-06-01"
+      },
+      {
+        "id": "DU/2011/1385",
+        "date": "2025-06-01"
+      },
+      {
+        "id": "DU/2010/857",
+        "date": "2025-06-01"
+      },
+      {
+        "id": "DU/2010/1700",
+        "date": "2025-06-01"
+      },
+      {
+        "id": "DU/2009/964",
+        "date": "2025-06-01"
+      },
+      {
+        "id": "DU/2009/1052",
+        "date": "2025-06-01"
+      },
+      {
+        "id": "DU/2008/634",
+        "date": "2025-06-01"
+      },
+      {
+        "id": "DU/2008/1569",
+        "date": "2025-06-01"
+      },
+      {
+        "id": "DU/2008/1505",
+        "date": "2025-06-01"
+      },
+      {
+        "id": "DU/2007/589",
+        "date": "2025-06-01"
+      },
+      {
+        "id": "DU/2007/1378",
+        "date": "2025-06-01"
+      },
+      {
+        "id": "DU/2006/651",
+        "date": "2025-06-01"
+      },
+      {
+        "id": "DU/2006/1121",
+        "date": "2025-06-01"
+      },
+      {
+        "id": "DU/2005/728",
+        "date": "2025-06-01"
+      },
+      {
+        "id": "DU/2004/593",
+        "date": "2025-06-01"
+      },
+      {
+        "id": "DU/2004/2135",
+        "date": "2025-06-01"
+      },
+      {
+        "id": "DU/2004/1252",
+        "date": "2025-06-01"
+      },
+      {
+        "id": "DU/2003/592",
+        "date": "2025-06-01"
+      },
+      {
+        "id": "DU/2003/2255",
+        "date": "2025-06-01"
+      },
+      {
+        "id": "DU/2003/1143",
+        "date": "2025-06-01"
+      },
+      {
+        "id": "DU/2002/1956",
+        "date": "2025-06-01"
+      },
+      {
+        "id": "DU/2002/1800",
+        "date": "2025-06-01"
+      },
+      {
+        "id": "DU/2002/1674",
+        "date": "2025-06-01"
+      },
+      {
+        "id": "DU/2002/1673",
+        "date": "2025-06-01"
+      },
+      {
+        "id": "DU/2001/1148",
+        "date": "2025-06-01"
+      },
+      {
+        "id": "DU/2001/1071",
+        "date": "2025-06-01"
+      },
+      {
+        "id": "DU/2000/1118",
+        "date": "2025-06-01"
+      },
+      {
+        "id": "DU/1998/930",
+        "date": "2025-06-01"
+      },
+      {
+        "id": "DU/1998/887",
+        "date": "2025-06-01"
+      },
+      {
+        "id": "DU/1997/776",
+        "date": "2025-06-01"
+      },
+      {
+        "id": "DU/1997/628",
+        "date": "2025-06-01"
+      },
+      {
+        "id": "DU/1992/86",
+        "date": "2025-06-01"
+      },
+      {
+        "id": "DU/1991/464",
+        "date": "2025-06-01"
+      },
+      {
+        "id": "DU/1991/425",
+        "date": "2025-06-01"
+      },
+      {
+        "id": "DU/1991/350",
+        "date": "2025-06-01"
+      },
+      {
+        "id": "DU/1991/24",
+        "date": "2025-06-01"
+      },
+      {
+        "id": "DU/1982/214",
+        "date": "2025-06-01"
+      },
+      {
+        "id": "DU/1982/19",
+        "date": "2025-06-01"
+      },
+      {
+        "id": "DU/1966/151",
+        "date": "2025-06-01"
+      },
+      {
+        "id": "DU/1964/296",
+        "date": "2025-06-01"
+      }
+    ]
+  },
+  "releasedBy": [
+    "SEJM"
+  ],
+  "texts": [
+    {
+      "fileName": "D20250620.pdf",
+      "type": "O"
+    },
+    {
+      "fileName": "D20250620.pdf",
+      "type": "I"
+    },
+    {
+      "fileName": "D20250620L.pdf",
+      "type": "T"
+    },
+    {
+      "fileName": "D20250620Lj.pdf",
+      "type": "U"
+    }
+  ],
+  "ELI": "DU/2025/620"
+}

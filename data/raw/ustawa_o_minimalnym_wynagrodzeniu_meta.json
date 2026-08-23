@@ -1,0 +1,280 @@
+{
+  "address": "WDU20022001679",
+  "announcementDate": "2002-10-10",
+  "changeDate": "2025-09-15T00:00:00",
+  "displayAddress": "Dz.U. 2002 nr 200 poz. 1679",
+  "pos": 1679,
+  "promulgation": "2002-11-30",
+  "publisher": "DU",
+  "status": "akt posiada tekst jednolity",
+  "textHTML": true,
+  "textPDF": true,
+  "title": "Ustawa z dnia 10 października 2002 r. o minimalnym wynagrodzeniu za pracę.",
+  "type": "Ustawa",
+  "volume": 200,
+  "year": 2002,
+  "authorizedBody": [],
+  "directives": [],
+  "entryIntoForce": "2003-01-01",
+  "inForce": "IN_FORCE",
+  "keywords": [
+    "wynagrodzenia minimalne",
+    "kodeks pracy"
+  ],
+  "keywordsNames": [],
+  "obligated": [
+    "MIN. WŁAŚCIWY DS FINANSÓW PUBLICZNYCH"
+  ],
+  "previousTitle": [],
+  "prints": [
+    {
+      "link": "https://orka.sejm.gov.pl/proc4.nsf/opisy/556.htm",
+      "linkPrintAPI": "https://api.sejm.gov.pl/sejm/term4/prints/556",
+      "linkProcessAPI": "https://api.sejm.gov.pl/sejm/term4/processes/556",
+      "number": "556",
+      "term": 4
+    }
+  ],
+  "references": {
+    "Akty uznane za uchylone": [
+      {
+        "id": "DU/2000/174",
+        "date": "2003-01-01"
+      },
+      {
+        "id": "DU/2000/1308",
+        "date": "2003-01-01"
+      },
+      {
+        "id": "DU/1999/1037",
+        "date": "2003-01-01"
+      },
+      {
+        "id": "DU/1998/74",
+        "date": "2003-01-01"
+      },
+      {
+        "id": "DU/1998/1189",
+        "date": "2003-01-01"
+      }
+    ],
+    "Akty wykonawcze": [
+      {
+        "id": "MP/2009/709"
+      },
+      {
+        "id": "MP/2008/499"
+      },
+      {
+        "id": "DU/2025/1242"
+      },
+      {
+        "id": "DU/2024/1362"
+      },
+      {
+        "id": "DU/2023/1893"
+      },
+      {
+        "id": "DU/2022/1952"
+      },
+      {
+        "id": "DU/2021/1690"
+      },
+      {
+        "id": "DU/2019/1778"
+      },
+      {
+        "id": "DU/2018/1794"
+      },
+      {
+        "id": "DU/2017/1747"
+      },
+      {
+        "id": "DU/2016/1456"
+      },
+      {
+        "id": "DU/2015/1385"
+      },
+      {
+        "id": "DU/2014/1220"
+      },
+      {
+        "id": "DU/2013/1074"
+      },
+      {
+        "id": "DU/2012/1026"
+      },
+      {
+        "id": "DU/2011/1141"
+      },
+      {
+        "id": "DU/2010/1288"
+      },
+      {
+        "id": "DU/2007/1209"
+      },
+      {
+        "id": "DU/2006/1227"
+      },
+      {
+        "id": "DU/2005/1469"
+      },
+      {
+        "id": "DU/2004/2062"
+      },
+      {
+        "id": "DU/2003/1623"
+      }
+    ],
+    "Akty zmieniające": [
+      {
+        "id": "DU/2023/1667",
+        "date": "2024-01-01"
+      },
+      {
+        "id": "DU/2019/1564",
+        "date": "2020-01-01"
+      },
+      {
+        "id": "DU/2018/650",
+        "date": "2018-04-30"
+      },
+      {
+        "id": "DU/2016/1265",
+        "date": "2017-01-01"
+      },
+      {
+        "id": "DU/2015/1240",
+        "date": "2015-09-11"
+      },
+      {
+        "id": "DU/2005/1314",
+        "date": "2005-09-03"
+      },
+      {
+        "id": "DU/2004/2407",
+        "date": "2004-11-23"
+      },
+      {
+        "id": "DU/2004/1001",
+        "date": "2004-06-01"
+      },
+      {
+        "id": "DU/2003/844",
+        "date": "2004-01-01"
+      }
+    ],
+    "Akty zmienione": [
+      {
+        "id": "DU/2002/1182",
+        "date": "2003-01-01"
+      },
+      {
+        "id": "DU/1998/930",
+        "date": "2003-01-01"
+      },
+      {
+        "id": "DU/1998/887",
+        "date": "2003-01-01"
+      },
+      {
+        "id": "DU/1998/1118",
+        "date": "2003-01-01"
+      },
+      {
+        "id": "DU/1997/776",
+        "date": "2003-01-01"
+      },
+      {
+        "id": "DU/1997/557",
+        "date": "2003-01-01"
+      },
+      {
+        "id": "DU/1996/32",
+        "date": "2003-01-01"
+      },
+      {
+        "id": "DU/1995/1",
+        "date": "2003-01-01"
+      },
+      {
+        "id": "DU/1991/350",
+        "date": "2003-01-01"
+      },
+      {
+        "id": "DU/1990/19",
+        "date": "2003-01-01"
+      },
+      {
+        "id": "DU/1974/282",
+        "date": "2003-01-01"
+      },
+      {
+        "id": "DU/1974/141",
+        "date": "2003-01-01"
+      },
+      {
+        "id": "DU/1967/220",
+        "date": "2003-01-01"
+      },
+      {
+        "id": "DU/1966/151",
+        "date": "2003-01-01"
+      }
+    ],
+    "Inf. o tekście jednolitym": [
+      {
+        "id": "DU/2024/1773"
+      },
+      {
+        "id": "DU/2020/2207"
+      },
+      {
+        "id": "DU/2018/2177"
+      },
+      {
+        "id": "DU/2017/847"
+      },
+      {
+        "id": "DU/2015/2008"
+      }
+    ],
+    "Odesłania": [
+      {
+        "id": "DU/2001/1080"
+      }
+    ],
+    "Orzeczenie TK": [
+      {
+        "id": "DU/2005/87"
+      }
+    ]
+  },
+  "releasedBy": [
+    "SEJM"
+  ],
+  "texts": [
+    {
+      "fileName": "text.html",
+      "type": "H"
+    },
+    {
+      "fileName": "D20021679.pdf",
+      "type": "O"
+    },
+    {
+      "fileName": "D20021679.pdf",
+      "type": "I"
+    },
+    {
+      "fileName": "D20021679L.pdf",
+      "type": "T"
+    },
+    {
+      "fileName": "D20021679Lj.pdf",
+      "type": "U"
+    }
+  ],
+  "validFrom": "2003-01-01",
+  "ELI": "DU/2002/1679"
+}

@@ -1,0 +1,257 @@
+{
+  "address": "WDU20180002215",
+  "announcementDate": "2018-10-04",
+  "changeDate": "2026-07-29T09:34:11",
+  "displayAddress": "Dz.U. 2018 poz. 2215",
+  "pos": 2215,
+  "promulgation": "2018-11-28",
+  "publisher": "DU",
+  "status": "akt posiada tekst jednolity",
+  "textHTML": true,
+  "textPDF": true,
+  "title": "Ustawa z dnia 4 października 2018 r. o pracowniczych planach kapitałowych",
+  "type": "Ustawa",
+  "volume": 0,
+  "year": 2018,
+  "authorizedBody": [],
+  "comments": "1) art. 124 pkt 4 lit. b wchodzi w życie z dniem 1 stycznia 2021 r.;\n2) art. 49 ust. 5 i 6 wchodzi w życie z dniem 30 czerwca 2021 r.;\n3) art. 77 ust. 3 pkt 4 wchodzi w życie z dniem 1 stycznia 2022 r.;\n4) art. 23 ust. 5 i 6 wchodzi w życie z dniem 1 stycznia 2023 r.",
+  "directives": [
+    {
+      "address": "32017R0653",
+      "date": "2017-03-08",
+      "title": "Rozporządzenie delegowane Komisji (UE) 2017/653 z dnia 8 marca 2017 r. uzupełniające rozporządzenie Parlamentu Europejskiego i Rady (UE) nr 1286/2014 w sprawie dokumentów zawierających kluczowe informacje, dotyczących detalicznych produktów zbiorowego inwestowania i ubezpieczeniowych produktów inwestycyjnych (PRIIP) przez ustanowienie regulacyjnych standardów technicznych w zakresie prezentacji, treści, przeglądu i zmiany dokumentów zawierających kluczowe informacje oraz warunków spełnienia wymogu przekazania takich dokumentów (Tekst mający znaczenie dla EOG. )"
+    },
+    {
+      "address": "32016R0679",
+      "date": "2016-04-27",
+      "title": "Rozporządzenie Parlamentu Europejskiego i Rady (UE) 2016/679 z dnia 27 kwietnia 2016 r. w sprawie ochrony osób fizycznych w związku z przetwarzaniem danych osobowych i w sprawie swobodnego przepływu takich danych oraz uchylenia dyrektywy 95/46/WE (ogólne rozporządzenie o ochronie danych) (Tekst mający znaczenie dla EOG)"
+    }
+  ],
+  "entryIntoForce": "2019-01-01",
+  "inForce": "IN_FORCE",
+  "keywords": [
+    "praca i ubezpieczenia społeczne",
+    "praca",
+    "pracownicze plany kapitałowe",
+    "emerytury i renty",
+    "pracownicy",
+    "papiery wartościowe"
+  ],
+  "keywordsNames": [],
+  "obligated": [
+    "MIN. WŁAŚCIWY DS INSTYTUCJI FINANSOWYCH",
+    "MIN. WŁAŚCIWY DS ZABEZPIECZENIA SPOŁECZNEGO"
+  ],
+  "previousTitle": [],
+  "prints": [
+    {
+      "link": "https://www.sejm.gov.pl/Sejm8.nsf/PrzebiegProc.xsp?nr=2811",
+      "linkPrintAPI": "https://api.sejm.gov.pl/sejm/term8/prints/2811",
+      "linkProcessAPI": "https://api.sejm.gov.pl/sejm/term8/processes/2811",
+      "number": "2811",
+      "term": 8
+    }
+  ],
+  "references": {
+    "Akty wykonawcze": [
+      {
+        "id": "DU/2025/1852"
+      },
+      {
+        "id": "DU/2022/2357"
+      },
+      {
+        "id": "DU/2022/2163"
+      },
+      {
+        "id": "DU/2019/613"
+      },
+      {
+        "id": "DU/2019/467"
+      },
+      {
+        "id": "DU/2019/416"
+      },
+      {
+        "id": "DU/2019/1742"
+      },
+      {
+        "id": "DU/2019/1198"
+      },
+      {
+        "id": "DU/2019/1102"
+      },
+      {
+        "id": "DU/2019/1034"
+      }
+    ],
+    "Akty zmieniające": [
+      {
+        "id": "DU/2026/989",
+        "date": "2026-08-07"
+      },
+      {
+        "id": "DU/2025/1822",
+        "date": "2026-01-01"
+      },
+      {
+        "id": "DU/2025/1216",
+        "date": "2025-09-18"
+      },
+      {
+        "id": "DU/2023/1941",
+        "date": "2023-10-05"
+      },
+      {
+        "id": "DU/2023/1723",
+        "date": "2023-09-29"
+      },
+      {
+        "id": "DU/2022/1079",
+        "date": "2022-06-04"
+      },
+      {
+        "id": "DU/2020/568",
+        "date": "2020-03-31"
+      },
+      {
+        "id": "DU/2020/1086",
+        "date": "2020-06-24"
+      },
+      {
+        "id": "DU/2019/1572",
+        "date": "2019-09-05"
+      },
+      {
+        "id": "DU/2019/1074",
+        "date": "2019-06-25"
+      }
+    ],
+    "Akty zmienione": [
+      {
+        "id": "DU/2018/723",
+        "date": "2019-01-01"
+      },
+      {
+        "id": "DU/2016/68",
+        "date": "2019-01-01"
+      },
+      {
+        "id": "DU/2016/1202",
+        "date": "2019-01-01"
+      },
+      {
+        "id": "DU/2015/1844",
+        "date": "2019-01-01"
+      },
+      {
+        "id": "DU/2015/1348",
+        "date": "2019-01-01"
+      },
+      {
+        "id": "DU/2007/589",
+        "date": "2019-01-01"
+      },
+      {
+        "id": "DU/2006/1119",
+        "date": "2019-01-01"
+      },
+      {
+        "id": "DU/2004/535",
+        "date": "2019-01-01"
+      },
+      {
+        "id": "DU/2004/177",
+        "date": "2019-01-01"
+      },
+      {
+        "id": "DU/2004/1546",
+        "date": "2019-01-01"
+      },
+      {
+        "id": "DU/2004/1207",
+        "date": "2019-01-01"
+      },
+      {
+        "id": "DU/2004/1205",
+        "date": "2019-01-01"
+      },
+      {
+        "id": "DU/2004/1001",
+        "date": "2019-01-01"
+      },
+      {
+        "id": "DU/2003/1153",
+        "date": "2019-01-01"
+      },
+      {
+        "id": "DU/2000/306",
+        "date": "2019-01-01"
+      },
+      {
+        "id": "DU/1998/887",
+        "date": "2019-01-01"
+      },
+      {
+        "id": "DU/1997/934",
+        "date": "2019-01-01"
+      },
+      {
+        "id": "DU/1992/86",
+        "date": "2019-01-01"
+      },
+      {
+        "id": "DU/1991/350",
+        "date": "2019-01-01"
+      },
+      {
+        "id": "DU/1983/207",
+        "date": "2019-01-01"
+      },
+      {
+        "id": "DU/1974/141",
+        "date": "2019-01-01"
+      }
+    ],
+    "Inf. o tekście jednolitym": [
+      {
+        "id": "DU/2026/192"
+      },
+      {
+        "id": "DU/2024/427"
+      },
+      {
+        "id": "DU/2023/46"
+      },
+      {
+        "id": "DU/2020/1342"
+      }
+    ]
+  },
+  "releasedBy": [
+    "SEJM"
+  ],
+  "texts": [
+    {
+      "fileName": "text.html",
+      "type": "H"
+    },
+    {
+      "fileName": "D20182215.pdf",
+      "type": "O"
+    },
+    {
+      "fileName": "D20182215.pdf",
+      "type": "I"
+    },
+    {
+      "fileName": "D20182215L.pdf",
+      "type": "T"
+    },
+    {
+      "fileName": "D20182215Lj.pdf",
+      "type": "U"
+    }
+  ],
+  "ELI": "DU/2018/2215"
+}

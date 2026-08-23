@@ -826,15 +826,187 @@ umowie (4 miesiące) poprawnie zacytowane jako treść pliku użytkownika,
 z trafną uwagą, że to może odbiegać od Kodeksu pracy (art. 36) --
 model nie pomylił dwóch źródeł.
 
+## Krok 16: rozszerzenie zbioru LoRA o brakujące ustawy i naprawa dwóch nieaktualnych odmów
+
+Cel: `data/finetune/train.jsonl` (35 przykładów) w ogóle nie miał
+przykładów dla 4 z 7 ustaw obecnych w `ACTS`/RAG (ustawa zasiłkowa,
+PIT, PPK, ustawa o rynku pracy) -- cały zbiór kręcił się wokół Kodeksu
+pracy, ustawy o systemie ubezpieczeń społecznych i ustawy o minimalnym
+wynagrodzeniu. Przy okazji audytu znaleziono też realny błąd: dwa
+przykłady (dawne nr 31 i 32) uczyły model odmawiać odpowiedzi na
+pytania o zasiłek macierzyński i zaliczkę na PIT, tłumacząc to brakiem
+tych ustaw w bazie wiedzy -- a `ustawa_zasilkowa` i `ustawa_o_pit` są w
+`ACTS` (i w RAG) od tego samego commita co dane treningowe. LoRA
+uczyła więc model fałszywej, niepotrzebnej odmowy.
+
+**Naprawiono:** oba przykłady zastąpiono realnymi odpowiedziami,
+opartymi na faktycznej treści pobranych ustaw (art. 29 i 30 ustawy
+zasiłkowej; art. 32 ustawy o PIT) -- zweryfikowanymi bezpośrednio w
+`data/processed/*.json`, a nie z pamięci.
+
+**Dodano 12 nowych przykładów do `train.jsonl` i 3 do `valid.jsonl`**
+(35/5 -> 47/8), pokrywających dotąd nieobecne ustawy -- każdy cytat
+zweryfikowany względem realnego tekstu artykułu w `data/processed/`:
+- ustawa zasiłkowa: okres wyczekiwania na zasiłek chorobowy (art. 4),
+  limit dni zasiłku opiekuńczego (art. 33), świadczenie rehabilitacyjne
+  (art. 18), zasiłek macierzyński po ustaniu zatrudnienia wskutek
+  upadłości pracodawcy (art. 30);
+- PIT: ulga dla młodych do 26. roku życia (art. 21 ust. 1 pkt 148),
+  standardowe i podwyższone koszty uzyskania przychodu (art. 22),
+  nowa, realna odmowa dla pytania faktycznie spoza zakresu (rejestracja
+  spółki z o.o. w KRS);
+- PPK: wysokość wpłat podstawowych pracodawcy/pracownika (art. 26-27),
+  obniżona wpłata przy niskich zarobkach (art. 27 ust. 2),
+  dobrowolność uczestnictwa i tryb rezygnacji (art. 23), autozapis co
+  4 lata (art. 23 ust. 5-6, w `valid.jsonl`);
+- ustawa o rynku pracy i służbach zatrudnienia: warunek 365 dni w 18
+  miesiącach na prawo do zasiłku dla bezrobotnych (art. 218), utrata
+  prawa do zasiłku przy wypowiedzeniu z własnej inicjatywy (art. 219) i
+  przy porozumieniu stron (art. 220, w `valid.jsonl`);
+- dodatkowo w `valid.jsonl`: graniczny przypadek dla art. 36 § 1 pkt 2
+  Kodeksu pracy (zatrudnienie dokładnie 6 miesięcy).
+
+Świadomie NIE dodano przykładów wieloturowych -- format treningowy
+(`{"messages": [...]}`) by je obsłużył, ale obsługa historii rozmowy
+(`search_with_history`, `trim_history`, krok 10-11) to mechanizm w
+kodzie RAG, a nie coś, czego LoRA musi się uczyć z przykładów; bazowy
+model instrukcyjny (Bielik-*-Instruct) już ma tę zdolność z własnego
+treningu.
+
+**Zweryfikowano:** wszystkie 55 linii to poprawny JSON, `pytest -v` --
+36/36 (bez regresji w istniejących testach, niezwiązanych z tą zmianą).
+
+**Ponowny trening LoRA na 4.5B (`mlx_lm.lora`, te same hiperparametry co
+krok 4b: batch 2, 200 iteracji, ale ewaluacja/zapis co 25 zamiast co 50,
+po doświadczeniu z krokiem 6) -- ten sam wzorzec przeuczenia co przy
+mniejszym zbiorze:** val loss minimum (1.233) przy iter 25/50, potem
+monotonicznie rósł do 1.927 przy iter 200, mimo że train loss spadł do
+~0. Jako punkt odniesienia przyjęto checkpoint z iter 50
+(`adapters/bielik-kadry-lora-v2-iter50`) -- pełna historia checkpointów
+w `adapters/bielik-kadry-lora-v2/`.
+
+**Test end-to-end (RAG + nowy adapter, `chat.py --model
+models/Bielik-4.5B-v3.0-Instruct-mlx`) na pytaniach spoza dosłownej
+treści treningu ujawnił realną, niepokojącą lukę -- w przeciwieństwie
+do kroku 4c/6, tym razem model MYLI SIĘ mimo poprawnie wyszukanego przez
+RAG kontekstu:**
+- "Ile procent wynagrodzenia wpłaca pracodawca do PPK jako wpłatę
+  podstawową?" -- poprawna odpowiedź to 1,5% (art. 26 ust. 1, i RAG
+  faktycznie zwrócił ten artykuł z tą liczbą jako najlepszy wynik,
+  zweryfikowano bezpośrednio przez `rag.search()`). Model z nowym
+  adapterem odpowiedział **"2,5%"** (to wartość z ust. 2 -- wpłata
+  DODATKOWA pracodawcy -- błędnie podpisana jako ust. 1). Ten sam
+  stary adapter (`bielik-kadry-lora-iter50`, trenowany bez żadnego
+  przykładu o PPK) też odpowiedział błędnie "2,5%", ale przynajmniej
+  dopisał poprawny cytat "1,5%" zaraz potem (sprzeczne ze sobą, ale
+  poprawna liczba była gdzieś w odpowiedzi). **Model bazowy bez LoRA
+  (`--no-adapter`) odpowiedział w 100% poprawnie**, cytując dokładnie
+  art. 26 ust. 1 z właściwą liczbą.
+- "Przez ile dni w ciągu ostatnich 18 miesięcy trzeba było pracować,
+  żeby dostać zasiłek dla bezrobotnych?" (poprawna odpowiedź: 365 dni,
+  art. 218 ust. 1) -- nowy adapter poprawnie zacytował warunek o
+  minimalnym wynagrodzeniu i art. 218 ust. 1 pkt 1, ale **nigdy nie
+  podał samej liczby 365**, myląc "18 miesięcy" (okno czasowe) z
+  odpowiedzią na pytanie "ile dni".
+- Dla kontrastu, znane z wcześniejszych kroków pytanie graniczne z
+  Kodeksu pracy ("zatrudniony od 7 lat -> jaki okres wypowiedzenia?")
+  nowy adapter rozwiązał bezbłędnie, z poprawnym cytowaniem.
+
+**Wniosek (nowy, ważniejszy niż w kroku 4b):** LoRA w tej architekturze
+(mały model + krótki fine-tuning) nie tylko "nie wystarcza, by wszyć
+precyzyjne progi liczbowe" (krok 4b) -- w artykułach z KILKOMA blisko
+siebie leżącymi, łatwymi do pomylenia liczbami (PPK: 0,5/1,5/2/2,5%;
+rynek pracy: 365 dni vs 18 miesięcy) potrafi **przesłonić poprawny
+kontekst z RAG błędną, ale pewnie brzmiącą liczbą z pamięci wag** --
+gorzej niż model bazowy bez żadnego douczenia na tym samym pytaniu.
+Prawdopodobna przyczyna: styl wyuczony na przykładach z Kodeksu pracy
+(jedna liczba na pytanie, podana pewnie na początku odpowiedzi) nie
+uogólnia się dobrze na akty z tabelami kilku blisko siebie leżących
+wartości procentowych, których w zbiorze treningowym jest na razie
+niewiele (po 3-4 przykłady na akt). **Adapter `bielik-kadry-lora-v2-iter50`
+NIE został ustawiony jako domyślny w `chat.py`** -- świadomie
+pozostawiono `bielik11b-kadry-lora-iter25` (11B, niezmieniony, patrz
+krok 6) jako domyślny, dopóki ta luka nie zostanie zbadana głębiej.
+
+**Domknięcie na 11B, na wyraźną prośbę użytkownika ("czy to ma
+znaczenie, na jakim modelu testowałeś?"):** przetrenowano LoRA na tym
+samym rozszerzonym zbiorze na `Bielik-11B-v3.0-Instruct` (te same
+hiperparametry co krok 6/16: batch 2, 200 iteracji, ewaluacja/zapis co
+25). Ten sam wzorzec przeuczenia co zawsze, tylko szybszy i wyraźniejszy
+niż na 4.5B: val loss startuje niżej (1.109) i osiąga minimum (0.584)
+już przy iter 25, po czym rośnie monotonicznie do 0.793 przy iter 200.
+Jako punkt odniesienia przyjęto `adapters/bielik11b-kadry-lora-v2-iter25`
+(analogicznie do `bielik11b-kadry-lora-iter25` z kroku 6).
+
+**Te same dwa pytania, które zawodziły na 4.5B, na 11B wypadły
+bezbłędnie:**
+- PPK, wpłata podstawowa pracodawcy -> poprawnie "1,5%", art. 26 ust. 1,
+  bez wzmianki o 2,5% (ani u nowego, ani u starego 11B adaptera --
+  **oba** 11B adaptery, w przeciwieństwie do 4.5B, poradziły sobie z tym
+  pytaniem poprawnie).
+- Zasiłek dla bezrobotnych, wymagany okres pracy -> poprawnie "365 dni",
+  art. 218 ust. 1, z trafnym dodatkowym wyjaśnieniem warunków.
+- Kontrolne pytanie z Kodeksu pracy (zatrudniony 7 lat) -> bez zmian,
+  poprawne.
+
+**Wniosek: to była słabość MAŁEGO modelu (4.5B), nie danych ani samej
+metody LoRA.** 11B -- nawet stary adapter, trenowany BEZ żadnego
+przykładu o PPK -- poprawnie korzystał z dostarczonego kontekstu RAG
+zamiast go przesłaniać halucynacją z wag. Większy model ma najwyraźniej
+wystarczająco dużo "miejsca", żeby nie tracić zdolności do wiernego
+cytowania kontekstu przy okazji uczenia się stylu odpowiedzi -- 4.5B tej
+rezerwy nie ma. Ponieważ `chat.py` i tak domyślnie używa 11B (decyzja z
+kroku 6), **ustawiono `bielik11b-kadry-lora-v2-iter25` jako nowy
+domyślny adapter** (`DEFAULT_ADAPTER_PATH` w `scripts/chat.py`) -- to
+czysta poprawa względem poprzedniego domyślnego adaptera (dokłada 4
+nowe ustawy, nie traci nic z dotychczasowej jakości na Kodeksie pracy).
+Wariant 4.5B (`bielik-kadry-lora-v2-iter50`) pozostaje dostępny przez
+`--model`/`--adapter-path` dla szybszej pracy, ale z jasnym zastrzeżeniem
+(patrz wyżej) o mniejszej niezawodności na nowo dodanych tematach.
+
+## Krok 17: CI (GitHub Actions)
+
+Cel: testy z kroku 14 i kontrola aktualności z kroku 8 do tej pory
+wymagały ręcznego uruchomienia -- łatwo zapomnieć.
+
+**`.github/workflows/tests.yml`** -- `pytest` przy każdym push/PR do
+`main` (Python 3.12, `pip install -r requirements-common.txt -r
+requirements-dev.txt`). Na świeżym klonie repo (bez lokalnie pobranej
+bazy) testy oznaczone `skipif` (krok 14) poprawnie się pomijają --
+zachowanie nie różni się od uruchomienia lokalnie bez `data/raw`/
+`data/processed`.
+
+**`.github/workflows/acts-freshness.yml`** -- cotygodniowy (poniedziałek
+6:00 UTC) i ręczny (`workflow_dispatch`) przebieg
+`check_acts_freshness.py`. Wymagało zmiany w `.gitignore`: `data/raw/*`
+zamiast `data/raw/` z wyjątkiem `!data/raw/*_meta.json` -- same metadane
+z ELI API (kilkadziesiąt KB na akt, bez treści PDF) są teraz
+commitowane jako "ostatni znany stan" ustaw, względem którego CI
+porównuje świeży stan API (bez tego CI nie miałoby punktu odniesienia,
+bo `data/raw/*.pdf` i `data/processed/` zostają gitignored jak wcześniej).
+
+Zweryfikowano lokalnie: obie definicje YAML (`yaml.safe_load`),
+`check_acts_freshness.py` uruchomiony ręcznie (nie wymaga PDF-ów, tylko
+`*_meta.json` + zapytanie do API -- potwierdzone czytaniem
+`pick_text_file()`), `pytest` bez regresji (36/36). **Przy tej okazji
+skrypt faktycznie znalazł 3 akty z rozbieżnym `changeDate`** względem
+ostatniego pobrania (Kodeks pracy, ustawa systemowa, ustawa o PIT) --
+miękki sygnał "coś się ruszyło", do ręcznej weryfikacji, nie
+potwierdzona jeszcze nowelizacja.
+
 ## Co dalej
 
-1. Do rozważenia: większy, bardziej zróżnicowany zbiór LoRA (więcej
-   przykładów granicznych) jeśli zależałoby nam na poprawie
-   niezawodności modelu również bez kontekstu RAG.
-2. Wariant CUDA (krok 9) wymaga realnego testu na maszynie z kartą
+1. Zweryfikować ręcznie 3 rozbieżności `changeDate` znalezione przy
+   kroku 17 (Kodeks pracy, ustawa systemowa, PIT) -- sprawdzić, czy to
+   realna nowelizacja wymagająca ponownego pobrania (`download_acts.py`
+   + `build_rag_index.py`), czy nieistotna zmiana metadanych.
+2. Mniejsza waga niż wcześniej sądzono (patrz krok 16, domknięcie na
+   11B) -- ale wciąż warto: wzmocnić dane treningowe dla 4.5B
+   przykładami KONTRASTUJĄCYMI wprost różne, blisko siebie leżące
+   wartości w tym samym akcie (np. "czym różni się wpłata podstawowa od
+   dodatkowej w PPK"), jeśli zależałoby nam na tym, żeby wariant 4.5B
+   był tak samo niezawodny jak 11B na nowo dodanych tematach.
+3. Wariant CUDA (krok 9) wymaga realnego testu na maszynie z kartą
    NVIDIA -- jeśli ktoś to zrobi, zaktualizować ten plik i README
    (usunąć oznaczenie "nieprzetestowane", poprawić ewentualne
    niezgodności API).
-2. Do rozważenia: uruchamianie `check_acts_freshness.py` okresowo
-   (np. cron/`schedule`), żeby wychwycić nowelizacje bez czekania na
-   ręczne sprawdzenie.

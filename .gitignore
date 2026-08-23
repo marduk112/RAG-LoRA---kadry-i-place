@@ -22,7 +22,14 @@ adapters-cuda/
 # duży (dziesiątki MB, duplikuje pełny tekst artykułu w każdym
 # fragmencie). data/finetune/ (ręcznie napisany zbiór do LoRA) NIE
 # jest tu ignorowany -- to jest właściwa praca, a nie pochodna danych.
-data/raw/
+#
+# Wyjątek: data/raw/*_meta.json (metadane z ELI API, kilkadziesiąt KB
+# na akt, bez treści PDF) SĄ commitowane -- to "ostatni znany stan"
+# ustaw, względem którego scripts/check_acts_freshness.py porównuje
+# API w CI (.github/workflows/acts-freshness.yml). Bez tego CI nie
+# miałoby punktu odniesienia (dane raw/processed nie są w repo).
+data/raw/*
+!data/raw/*_meta.json
 data/processed/
 
 # System

@@ -1,0 +1,28 @@
+name: Aktualność ustaw
+
+on:
+  schedule:
+    # Co poniedziałek o 6:00 UTC -- patrz PROGRESS.md, krok 8/16 ("Co dalej").
+    - cron: "0 6 * * 1"
+  workflow_dispatch: {}
+
+jobs:
+  check-freshness:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Zainstaluj zależności
+        # check_acts_freshness.py importuje download_acts.py (dla listy
+        # ACTS i pick_text_file), które na poziomie modułu ciągnie za
+        # sobą pdfplumber/pypdf, mimo że sam skrypt freshness potrzebuje
+        # tylko requests -- prościej zainstalować cały common niż
+        # utrzymywać osobną, węższą listę zależności.
+        run: pip install -r requirements-common.txt
+
+      - name: Sprawdź aktualność ustaw względem ELI API
+        run: python scripts/check_acts_freshness.py

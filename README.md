@@ -365,7 +365,12 @@ uwagi):
 ```
 
 Warto uruchamiać okresowo (np. raz na kwartał) i zawsze przed
-dodaniem kolejnego aktu do `ACTS`.
+dodaniem kolejnego aktu do `ACTS`. Uruchamia się też automatycznie co
+tydzień przez GitHub Actions (`.github/workflows/acts-freshness.yml`) --
+porównuje na bieżąco commitowane `data/raw/*_meta.json` (jedyne pliki z
+`data/raw/`, które NIE są gitignored -- same metadane, kilkadziesiąt KB
+na akt, bez treści PDF) ze świeżym stanem ELI API; failed run = mail z
+GitHub o wykrytej rozbieżności.
 
 ## Testy
 
@@ -373,6 +378,11 @@ dodaniem kolejnego aktu do `ACTS`.
 .venv/bin/pip install -r requirements-common.txt -r requirements-dev.txt
 .venv/bin/pytest
 ```
+
+Uruchamiają się też automatycznie przy każdym push/PR do `main`
+(`.github/workflows/tests.yml`, GitHub Actions) -- na świeżym klonie
+repo bez lokalnie pobranej bazy (`data/raw/`, `data/processed/`), więc
+testy oznaczone `skipif` (patrz niżej) są tam pomijane.
 
 Testy w `tests/` pokrywają logikę kontekstu rozmowy i ekstrakcji
 artykułów z PDF-ów (`scripts/prompt.py`, `scripts/download_acts.py`) --

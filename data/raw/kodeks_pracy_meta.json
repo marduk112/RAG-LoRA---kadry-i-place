@@ -1,0 +1,4420 @@
+{
+  "address": "WDU19740240141",
+  "announcementDate": "1974-06-26",
+  "changeDate": "2026-08-04T00:00:00",
+  "displayAddress": "Dz.U. 1974 nr 24 poz. 141",
+  "pos": 141,
+  "promulgation": "1974-07-05",
+  "publisher": "DU",
+  "status": "akt posiada tekst jednolity",
+  "textHTML": true,
+  "textPDF": true,
+  "title": "Ustawa z dnia 26 czerwca 1974 r. Kodeks pracy.",
+  "type": "Ustawa",
+  "volume": 24,
+  "year": 1974,
+  "authorizedBody": [
+    "RADA MINISTRÓW",
+    "MIN. PRACY, PŁAC I SPRAW SOCJALNYCH"
+  ],
+  "directives": [
+    {
+      "address": "31990L0394",
+      "date": "1990-06-28",
+      "title": "DYREKTYWA RADY z dnia 28 czerwca 1990 r. w sprawie ochrony pracowników przed zagrożeniem dotyczącym narażenia na działanie czynników rakotwórczych podczas pracy (szósta dyrektywa szczegółowa w rozumieniu art. 16 ust. 1 dyrektywy 89\\391\\EWG)"
+    },
+    {
+      "address": "31991L0322",
+      "date": "1991-05-29",
+      "title": "DYREKTYWA KOMISJI 91/322/EWG z dnia 29 maja 1991 w sprawie ustanowienia indykatywnych wartości granicznych w wykonaniu dyrektywy Rady 80/1107/EWG w sprawie ochrony pracowników przed ryzykiem związanym z narażeniem na działanie czynników chemicznych, fizycznych i biologicznych w miejscu pracy"
+    },
+    {
+      "address": "31983L0477",
+      "date": "1983-09-19",
+      "title": "Dyrektywa Rady 83/477/EWG z dnia 19 września 1983 r. w sprawie ochrony pracowników przed ryzykiem związanym z narażeniem na działanie azbestu w miejscu pracy (druga dyrektywa szczegółowa w rozumieniu art. 8 dyrektywy 80/1107/EWG)"
+    },
+    {
+      "address": "31986L0188",
+      "date": "1986-05-12",
+      "title": "Dyrektywa Rady 86/188/EWG z dnia 12 maja 1986 r. w sprawie ochrony pracowników przed ryzykiem związanym z narażeniem na działanie hałasu w miejscu pracy"
+    },
+    {
+      "address": "31989L0391",
+      "date": "1989-06-12",
+      "title": "DYREKTYWA RADY z dnia 12 czerwca 1989 r. w sprawie wprowadzenia środków mających na celu ulepszenie warunków BHP pracowników podczas pracy"
+    },
+    {
+      "address": "31989L0654",
+      "date": "1989-11-30",
+      "title": "Dyrektywa Rady 89/654/EWG z dnia 30 listopada 1989 r. dotycząca minimalnych wymagań w dziedzinie bezpieczeństwa i ochrony zdrowia w miejscu pracy (pierwsza dyrektywa szczegółowa w rozumieniu art. 16 ust. 1 dyrektywy 89/391/EWG)"
+    },
+    {
+      "address": "31989L0655",
+      "date": "1989-11-30",
+      "title": "Dyrektywa Rady 89/655/EWG z dnia 30 listopada 1989 r. dotycząca minimalnych wymagań w zakresie bezpieczeństwa i higieny użytkowania sprzętu roboczego przez pracowników podczas pracy (druga dyrektywa szczegółowa w rozumieniu art. 16 ust. 1 dyrektywy 89/391/EWG)"
+    },
+    {
+      "address": "31989L0656",
+      "date": "1989-11-30",
+      "title": "Dyrektywa Rady 89/656/EWG z dnia 30 listopada 1989 r. w sprawie minimalnych wymagań w dziedzinie bezpieczeństwa i ochrony zdrowia pracowników korzystających z wyposażenia ochrony osobistej (trzecia dyrektywa szczegółowa w rozumieniu art. 16 ust. 1 dyrektywy 89/391/EWG)"
+    },
+    {
+      "address": "31990L0269",
+      "date": "1990-05-29",
+      "title": "Dyrektywa Rady 90/269/EWG z dnia 29 maja 1990 r. w sprawie minimalnych wymagań dotyczących ochrony zdrowia i bezpieczeństwa podczas ręcznego przemieszczania ciężarów wwdu przypadku możliwości wystąpienia zagrożenia, zwłaszcza urazów kręgosłupa pracowników (czwarta szczegółowa dyrektywa w rozumieniu art. 16 ust. 1 dyrektywy 89/391/EWG)"
+    },
+    {
+      "address": "31990L0270",
+      "date": "1990-05-29",
+      "title": "Dyrektywa Rady 90/270/EWG z dnia 29 maja 1990 r. w sprawie minimalnych wymagań w dziedzinie bezpieczeństwa i ochrony zdrowia przy pracy z urządzeniami wyposażonymi w monitory ekranowe (piąta dyrektywa szczegółowa w rozumieniu art. 16 ust. 1 dyrektywy 87/391/EWG)"
+    },
+    {
+      "address": "31991L0383",
+      "date": "1991-06-25",
+      "title": "DYREKTYWA RADY z dnia 25 czerwca 1991 r. uzupełniająca środki mające wspierać poprawę bezpieczeństwa i zdrowia w pracy pracowników pozostających w stosunku pracy na czas określony lub w czasowym stosunku pracy"
+    },
+    {
+      "address": "31991L0533",
+      "date": "1991-10-14",
+      "title": "DYREKTYWA RADY z dnia 14 października 1991 r. w sprawie obowiązku pracodawcy podania pracownikowi do wiadomości warunków jego umowy o pracę lub stosunku pracy"
+    },
+    {
+      "address": "31992L0057",
+      "date": "1992-06-24",
+      "title": "Dyrektywa Rady 92/57/EWG z dnia 24 czerwca 1992 r. w sprawie wprowadzenia w życie minimalnych wymagań w zakresie bezpieczeństwa i ochrony zdrowia w miejscach tymczasowych lub ruchomych budów (ósma dyrektywa szczegółowa w rozumieniu art. 16 ust. 1 dyrektywy 89/391/EWG)"
+    },
+    {
+      "address": "31992L0058",
+      "date": "1992-06-24",
+      "title": "Dyrektywa Rady 92/58/EWG z dnia 24 czerwca 1992 r. w sprawie minimalnych wymagań dotyczących znaków bezpieczeństwa i/lub zdrowia w pracy (dziewiąta dyrektywa szczegółowa w rozumieniu art. 16 ust. 1 dyrektywy 89/391/EWG)"
+    },
+    {
+      "address": "31992L0085",
+      "date": "1992-10-19",
+      "title": "Dyrektywa Rady 92/85/EWG z dnia 19 października 1992 r. w sprawie wprowadzenia środków służących wspieraniu poprawy w miejscu pracy bezpieczeństwa i zdrowia pracownic w ciąży, pracownic, które niedawno rodziły i pracownic karmiących piersią (dziesiąta dyrektywa szczegółowa w rozumieniu art. 16 ust. 1 dyrektywy 89/391/EWG)"
+    },
+    {
+      "address": "31993L0104",
+      "date": "1993-11-23",
+      "title": "Dyrektywa numer 93/104 (EC) z dnia 23 listopada 1993 roku dotycząca pewnych aspektów organizacji pracy"
+    },
+    {
+      "address": "31994L0033",
+      "date": "1994-06-22",
+      "title": "Dyrektywa Nr 94/33 (EC) z dnia 22 czerwca 1994 roku dotycząca ochrony młodocianych w pracy"
+    },
+    {
+      "address": "31996L0034",
+      "date": "1996-03-06",
+      "title": "Dyrektywa Rady 96/34/WE z dnia 3 czerwca 1996 r. w sprawie Porozumienia ramowego dotyczącego urlopu rodzicielskiego zawartego przez Europejską Unię Konfederacji Przemysłowych i Pracodawców /UNICE/, Europejskie Centrum Przedsiębiorstw Publicznych /CEEP/ oraz Europejską Konfederację Związków Zawodowych /ETUC/"
+    },
+    {
+      "address": "31997L0080",
+      "date": "1997-12-15",
+      "title": "Dyrektywa Rady z dnia 15 grudnia 1997 r. dotycząca ciężaru dowodu w sprawach dyskryminacji ze względu na płeć"
+    },
+    {
+      "address": "31998L0024",
+      "date": "1998-07-04",
+      "title": "Dyrektywa Rady 98/24/WE z dnia 7 kwietnia 1998 r. w sprawie ochrony zdrowia i bezpieczeństwa pracowników przed ryzykiem związanym z czynnikami chemicznymi w miejscu pracy (czternasta dyrektywa szczegółowa w rozumieniu art. 16 ust. 1 dyrektywy 89/931/EWG)"
+    },
+    {
+      "address": "31999L0070",
+      "date": "1999-06-28",
+      "title": "Dyrektywa Rady 99/70 z dnia 28 czerwca 1999 dotycząca porozumienia ramowego w sprawie umów na czas określony, zawartego przez UNICE, CEEP i ETUC"
+    },
+    {
+      "address": "31999L0092",
+      "date": "1999-12-16",
+      "title": "Dyrektywa Parlamentu Europejskiego i Rady z dnia 16 grudnia 1999 r. w sprawie minimalnych wymagań dotyczących bezpieczeństwa i ochrony zdrowia pracowników zatrudnionych na stanowiskach pracy, na których może wystąpić atmosfera wybuchowa (piętnasta dyrektywa szczegółowa w rozumieniu art. 16 ust. 1 dyrektywy 89/391/EWG)"
+    },
+    {
+      "address": "32000L0034",
+      "date": "2000-06-22",
+      "title": "DYREKTYWA 2000/34/EC PARLAMENTU EUROPEJSKIEGO I RADY z dnia 22 czerwca 2000 roku zmieniająca Dyrektywę Rady nr 93/104/EC w sprawie pewnych aspektów organizacji czasu pracy w sektorach i działalności wyłączonej z tej Dyrektywy"
+    },
+    {
+      "address": "32000L0039",
+      "date": "2000-06-08",
+      "title": "Dyrektywa Komisji 2000/39/WE z dnia 8 czerwca 2000 r. ustanawiająca pierwszą listę indykatywnych wartości granicznych narażenia na czynniki zewnętrzne podczas pracy w związku z wykonaniem dyrektywy Rady 98/24/EWG w sprawie ochrony zdrowia i bezpieczeństwa pracowników przed ryzykiem związanym z czynnikami chemicznymi w miejscu pracyTekst mający znaczenie dla EOG."
+    },
+    {
+      "address": "32000L0043",
+      "date": "2000-06-29",
+      "title": "DYREKTYWA RADY NR 2000/43/WE z dnia 29 czerwca 2000 roku w sprawie wdrożenia zasady równego traktowania osób bez względu na pochodzenie rasowe lub etniczne"
+    },
+    {
+      "address": "32000L0054",
+      "date": "2000-09-18",
+      "title": "DYREKTYWA 2000/54/EC PARLAMENTU EUROPEJSKIEGO ORAZ RADY EUROPEJSKIEJ z dnia 18 września 2000 dotycząca ochrony pracowników przed ryzykiem związanym z ekspozycją na czynniki biologiczne w miejscu pracy"
+    },
+    {
+      "address": "32000L0078",
+      "date": "2000-11-27",
+      "title": "DYREKTYWA RADY NR 2000/78/WE z dnia 27 listopada 2000 roku w sprawie ustanowienia ogólnych ram równego traktowania przy zatrudnieniu i wykonywaniu zawodu"
+    },
+    {
+      "address": "32002L0044",
+      "date": "2002-06-25",
+      "title": "Dyrektywa 2002/44/WE Parlamentu Europejskiego i Rady z dnia 25 czerwca 2002 r. w sprawie minimalnych wymagań w zakresie ochrony zdrowia i bezpieczeństwa dotyczących narażenia pracowników na ryzyko spowodowane czynnikami fizycznymi (wibracji) (szesnasta dyrektywa szczegółowa w rozumieniu art. 16 ust. 1 dyrektywy 89/391/EWG)"
+    },
+    {
+      "address": "32003L0010",
+      "date": "2003-06-02",
+      "title": "DYREKTYWA 2003/10/WE PARLAMENTU EUROPEJSKIEGO I RADY z dnia 6 lutego 2003 r. w sprawie minimalnych wymagań w zakresie ochrony zdrowia i bezpieczeństwa dotyczących narażenia pracowników na ryzyko spowodowane czynnikami fizycznymi (hałasem) (siedemnasta dyrektywa szczegółowa w rozumieniu art. 16 ust. 1 dyrektywy 89/391/EWG)"
+    },
+    {
+      "address": "32010L0018",
+      "date": "2010-03-08",
+      "title": "DYREKTYWA RADY 2010/18/UE z dnia 8 marca 2010 r. w sprawie wdrożenia zmienionego porozumienia ramowego dotyczącego urlopu rodzicielskiego zawartego przez BUSINESSEUROPE, UEAPME, CEEP i ETUC oraz uchylająca dyrektywę 96/34/WE (Tekst mający znaczenie dla EOG)"
+    },
+    {
+      "address": "32019L1152",
+      "date": "2019-06-20",
+      "title": "Dyrektywa Parlamentu Europejskiego i Rady (UE) 2019/1152 z dnia 20 czerwca 2019 r. w sprawie przejrzystych i przewidywalnych warunków pracy w Unii Europejskiej"
+    },
+    {
+      "address": "32019L1158",
+      "date": "2019-06-20",
+      "title": "Dyrektywa Parlamentu Europejskiego i Rady (UE) 2019/1158 z dnia 20 czerwca 2019 r. w sprawie równowagi między życiem zawodowym a prywatnym rodziców i opiekunów oraz uchylająca dyrektywę Rady 2010/18/UE"
+    }
+  ],
+  "entryIntoForce": "1975-01-01",
+  "inForce": "IN_FORCE",
+  "keywords": [
+    "karne postępowanie w sprawach o wykroczenia",
+    "urlopy wypoczynkowe",
+    "prawo pracy",
+    "młodociani",
+    "komisje rozjemcze",
+    "administracyjne postępowanie",
+    "dni wolne od pracy",
+    "postępowanie egzekucyjne w administracji",
+    "sądy pracy i ubezpieczeń społecznych",
+    "postępowanie egzekucyjne",
+    "praktyki zawodowe",
+    "oświata i wychowanie",
+    "cywilne postępowanie",
+    "odprawy",
+    "święta",
+    "kodeks pracy",
+    "opinie pracownicze",
+    "czas pracy",
+    "wynagrodzenia",
+    "kobiety",
+    "dyscyplina pracy",
+    "przedawnienie",
+    "bhp",
+    "zatrudnianie",
+    "odzież ochronna, robocza i sprzęt ochrony osobistej",
+    "wykroczenia",
+    "choroby zawodowe",
+    "materialna odpowiedzialność pracowników",
+    "wypadki przy pracy",
+    "wysługa lat",
+    "układy zbiorowe pracy",
+    "związki zawodowe"
+  ],
+  "keywordsNames": [
+    "Inspekcja Pracy"
+  ],
+  "obligated": [
+    "RADA MINISTRÓW",
+    "MIN. PRACY, PŁAC I SPRAW SOCJALNYCH",
+    "MIN. ZDROWIA I OPIEKI SPOŁECZNEJ",
+    "CENTRALNA RADA ZWIĄZKÓW ZAWODOWYCH"
+  ],
+  "previousTitle": [],
+  "prints": [],
+  "references": {
+    "Akty wykonawcze": [
+      {
+        "id": "MP/1997/7"
+      },
+      {
+        "id": "MP/1997/6"
+      },
+      {
+        "id": "MP/1997/379"
+      },
+      {
+        "id": "MP/1997/328"
+      },
+      {
+        "id": "MP/1997/327"
+      },
+      {
+        "id": "MP/1996/83"
+      },
+      {
+        "id": "MP/1996/747"
+      },
+      {
+        "id": "MP/1996/388"
+      },
+      {
+        "id": "MP/1996/387"
+      },
+      {
+        "id": "MP/1996/346"
+      },
+      {
+        "id": "MP/1996/248"
+      },
+      {
+        "id": "MP/1996/214"
+      },
+      {
+        "id": "MP/1995/768"
+      },
+      {
+        "id": "MP/1995/64"
+      },
+      {
+        "id": "MP/1995/63"
+      },
+      {
+        "id": "MP/1995/624"
+      },
+      {
+        "id": "MP/1995/62"
+      },
+      {
+        "id": "MP/1995/597"
+      },
+      {
+        "id": "MP/1995/594"
+      },
+      {
+        "id": "MP/1995/593"
+      },
+      {
+        "id": "MP/1995/592"
+      },
+      {
+        "id": "MP/1995/591"
+      },
+      {
+        "id": "MP/1995/59"
+      },
+      {
+        "id": "MP/1995/589"
+      },
+      {
+        "id": "MP/1995/550"
+      },
+      {
+        "id": "MP/1995/435"
+      },
+      {
+        "id": "MP/1995/434"
+      },
+      {
+        "id": "MP/1995/433"
+      },
+      {
+        "id": "MP/1995/432"
+      },
+      {
+        "id": "MP/1995/410"
+      },
+      {
+        "id": "MP/1995/375"
+      },
+      {
+        "id": "MP/1995/367"
+      },
+      {
+        "id": "MP/1995/267"
+      },
+      {
+        "id": "MP/1995/201"
+      },
+      {
+        "id": "MP/1995/200"
+      },
+      {
+        "id": "MP/1995/199"
+      },
+      {
+        "id": "MP/1995/10"
+      },
+      {
+        "id": "MP/1994/90"
+      },
+      {
+        "id": "MP/1994/77"
+      },
+      {
+        "id": "MP/1994/76"
+      },
+      {
+        "id": "MP/1994/604"
+      },
+      {
+        "id": "MP/1994/573"
+      },
+      {
+        "id": "MP/1994/572"
+      },
+      {
+        "id": "MP/1994/56"
+      },
+      {
+        "id": "MP/1994/55"
+      },
+      {
+        "id": "MP/1994/540"
+      },
+      {
+        "id": "MP/1994/539"
+      },
+      {
+        "id": "MP/1994/501"
+      },
+      {
+        "id": "MP/1994/500"
+      },
+      {
+        "id": "MP/1994/498"
+      },
+      {
+        "id": "MP/1994/488"
+      },
+      {
+        "id": "MP/1994/487"
+      },
+      {
+        "id": "MP/1994/451"
+      },
+      {
+        "id": "MP/1994/358"
+      },
+      {
+        "id": "MP/1994/357"
+      },
+      {
+        "id": "MP/1994/312"
+      },
+      {
+        "id": "MP/1994/255"
+      },
+      {
+        "id": "MP/1994/159"
+      },
+      {
+        "id": "MP/1994/102"
+      },
+      {
+        "id": "MP/1994/101"
+      },
+      {
+        "id": "MP/1994/100"
+      },
+      {
+        "id": "MP/1993/7"
+      },
+      {
+        "id": "MP/1993/69"
+      },
+      {
+        "id": "MP/1993/68"
+      },
+      {
+        "id": "MP/1993/615"
+      },
+      {
+        "id": "MP/1993/521"
+      },
+      {
+        "id": "MP/1993/520"
+      },
+      {
+        "id": "MP/1993/479"
+      },
+      {
+        "id": "MP/1993/340"
+      },
+      {
+        "id": "MP/1993/299"
+      },
+      {
+        "id": "MP/1993/298"
+      },
+      {
+        "id": "MP/1993/276"
+      },
+      {
+        "id": "MP/1993/275"
+      },
+      {
+        "id": "MP/1993/247"
+      },
+      {
+        "id": "MP/1992/87"
+      },
+      {
+        "id": "MP/1992/48"
+      },
+      {
+        "id": "MP/1992/297"
+      },
+      {
+        "id": "MP/1992/28"
+      },
+      {
+        "id": "MP/1992/27"
+      },
+      {
+        "id": "MP/1992/253"
+      },
+      {
+        "id": "MP/1992/252"
+      },
+      {
+        "id": "MP/1992/223"
+      },
+      {
+        "id": "MP/1992/196"
+      },
+      {
+        "id": "MP/1992/19"
+      },
+      {
+        "id": "MP/1992/176"
+      },
+      {
+        "id": "MP/1992/171"
+      },
+      {
+        "id": "MP/1992/170"
+      },
+      {
+        "id": "MP/1992/163"
+      },
+      {
+        "id": "MP/1992/159"
+      },
+      {
+        "id": "MP/1992/158"
+      },
+      {
+        "id": "MP/1992/108"
+      },
+      {
+        "id": "MP/1992/107"
+      },
+      {
+        "id": "MP/1991/91"
+      },
+      {
+        "id": "MP/1991/78"
+      },
+      {
+        "id": "MP/1991/77"
+      },
+      {
+        "id": "MP/1991/73"
+      },
+      {
+        "id": "MP/1991/60"
+      },
+      {
+        "id": "MP/1991/6"
+      },
+      {
+        "id": "MP/1991/59"
+      },
+      {
+        "id": "MP/1991/317"
+      },
+      {
+        "id": "MP/1991/292"
+      },
+      {
+        "id": "MP/1991/291"
+      },
+      {
+        "id": "MP/1991/290"
+      },
+      {
+        "id": "MP/1991/228"
+      },
+      {
+        "id": "MP/1991/201"
+      },
+      {
+        "id": "MP/1991/149"
+      },
+      {
+        "id": "MP/1990/369"
+      },
+      {
+        "id": "MP/1990/368"
+      },
+      {
+        "id": "MP/1990/367"
+      },
+      {
+        "id": "MP/1990/335"
+      },
+      {
+        "id": "MP/1990/322"
+      },
+      {
+        "id": "MP/1990/32"
+      },
+      {
+        "id": "MP/1990/292"
+      },
+      {
+        "id": "MP/1990/286"
+      },
+      {
+        "id": "MP/1990/258"
+      },
+      {
+        "id": "MP/1990/257"
+      },
+      {
+        "id": "MP/1990/256"
+      },
+      {
+        "id": "MP/1990/249"
+      },
+      {
+        "id": "MP/1990/241"
+      },
+      {
+        "id": "MP/1990/23"
+      },
+      {
+        "id": "MP/1990/227"
+      },
+      {
+        "id": "MP/1990/183"
+      },
+      {
+        "id": "MP/1990/17"
+      },
+      {
+        "id": "MP/1990/138"
+      },
+      {
+        "id": "MP/1990/133"
+      },
+      {
+        "id": "MP/1990/109"
+      },
+      {
+        "id": "MP/1989/94"
+      },
+      {
+        "id": "MP/1989/73"
+      },
+      {
+        "id": "MP/1989/72"
+      },
+      {
+        "id": "MP/1989/60"
+      },
+      {
+        "id": "MP/1989/59"
+      },
+      {
+        "id": "MP/1989/52"
+      },
+      {
+        "id": "MP/1989/51"
+      },
+      {
+        "id": "MP/1989/44"
+      },
+      {
+        "id": "MP/1989/43"
+      },
+      {
+        "id": "MP/1989/358"
+      },
+      {
+        "id": "MP/1989/309"
+      },
+      {
+        "id": "MP/1989/308"
+      },
+      {
+        "id": "MP/1989/284"
+      },
+      {
+        "id": "MP/1989/278"
+      },
+      {
+        "id": "MP/1989/26"
+      },
+      {
+        "id": "MP/1989/251"
+      },
+      {
+        "id": "MP/1989/239"
+      },
+      {
+        "id": "MP/1989/238"
+      },
+      {
+        "id": "MP/1989/235"
+      },
+      {
+        "id": "MP/1989/226"
+      },
+      {
+        "id": "MP/1989/208"
+      },
+      {
+        "id": "MP/1989/189"
+      },
+      {
+        "id": "MP/1989/106"
+      },
+      {
+        "id": "MP/1988/40"
+      },
+      {
+        "id": "MP/1988/39"
+      },
+      {
+        "id": "MP/1988/38"
+      },
+      {
+        "id": "MP/1988/37"
+      },
+      {
+        "id": "MP/1988/326"
+      },
+      {
+        "id": "MP/1988/290"
+      },
+      {
+        "id": "MP/1988/280"
+      },
+      {
+        "id": "MP/1988/257"
+      },
+      {
+        "id": "MP/1988/256"
+      },
+      {
+        "id": "MP/1988/251"
+      },
+      {
+        "id": "MP/1988/231"
+      },
+      {
+        "id": "MP/1988/21"
+      },
+      {
+        "id": "MP/1988/20"
+      },
+      {
+        "id": "MP/1988/199"
+      },
+      {
+        "id": "MP/1988/198"
+      },
+      {
+        "id": "MP/1988/192"
+      },
+      {
+        "id": "MP/1988/177"
+      },
+      {
+        "id": "MP/1988/176"
+      },
+      {
+        "id": "MP/1988/136"
+      },
+      {
+        "id": "MP/1988/133"
+      },
+      {
+        "id": "MP/1987/82"
+      },
+      {
+        "id": "MP/1987/64"
+      },
+      {
+        "id": "MP/1987/33"
+      },
+      {
+        "id": "MP/1987/304"
+      },
+      {
+        "id": "MP/1987/280"
+      },
+      {
+        "id": "MP/1987/279"
+      },
+      {
+        "id": "MP/1987/219"
+      },
+      {
+        "id": "MP/1987/206"
+      },
+      {
+        "id": "MP/1987/192"
+      },
+      {
+        "id": "MP/1987/181"
+      },
+      {
+        "id": "MP/1987/162"
+      },
+      {
+        "id": "MP/1987/139"
+      },
+      {
+        "id": "MP/1987/101"
+      },
+      {
+        "id": "MP/1987/100"
+      },
+      {
+        "id": "MP/1987/10"
+      },
+      {
+        "id": "MP/1986/89"
+      },
+      {
+        "id": "MP/1986/48"
+      },
+      {
+        "id": "MP/1986/242"
+      },
+      {
+        "id": "MP/1986/209"
+      },
+      {
+        "id": "MP/1986/180"
+      },
+      {
+        "id": "MP/1986/17"
+      },
+      {
+        "id": "MP/1986/140"
+      },
+      {
+        "id": "MP/1986/139"
+      },
+      {
+        "id": "MP/1986/138"
+      },
+      {
+        "id": "MP/1986/119"
+      },
+      {
+        "id": "MP/1985/66"
+      },
+      {
+        "id": "MP/1985/64"
+      },
+      {
+        "id": "MP/1985/46"
+      },
+      {
+        "id": "MP/1985/45"
+      },
+      {
+        "id": "MP/1985/298"
+      },
+      {
+        "id": "MP/1985/241"
+      },
+      {
+        "id": "MP/1985/240"
+      },
+      {
+        "id": "MP/1985/202"
+      },
+      {
+        "id": "MP/1985/165"
+      },
+      {
+        "id": "MP/1985/162"
+      },
+      {
+        "id": "MP/1985/155"
+      },
+      {
+        "id": "MP/1985/154"
+      },
+      {
+        "id": "MP/1985/15"
+      },
+      {
+        "id": "MP/1985/145"
+      },
+      {
+        "id": "MP/1985/112"
+      },
+      {
+        "id": "MP/1985/10"
+      },
+      {
+        "id": "MP/1984/76"
+      },
+      {
+        "id": "MP/1984/69"
+      },
+      {
+        "id": "MP/1984/59"
+      },
+      {
+        "id": "MP/1984/32"
+      },
+      {
+        "id": "MP/1984/201"
+      },
+      {
+        "id": "MP/1984/168"
+      },
+      {
+        "id": "MP/1984/13"
+      },
+      {
+        "id": "MP/1984/12"
+      },
+      {
+        "id": "MP/1983/75"
+      },
+      {
+        "id": "MP/1983/6"
+      },
+      {
+        "id": "MP/1983/39"
+      },
+      {
+        "id": "MP/1983/234"
+      },
+      {
+        "id": "MP/1983/203"
+      },
+      {
+        "id": "MP/1983/195"
+      },
+      {
+        "id": "MP/1983/192"
+      },
+      {
+        "id": "MP/1983/131"
+      },
+      {
+        "id": "MP/1982/79"
+      },
+      {
+        "id": "MP/1982/294"
+      },
+      {
+        "id": "MP/1982/292"
+      },
+      {
+        "id": "MP/1982/258"
+      },
+      {
+        "id": "MP/1982/252"
+      },
+      {
+        "id": "MP/1982/19"
+      },
+      {
+        "id": "MP/1982/170"
+      },
+      {
+        "id": "MP/1982/164"
+      },
+      {
+        "id": "MP/1982/14"
+      },
+      {
+        "id": "MP/1982/138"
+      },
+      {
+        "id": "MP/1982/126"
+      },
+      {
+        "id": "MP/1982/10"
+      },
+      {
+        "id": "MP/1981/85"
+      },
+      {
+        "id": "MP/1981/84"
+      },
+      {
+        "id": "MP/1981/39"
+      },
+      {
+        "id": "MP/1981/293"
+      },
+      {
+        "id": "MP/1981/292"
+      },
+      {
+        "id": "MP/1981/254"
+      },
+      {
+        "id": "MP/1981/221"
+      },
+      {
+        "id": "MP/1981/207"
+      },
+      {
+        "id": "MP/1981/168"
+      },
+      {
+        "id": "MP/1980/68"
+      },
+      {
+        "id": "MP/1979/95"
+      },
+      {
+        "id": "MP/1979/62"
+      },
+      {
+        "id": "MP/1979/47"
+      },
+      {
+        "id": "MP/1979/156"
+      },
+      {
+        "id": "MP/1979/148"
+      },
+      {
+        "id": "MP/1979/119"
+      },
+      {
+        "id": "MP/1979/118"
+      },
+      {
+        "id": "MP/1979/116"
+      },
+      {
+        "id": "MP/1978/93"
+      },
+      {
+        "id": "MP/1978/71"
+      },
+      {
+        "id": "MP/1978/51"
+      },
+      {
+        "id": "MP/1978/36"
+      },
+      {
+        "id": "MP/1978/35"
+      },
+      {
+        "id": "MP/1978/152"
+      },
+      {
+        "id": "MP/1978/132"
+      },
+      {
+        "id": "MP/1978/119"
+      },
+      {
+        "id": "MP/1978/118"
+      },
+      {
+        "id": "MP/1977/84"
+      },
+      {
+        "id": "MP/1977/36"
+      },
+      {
+        "id": "MP/1977/173"
+      },
+      {
+        "id": "MP/1977/105"
+      },
+      {
+        "id": "MP/1977/1"
+      },
+      {
+        "id": "MP/1976/42"
+      },
+      {
+        "id": "MP/1976/213"
+      },
+      {
+        "id": "MP/1976/123"
+      },
+      {
+        "id": "MP/1975/68"
+      },
+      {
+        "id": "MP/1975/43"
+      },
+      {
+        "id": "MP/1975/225"
+      },
+      {
+        "id": "MP/1975/2"
+      },
+      {
+        "id": "MP/1975/177"
+      },
+      {
+        "id": "MP/1975/153"
+      },
+      {
+        "id": "MP/1974/253"
+      },
+      {
+        "id": "DU/2026/97"
+      },
+      {
+        "id": "DU/2026/927"
+      },
+      {
+        "id": "DU/2026/726"
+      },
+      {
+        "id": "DU/2026/694"
+      },
+      {
+        "id": "DU/2026/588"
+      },
+      {
+        "id": "DU/2026/456"
+      },
+      {
+        "id": "DU/2026/452"
+      },
+      {
+        "id": "DU/2026/447"
+      },
+      {
+        "id": "DU/2026/433"
+      },
+      {
+        "id": "DU/2026/432"
+      },
+      {
+        "id": "DU/2026/405"
+      },
+      {
+        "id": "DU/2026/402"
+      },
+      {
+        "id": "DU/2026/369"
+      },
+      {
+        "id": "DU/2026/359"
+      },
+      {
+        "id": "DU/2026/326"
+      },
+      {
+        "id": "DU/2025/701"
+      },
+      {
+        "id": "DU/2025/510"
+      },
+      {
+        "id": "DU/2025/507"
+      },
+      {
+        "id": "DU/2025/482"
+      },
+      {
+        "id": "DU/2025/481"
+      },
+      {
+        "id": "DU/2025/449"
+      },
+      {
+        "id": "DU/2025/403"
+      },
+      {
+        "id": "DU/2025/357"
+      },
+      {
+        "id": "DU/2025/335"
+      },
+      {
+        "id": "DU/2025/322"
+      },
+      {
+        "id": "DU/2025/288"
+      },
+      {
+        "id": "DU/2025/1640"
+      },
+      {
+        "id": "DU/2025/1636"
+      },
+      {
+        "id": "DU/2025/1582"
+      },
+      {
+        "id": "DU/2024/944"
+      },
+      {
+        "id": "DU/2024/625"
+      },
+      {
+        "id": "DU/2024/612"
+      },
+      {
+        "id": "DU/2024/569"
+      },
+      {
+        "id": "DU/2024/524"
+      },
+      {
+        "id": "DU/2024/523"
+      },
+      {
+        "id": "DU/2024/448"
+      },
+      {
+        "id": "DU/2024/428"
+      },
+      {
+        "id": "DU/2024/417"
+      },
+      {
+        "id": "DU/2024/322"
+      },
+      {
+        "id": "DU/2024/228"
+      },
+      {
+        "id": "DU/2024/1375"
+      },
+      {
+        "id": "DU/2024/1126"
+      },
+      {
+        "id": "DU/2024/1123"
+      },
+      {
+        "id": "DU/2024/1110"
+      },
+      {
+        "id": "DU/2024/1017"
+      },
+      {
+        "id": "DU/2023/937"
+      },
+      {
+        "id": "DU/2023/912"
+      },
+      {
+        "id": "DU/2023/879"
+      },
+      {
+        "id": "DU/2023/795"
+      },
+      {
+        "id": "DU/2023/73"
+      },
+      {
+        "id": "DU/2023/705"
+      },
+      {
+        "id": "DU/2023/612"
+      },
+      {
+        "id": "DU/2023/575"
+      },
+      {
+        "id": "DU/2023/570"
+      },
+      {
+        "id": "DU/2023/534"
+      },
+      {
+        "id": "DU/2023/471"
+      },
+      {
+        "id": "DU/2023/457"
+      },
+      {
+        "id": "DU/2023/420"
+      },
+      {
+        "id": "DU/2023/393"
+      },
+      {
+        "id": "DU/2023/317"
+      },
+      {
+        "id": "DU/2023/291"
+      },
+      {
+        "id": "DU/2023/284"
+      },
+      {
+        "id": "DU/2023/2369"
+      },
+      {
+        "id": "DU/2023/2367"
+      },
+      {
+        "id": "DU/2023/2159"
+      },
+      {
+        "id": "DU/2023/2087"
+      },
+      {
+        "id": "DU/2023/1661"
+      },
+      {
+        "id": "DU/2023/1348"
+      },
+      {
+        "id": "DU/2023/1240"
+      },
+      {
+        "id": "DU/2022/994"
+      },
+      {
+        "id": "DU/2022/877"
+      },
+      {
+        "id": "DU/2022/858"
+      },
+      {
+        "id": "DU/2022/811"
+      },
+      {
+        "id": "DU/2022/799"
+      },
+      {
+        "id": "DU/2022/794"
+      },
+      {
+        "id": "DU/2022/2750"
+      },
+      {
+        "id": "DU/2022/2662"
+      },
+      {
+        "id": "DU/2022/2379"
+      },
+      {
+        "id": "DU/2022/2302"
+      },
+      {
+        "id": "DU/2022/1481"
+      },
+      {
+        "id": "DU/2022/1289"
+      },
+      {
+        "id": "DU/2022/125"
+      },
+      {
+        "id": "DU/2022/1123"
+      },
+      {
+        "id": "DU/2022/1088"
+      },
+      {
+        "id": "DU/2021/682"
+      },
+      {
+        "id": "DU/2021/325"
+      },
+      {
+        "id": "DU/2021/30"
+      },
+      {
+        "id": "DU/2021/279"
+      },
+      {
+        "id": "DU/2021/2088"
+      },
+      {
+        "id": "DU/2021/1708"
+      },
+      {
+        "id": "DU/2021/1335"
+      },
+      {
+        "id": "DU/2021/1288"
+      },
+      {
+        "id": "DU/2021/1287"
+      },
+      {
+        "id": "DU/2020/942"
+      },
+      {
+        "id": "DU/2020/936"
+      },
+      {
+        "id": "DU/2020/928"
+      },
+      {
+        "id": "DU/2020/927"
+      },
+      {
+        "id": "DU/2020/926"
+      },
+      {
+        "id": "DU/2020/925"
+      },
+      {
+        "id": "DU/2020/924"
+      },
+      {
+        "id": "DU/2020/61"
+      },
+      {
+        "id": "DU/2020/529"
+      },
+      {
+        "id": "DU/2020/240"
+      },
+      {
+        "id": "DU/2020/2234"
+      },
+      {
+        "id": "DU/2020/2131"
+      },
+      {
+        "id": "DU/2020/197"
+      },
+      {
+        "id": "DU/2020/1649"
+      },
+      {
+        "id": "DU/2020/1461"
+      },
+      {
+        "id": "DU/2020/1099"
+      },
+      {
+        "id": "DU/2019/733"
+      },
+      {
+        "id": "DU/2019/732"
+      },
+      {
+        "id": "DU/2019/731"
+      },
+      {
+        "id": "DU/2019/593"
+      },
+      {
+        "id": "DU/2019/532"
+      },
+      {
+        "id": "DU/2019/530"
+      },
+      {
+        "id": "DU/2019/493"
+      },
+      {
+        "id": "DU/2019/379"
+      },
+      {
+        "id": "DU/2019/2201"
+      },
+      {
+        "id": "DU/2019/2067"
+      },
+      {
+        "id": "DU/2019/1995"
+      },
+      {
+        "id": "DU/2019/1972"
+      },
+      {
+        "id": "DU/2019/1948"
+      },
+      {
+        "id": "DU/2019/1925"
+      },
+      {
+        "id": "DU/2019/1830"
+      },
+      {
+        "id": "DU/2019/1709"
+      },
+      {
+        "id": "DU/2019/1636"
+      },
+      {
+        "id": "DU/2019/1197"
+      },
+      {
+        "id": "DU/2019/1160"
+      },
+      {
+        "id": "DU/2019/1106"
+      },
+      {
+        "id": "DU/2019/1099"
+      },
+      {
+        "id": "DU/2019/1071"
+      },
+      {
+        "id": "DU/2018/48"
+      },
+      {
+        "id": "DU/2018/47"
+      },
+      {
+        "id": "DU/2018/257"
+      },
+      {
+        "id": "DU/2018/2369"
+      },
+      {
+        "id": "DU/2018/2240"
+      },
+      {
+        "id": "DU/2018/2147"
+      },
+      {
+        "id": "DU/2018/2066"
+      },
+      {
+        "id": "DU/2018/1768"
+      },
+      {
+        "id": "DU/2018/163"
+      },
+      {
+        "id": "DU/2018/1286"
+      },
+      {
+        "id": "DU/2017/854"
+      },
+      {
+        "id": "DU/2017/796"
+      },
+      {
+        "id": "DU/2017/614"
+      },
+      {
+        "id": "DU/2017/483"
+      },
+      {
+        "id": "DU/2017/432"
+      },
+      {
+        "id": "DU/2017/1816"
+      },
+      {
+        "id": "DU/2017/1731"
+      },
+      {
+        "id": "DU/2017/1692"
+      },
+      {
+        "id": "DU/2017/1641"
+      },
+      {
+        "id": "DU/2017/134"
+      },
+      {
+        "id": "DU/2017/1276"
+      },
+      {
+        "id": "DU/2017/1044"
+      },
+      {
+        "id": "DU/2016/952"
+      },
+      {
+        "id": "DU/2016/950"
+      },
+      {
+        "id": "DU/2016/944"
+      },
+      {
+        "id": "DU/2016/933"
+      },
+      {
+        "id": "DU/2016/336"
+      },
+      {
+        "id": "DU/2016/263"
+      },
+      {
+        "id": "DU/2016/2292"
+      },
+      {
+        "id": "DU/2016/2284"
+      },
+      {
+        "id": "DU/2016/1902"
+      },
+      {
+        "id": "DU/2015/929"
+      },
+      {
+        "id": "DU/2015/457"
+      },
+      {
+        "id": "DU/2015/2354"
+      },
+      {
+        "id": "DU/2015/2243"
+      },
+      {
+        "id": "DU/2015/2006"
+      },
+      {
+        "id": "DU/2015/2005"
+      },
+      {
+        "id": "DU/2015/2000"
+      },
+      {
+        "id": "DU/2015/1737"
+      },
+      {
+        "id": "DU/2015/1097"
+      },
+      {
+        "id": "DU/2015/1093"
+      },
+      {
+        "id": "DU/2015/1090"
+      },
+      {
+        "id": "DU/2014/817"
+      },
+      {
+        "id": "DU/2014/1939"
+      },
+      {
+        "id": "DU/2014/1456"
+      },
+      {
+        "id": "DU/2014/1247"
+      },
+      {
+        "id": "DU/2013/696"
+      },
+      {
+        "id": "DU/2013/649"
+      },
+      {
+        "id": "DU/2013/634"
+      },
+      {
+        "id": "DU/2013/584"
+      },
+      {
+        "id": "DU/2013/583"
+      },
+      {
+        "id": "DU/2013/492"
+      },
+      {
+        "id": "DU/2013/376"
+      },
+      {
+        "id": "DU/2013/167"
+      },
+      {
+        "id": "DU/2013/1359"
+      },
+      {
+        "id": "DU/2013/13"
+      },
+      {
+        "id": "DU/2013/1220"
+      },
+      {
+        "id": "DU/2013/12"
+      },
+      {
+        "id": "DU/2013/1139"
+      },
+      {
+        "id": "DU/2012/980"
+      },
+      {
+        "id": "DU/2012/890"
+      },
+      {
+        "id": "DU/2012/787"
+      },
+      {
+        "id": "DU/2012/663"
+      },
+      {
+        "id": "DU/2012/662"
+      },
+      {
+        "id": "DU/2012/1202"
+      },
+      {
+        "id": "DU/2011/823"
+      },
+      {
+        "id": "DU/2011/774"
+      },
+      {
+        "id": "DU/2011/756"
+      },
+      {
+        "id": "DU/2011/755"
+      },
+      {
+        "id": "DU/2011/725"
+      },
+      {
+        "id": "DU/2011/685"
+      },
+      {
+        "id": "DU/2011/401"
+      },
+      {
+        "id": "DU/2011/249"
+      },
+      {
+        "id": "DU/2011/166"
+      },
+      {
+        "id": "DU/2011/1621"
+      },
+      {
+        "id": "DU/2011/1586"
+      },
+      {
+        "id": "DU/2011/1509"
+      },
+      {
+        "id": "DU/2011/1253"
+      },
+      {
+        "id": "DU/2011/1034"
+      },
+      {
+        "id": "DU/2010/951"
+      },
+      {
+        "id": "DU/2010/950"
+      },
+      {
+        "id": "DU/2010/931"
+      },
+      {
+        "id": "DU/2010/907"
+      },
+      {
+        "id": "DU/2010/85"
+      },
+      {
+        "id": "DU/2010/84"
+      },
+      {
+        "id": "DU/2010/643"
+      },
+      {
+        "id": "DU/2010/6"
+      },
+      {
+        "id": "DU/2010/549"
+      },
+      {
+        "id": "DU/2010/548"
+      },
+      {
+        "id": "DU/2010/1611"
+      },
+      {
+        "id": "DU/2010/1577"
+      },
+      {
+        "id": "DU/2010/1440"
+      },
+      {
+        "id": "DU/2010/1240"
+      },
+      {
+        "id": "DU/2009/971"
+      },
+      {
+        "id": "DU/2009/873"
+      },
+      {
+        "id": "DU/2009/870"
+      },
+      {
+        "id": "DU/2009/869"
+      },
+      {
+        "id": "DU/2009/868"
+      },
+      {
+        "id": "DU/2009/80"
+      },
+      {
+        "id": "DU/2009/462"
+      },
+      {
+        "id": "DU/2009/413"
+      },
+      {
+        "id": "DU/2009/412"
+      },
+      {
+        "id": "DU/2009/411"
+      },
+      {
+        "id": "DU/2009/410"
+      },
+      {
+        "id": "DU/2009/409"
+      },
+      {
+        "id": "DU/2009/408"
+      },
+      {
+        "id": "DU/2009/407"
+      },
+      {
+        "id": "DU/2009/348"
+      },
+      {
+        "id": "DU/2009/1353"
+      },
+      {
+        "id": "DU/2009/124"
+      },
+      {
+        "id": "DU/2009/1043"
+      },
+      {
+        "id": "DU/2008/783"
+      },
+      {
+        "id": "DU/2008/702"
+      },
+      {
+        "id": "DU/2008/690"
+      },
+      {
+        "id": "DU/2008/498"
+      },
+      {
+        "id": "DU/2008/497"
+      },
+      {
+        "id": "DU/2008/496"
+      },
+      {
+        "id": "DU/2008/495"
+      },
+      {
+        "id": "DU/2008/494"
+      },
+      {
+        "id": "DU/2008/493"
+      },
+      {
+        "id": "DU/2008/492"
+      },
+      {
+        "id": "DU/2008/478"
+      },
+      {
+        "id": "DU/2008/474"
+      },
+      {
+        "id": "DU/2008/437"
+      },
+      {
+        "id": "DU/2008/434"
+      },
+      {
+        "id": "DU/2008/288"
+      },
+      {
+        "id": "DU/2008/177"
+      },
+      {
+        "id": "DU/2008/1490"
+      },
+      {
+        "id": "DU/2008/1275"
+      },
+      {
+        "id": "DU/2008/1020"
+      },
+      {
+        "id": "DU/2007/458"
+      },
+      {
+        "id": "DU/2007/456"
+      },
+      {
+        "id": "DU/2007/455"
+      },
+      {
+        "id": "DU/2007/400"
+      },
+      {
+        "id": "DU/2007/330"
+      },
+      {
+        "id": "DU/2007/1772"
+      },
+      {
+        "id": "DU/2007/1678"
+      },
+      {
+        "id": "DU/2007/1430"
+      },
+      {
+        "id": "DU/2007/1429"
+      },
+      {
+        "id": "DU/2007/1420"
+      },
+      {
+        "id": "DU/2007/1315"
+      },
+      {
+        "id": "DU/2007/1274"
+      },
+      {
+        "id": "DU/2007/1248"
+      },
+      {
+        "id": "DU/2007/1142"
+      },
+      {
+        "id": "DU/2007/1068"
+      },
+      {
+        "id": "DU/2007/1065"
+      },
+      {
+        "id": "DU/2006/869"
+      },
+      {
+        "id": "DU/2006/836"
+      },
+      {
+        "id": "DU/2006/724"
+      },
+      {
+        "id": "DU/2006/524"
+      },
+      {
+        "id": "DU/2006/305"
+      },
+      {
+        "id": "DU/2006/304"
+      },
+      {
+        "id": "DU/2006/303"
+      },
+      {
+        "id": "DU/2006/302"
+      },
+      {
+        "id": "DU/2006/301"
+      },
+      {
+        "id": "DU/2006/300"
+      },
+      {
+        "id": "DU/2006/299"
+      },
+      {
+        "id": "DU/2006/298"
+      },
+      {
+        "id": "DU/2006/297"
+      },
+      {
+        "id": "DU/2006/296"
+      },
+      {
+        "id": "DU/2006/295"
+      },
+      {
+        "id": "DU/2006/294"
+      },
+      {
+        "id": "DU/2006/292"
+      },
+      {
+        "id": "DU/2006/282"
+      },
+      {
+        "id": "DU/2006/1681"
+      },
+      {
+        "id": "DU/2006/1678"
+      },
+      {
+        "id": "DU/2006/1661"
+      },
+      {
+        "id": "DU/2006/1605"
+      },
+      {
+        "id": "DU/2006/1591"
+      },
+      {
+        "id": "DU/2006/1582"
+      },
+      {
+        "id": "DU/2006/1339"
+      },
+      {
+        "id": "DU/2006/1141"
+      },
+      {
+        "id": "DU/2005/986"
+      },
+      {
+        "id": "DU/2005/972"
+      },
+      {
+        "id": "DU/2005/86"
+      },
+      {
+        "id": "DU/2005/752"
+      },
+      {
+        "id": "DU/2005/721"
+      },
+      {
+        "id": "DU/2005/716"
+      },
+      {
+        "id": "DU/2005/645"
+      },
+      {
+        "id": "DU/2005/472"
+      },
+      {
+        "id": "DU/2005/356"
+      },
+      {
+        "id": "DU/2005/355"
+      },
+      {
+        "id": "DU/2005/354"
+      },
+      {
+        "id": "DU/2005/353"
+      },
+      {
+        "id": "DU/2005/352"
+      },
+      {
+        "id": "DU/2005/351"
+      },
+      {
+        "id": "DU/2005/350"
+      },
+      {
+        "id": "DU/2005/349"
+      },
+      {
+        "id": "DU/2005/348"
+      },
+      {
+        "id": "DU/2005/347"
+      },
+      {
+        "id": "DU/2005/346"
+      },
+      {
+        "id": "DU/2005/345"
+      },
+      {
+        "id": "DU/2005/344"
+      },
+      {
+        "id": "DU/2005/2149"
+      },
+      {
+        "id": "DU/2005/1866"
+      },
+      {
+        "id": "DU/2005/1769"
+      },
+      {
+        "id": "DU/2005/1555"
+      },
+      {
+        "id": "DU/2005/1554"
+      },
+      {
+        "id": "DU/2005/1356"
+      },
+      {
+        "id": "DU/2005/1319"
+      },
+      {
+        "id": "DU/2005/1318"
+      },
+      {
+        "id": "DU/2005/1214"
+      },
+      {
+        "id": "DU/2005/1167"
+      },
+      {
+        "id": "DU/2005/1145"
+      },
+      {
+        "id": "DU/2004/59"
+      },
+      {
+        "id": "DU/2004/432"
+      },
+      {
+        "id": "DU/2004/431"
+      },
+      {
+        "id": "DU/2004/430"
+      },
+      {
+        "id": "DU/2004/429"
+      },
+      {
+        "id": "DU/2004/426"
+      },
+      {
+        "id": "DU/2004/425"
+      },
+      {
+        "id": "DU/2004/424"
+      },
+      {
+        "id": "DU/2004/423"
+      },
+      {
+        "id": "DU/2004/422"
+      },
+      {
+        "id": "DU/2004/421"
+      },
+      {
+        "id": "DU/2004/420"
+      },
+      {
+        "id": "DU/2004/419"
+      },
+      {
+        "id": "DU/2004/395"
+      },
+      {
+        "id": "DU/2004/2865"
+      },
+      {
+        "id": "DU/2004/2771"
+      },
+      {
+        "id": "DU/2004/2687"
+      },
+      {
+        "id": "DU/2004/2686"
+      },
+      {
+        "id": "DU/2004/2672"
+      },
+      {
+        "id": "DU/2004/26"
+      },
+      {
+        "id": "DU/2004/2468"
+      },
+      {
+        "id": "DU/2004/2298"
+      },
+      {
+        "id": "DU/2004/2274"
+      },
+      {
+        "id": "DU/2004/2047"
+      },
+      {
+        "id": "DU/2004/1860"
+      },
+      {
+        "id": "DU/2004/1669"
+      },
+      {
+        "id": "DU/2004/156"
+      },
+      {
+        "id": "DU/2004/1210"
+      },
+      {
+        "id": "DU/2004/117"
+      },
+      {
+        "id": "DU/2003/902"
+      },
+      {
+        "id": "DU/2003/603"
+      },
+      {
+        "id": "DU/2003/602"
+      },
+      {
+        "id": "DU/2003/601"
+      },
+      {
+        "id": "DU/2003/415"
+      },
+      {
+        "id": "DU/2003/401"
+      },
+      {
+        "id": "DU/2003/379"
+      },
+      {
+        "id": "DU/2003/314"
+      },
+      {
+        "id": "DU/2003/313"
+      },
+      {
+        "id": "DU/2003/289"
+      },
+      {
+        "id": "DU/2003/2293"
+      },
+      {
+        "id": "DU/2003/2292"
+      },
+      {
+        "id": "DU/2003/2291"
+      },
+      {
+        "id": "DU/2003/2290"
+      },
+      {
+        "id": "DU/2003/2289"
+      },
+      {
+        "id": "DU/2003/216"
+      },
+      {
+        "id": "DU/2003/215"
+      },
+      {
+        "id": "DU/2003/214"
+      },
+      {
+        "id": "DU/2003/213"
+      },
+      {
+        "id": "DU/2003/212"
+      },
+      {
+        "id": "DU/2003/211"
+      },
+      {
+        "id": "DU/2003/210"
+      },
+      {
+        "id": "DU/2003/209"
+      },
+      {
+        "id": "DU/2003/208"
+      },
+      {
+        "id": "DU/2003/207"
+      },
+      {
+        "id": "DU/2003/206"
+      },
+      {
+        "id": "DU/2003/205"
+      },
+      {
+        "id": "DU/2003/1899"
+      },
+      {
+        "id": "DU/2003/180"
+      },
+      {
+        "id": "DU/2003/1783"
+      },
+      {
+        "id": "DU/2003/1745"
+      },
+      {
+        "id": "DU/2003/1740"
+      },
+      {
+        "id": "DU/2003/1577"
+      },
+      {
+        "id": "DU/2003/1004"
+      },
+      {
+        "id": "DU/2002/963"
+      },
+      {
+        "id": "DU/2002/896"
+      },
+      {
+        "id": "DU/2002/875"
+      },
+      {
+        "id": "DU/2002/811"
+      },
+      {
+        "id": "DU/2002/735"
+      },
+      {
+        "id": "DU/2002/650"
+      },
+      {
+        "id": "DU/2002/341"
+      },
+      {
+        "id": "DU/2002/248"
+      },
+      {
+        "id": "DU/2002/2003"
+      },
+      {
+        "id": "DU/2002/1997"
+      },
+      {
+        "id": "DU/2002/1991"
+      },
+      {
+        "id": "DU/2002/1990"
+      },
+      {
+        "id": "DU/2002/192"
+      },
+      {
+        "id": "DU/2002/1833"
+      },
+      {
+        "id": "DU/2002/1812"
+      },
+      {
+        "id": "DU/2002/1811"
+      },
+      {
+        "id": "DU/2002/1810"
+      },
+      {
+        "id": "DU/2002/1809"
+      },
+      {
+        "id": "DU/2002/1808"
+      },
+      {
+        "id": "DU/2002/1723"
+      },
+      {
+        "id": "DU/2002/1663"
+      },
+      {
+        "id": "DU/2002/1596"
+      },
+      {
+        "id": "DU/2002/1121"
+      },
+      {
+        "id": "DU/2002/1115"
+      },
+      {
+        "id": "DU/2002/1092"
+      },
+      {
+        "id": "DU/2002/1091"
+      },
+      {
+        "id": "DU/2001/894"
+      },
+      {
+        "id": "DU/2001/770"
+      },
+      {
+        "id": "DU/2001/651"
+      },
+      {
+        "id": "DU/2001/549"
+      },
+      {
+        "id": "DU/2001/528"
+      },
+      {
+        "id": "DU/2001/527"
+      },
+      {
+        "id": "DU/2001/526"
+      },
+      {
+        "id": "DU/2001/525"
+      },
+      {
+        "id": "DU/2001/486"
+      },
+      {
+        "id": "DU/2001/451"
+      },
+      {
+        "id": "DU/2001/409"
+      },
+      {
+        "id": "DU/2001/408"
+      },
+      {
+        "id": "DU/2001/381"
+      },
+      {
+        "id": "DU/2001/380"
+      },
+      {
+        "id": "DU/2001/377"
+      },
+      {
+        "id": "DU/2001/376"
+      },
+      {
+        "id": "DU/2001/375"
+      },
+      {
+        "id": "DU/2001/374"
+      },
+      {
+        "id": "DU/2001/373"
+      },
+      {
+        "id": "DU/2001/36"
+      },
+      {
+        "id": "DU/2001/1721"
+      },
+      {
+        "id": "DU/2001/1720"
+      },
+      {
+        "id": "DU/2001/1462"
+      },
+      {
+        "id": "DU/2001/1268"
+      },
+      {
+        "id": "DU/2001/1263"
+      },
+      {
+        "id": "DU/2001/1204"
+      },
+      {
+        "id": "DU/2001/1202"
+      },
+      {
+        "id": "DU/2001/1024"
+      },
+      {
+        "id": "DU/2000/930"
+      },
+      {
+        "id": "DU/2000/897"
+      },
+      {
+        "id": "DU/2000/672"
+      },
+      {
+        "id": "DU/2000/612"
+      },
+      {
+        "id": "DU/2000/470"
+      },
+      {
+        "id": "DU/2000/469"
+      },
+      {
+        "id": "DU/2000/428"
+      },
+      {
+        "id": "DU/2000/412"
+      },
+      {
+        "id": "DU/2000/411"
+      },
+      {
+        "id": "DU/2000/409"
+      },
+      {
+        "id": "DU/2000/38"
+      },
+      {
+        "id": "DU/2000/374"
+      },
+      {
+        "id": "DU/2000/37"
+      },
+      {
+        "id": "DU/2000/366"
+      },
+      {
+        "id": "DU/2000/36"
+      },
+      {
+        "id": "DU/2000/338"
+      },
+      {
+        "id": "DU/2000/337"
+      },
+      {
+        "id": "DU/2000/335"
+      },
+      {
+        "id": "DU/2000/334"
+      },
+      {
+        "id": "DU/2000/333"
+      },
+      {
+        "id": "DU/2000/332"
+      },
+      {
+        "id": "DU/2000/331"
+      },
+      {
+        "id": "DU/2000/330"
+      },
+      {
+        "id": "DU/2000/329"
+      },
+      {
+        "id": "DU/2000/313"
+      },
+      {
+        "id": "DU/2000/189"
+      },
+      {
+        "id": "DU/2000/174"
+      },
+      {
+        "id": "DU/2000/173"
+      },
+      {
+        "id": "DU/2000/1308"
+      },
+      {
+        "id": "DU/2000/108"
+      },
+      {
+        "id": "DU/1999/912"
+      },
+      {
+        "id": "DU/1999/882"
+      },
+      {
+        "id": "DU/1999/846"
+      },
+      {
+        "id": "DU/1999/83"
+      },
+      {
+        "id": "DU/1999/825"
+      },
+      {
+        "id": "DU/1999/694"
+      },
+      {
+        "id": "DU/1999/61"
+      },
+      {
+        "id": "DU/1999/60"
+      },
+      {
+        "id": "DU/1999/59"
+      },
+      {
+        "id": "DU/1999/514"
+      },
+      {
+        "id": "DU/1999/449"
+      },
+      {
+        "id": "DU/1999/448"
+      },
+      {
+        "id": "DU/1999/354"
+      },
+      {
+        "id": "DU/1999/353"
+      },
+      {
+        "id": "DU/1999/350"
+      },
+      {
+        "id": "DU/1999/349"
+      },
+      {
+        "id": "DU/1999/348"
+      },
+      {
+        "id": "DU/1999/347"
+      },
+      {
+        "id": "DU/1999/346"
+      },
+      {
+        "id": "DU/1999/345"
+      },
+      {
+        "id": "DU/1999/334"
+      },
+      {
+        "id": "DU/1999/294"
+      },
+      {
+        "id": "DU/1999/241"
+      },
+      {
+        "id": "DU/1999/226"
+      },
+      {
+        "id": "DU/1999/225"
+      },
+      {
+        "id": "DU/1999/149"
+      },
+      {
+        "id": "DU/1999/1204"
+      },
+      {
+        "id": "DU/1999/1037"
+      },
+      {
+        "id": "DU/1998/973"
+      },
+      {
+        "id": "DU/1998/897"
+      },
+      {
+        "id": "DU/1998/849"
+      },
+      {
+        "id": "DU/1998/744"
+      },
+      {
+        "id": "DU/1998/74"
+      },
+      {
+        "id": "DU/1998/658"
+      },
+      {
+        "id": "DU/1998/568"
+      },
+      {
+        "id": "DU/1998/513"
+      },
+      {
+        "id": "DU/1998/51"
+      },
+      {
+        "id": "DU/1998/454"
+      },
+      {
+        "id": "DU/1998/335"
+      },
+      {
+        "id": "DU/1998/282"
+      },
+      {
+        "id": "DU/1998/281"
+      },
+      {
+        "id": "DU/1998/279"
+      },
+      {
+        "id": "DU/1998/278"
+      },
+      {
+        "id": "DU/1998/277"
+      },
+      {
+        "id": "DU/1998/252"
+      },
+      {
+        "id": "DU/1998/251"
+      },
+      {
+        "id": "DU/1998/250"
+      },
+      {
+        "id": "DU/1998/249"
+      },
+      {
+        "id": "DU/1998/248"
+      },
+      {
+        "id": "DU/1998/247"
+      },
+      {
+        "id": "DU/1998/246"
+      },
+      {
+        "id": "DU/1998/235"
+      },
+      {
+        "id": "DU/1998/17"
+      },
+      {
+        "id": "DU/1998/131"
+      },
+      {
+        "id": "DU/1998/1189"
+      },
+      {
+        "id": "DU/1998/1057"
+      },
+      {
+        "id": "DU/1997/844"
+      },
+      {
+        "id": "DU/1997/789"
+      },
+      {
+        "id": "DU/1997/704"
+      },
+      {
+        "id": "DU/1997/671"
+      },
+      {
+        "id": "DU/1997/479"
+      },
+      {
+        "id": "DU/1997/375"
+      },
+      {
+        "id": "DU/1997/316"
+      },
+      {
+        "id": "DU/1997/269"
+      },
+      {
+        "id": "DU/1997/260"
+      },
+      {
+        "id": "DU/1997/259"
+      },
+      {
+        "id": "DU/1997/258"
+      },
+      {
+        "id": "DU/1997/257"
+      },
+      {
+        "id": "DU/1997/245"
+      },
+      {
+        "id": "DU/1997/244"
+      },
+      {
+        "id": "DU/1997/243"
+      },
+      {
+        "id": "DU/1997/242"
+      },
+      {
+        "id": "DU/1997/241"
+      },
+      {
+        "id": "DU/1997/193"
+      },
+      {
+        "id": "DU/1997/192"
+      },
+      {
+        "id": "DU/1997/191"
+      },
+      {
+        "id": "DU/1997/189"
+      },
+      {
+        "id": "DU/1997/182"
+      },
+      {
+        "id": "DU/1997/15"
+      },
+      {
+        "id": "DU/1997/14"
+      },
+      {
+        "id": "DU/1997/1012"
+      },
+      {
+        "id": "DU/1996/78"
+      },
+      {
+        "id": "DU/1996/762"
+      },
+      {
+        "id": "DU/1996/571"
+      },
+      {
+        "id": "DU/1996/545"
+      },
+      {
+        "id": "DU/1996/486"
+      },
+      {
+        "id": "DU/1996/485"
+      },
+      {
+        "id": "DU/1996/478"
+      },
+      {
+        "id": "DU/1996/473"
+      },
+      {
+        "id": "DU/1996/458"
+      },
+      {
+        "id": "DU/1996/457"
+      },
+      {
+        "id": "DU/1996/454"
+      },
+      {
+        "id": "DU/1996/453"
+      },
+      {
+        "id": "DU/1996/45"
+      },
+      {
+        "id": "DU/1996/448"
+      },
+      {
+        "id": "DU/1996/447"
+      },
+      {
+        "id": "DU/1996/437"
+      },
+      {
+        "id": "DU/1996/432"
+      },
+      {
+        "id": "DU/1996/431"
+      },
+      {
+        "id": "DU/1996/430"
+      },
+      {
+        "id": "DU/1996/394"
+      },
+      {
+        "id": "DU/1996/393"
+      },
+      {
+        "id": "DU/1996/392"
+      },
+      {
+        "id": "DU/1996/391"
+      },
+      {
+        "id": "DU/1996/376"
+      },
+      {
+        "id": "DU/1996/375"
+      },
+      {
+        "id": "DU/1996/332"
+      },
+      {
+        "id": "DU/1996/291"
+      },
+      {
+        "id": "DU/1996/289"
+      },
+      {
+        "id": "DU/1996/288"
+      },
+      {
+        "id": "DU/1996/287"
+      },
+      {
+        "id": "DU/1996/286"
+      },
+      {
+        "id": "DU/1996/285"
+      },
+      {
+        "id": "DU/1996/284"
+      },
+      {
+        "id": "DU/1996/282"
+      },
+      {
+        "id": "DU/1996/281"
+      },
+      {
+        "id": "DU/1996/280"
+      },
+      {
+        "id": "DU/1996/279"
+      },
+      {
+        "id": "DU/1996/278"
+      },
+      {
+        "id": "DU/1996/277"
+      },
+      {
+        "id": "DU/1996/276"
+      },
+      {
+        "id": "DU/1996/275"
+      },
+      {
+        "id": "DU/1996/274"
+      },
+      {
+        "id": "DU/1995/97"
+      },
+      {
+        "id": "DU/1995/716"
+      },
+      {
+        "id": "DU/1995/595"
+      },
+      {
+        "id": "DU/1995/365"
+      },
+      {
+        "id": "DU/1995/301"
+      },
+      {
+        "id": "DU/1995/181"
+      },
+      {
+        "id": "DU/1995/16"
+      },
+      {
+        "id": "DU/1994/768"
+      },
+      {
+        "id": "DU/1994/73"
+      },
+      {
+        "id": "DU/1994/648"
+      },
+      {
+        "id": "DU/1994/606"
+      },
+      {
+        "id": "DU/1994/6"
+      },
+      {
+        "id": "DU/1994/408"
+      },
+      {
+        "id": "DU/1994/261"
+      },
+      {
+        "id": "DU/1994/112"
+      },
+      {
+        "id": "DU/1993/634"
+      },
+      {
+        "id": "DU/1993/58"
+      },
+      {
+        "id": "DU/1993/513"
+      },
+      {
+        "id": "DU/1993/472"
+      },
+      {
+        "id": "DU/1993/452"
+      },
+      {
+        "id": "DU/1993/438"
+      },
+      {
+        "id": "DU/1993/437"
+      },
+      {
+        "id": "DU/1993/392"
+      },
+      {
+        "id": "DU/1993/346"
+      },
+      {
+        "id": "DU/1993/229"
+      },
+      {
+        "id": "DU/1993/160"
+      },
+      {
+        "id": "DU/1993/155"
+      },
+      {
+        "id": "DU/1993/151"
+      },
+      {
+        "id": "DU/1993/116"
+      },
+      {
+        "id": "DU/1992/79"
+      },
+      {
+        "id": "DU/1992/7"
+      },
+      {
+        "id": "DU/1992/525"
+      },
+      {
+        "id": "DU/1992/519"
+      },
+      {
+        "id": "DU/1992/518"
+      },
+      {
+        "id": "DU/1992/479"
+      },
+      {
+        "id": "DU/1992/313"
+      },
+      {
+        "id": "DU/1992/301"
+      },
+      {
+        "id": "DU/1992/201"
+      },
+      {
+        "id": "DU/1992/179"
+      },
+      {
+        "id": "DU/1992/169"
+      },
+      {
+        "id": "DU/1992/160"
+      },
+      {
+        "id": "DU/1992/1"
+      },
+      {
+        "id": "DU/1991/64"
+      },
+      {
+        "id": "DU/1991/495"
+      },
+      {
+        "id": "DU/1991/409"
+      },
+      {
+        "id": "DU/1991/355"
+      },
+      {
+        "id": "DU/1991/346"
+      },
+      {
+        "id": "DU/1991/294"
+      },
+      {
+        "id": "DU/1991/267"
+      },
+      {
+        "id": "DU/1991/204"
+      },
+      {
+        "id": "DU/1991/164"
+      },
+      {
+        "id": "DU/1990/77"
+      },
+      {
+        "id": "DU/1990/500"
+      },
+      {
+        "id": "DU/1990/387"
+      },
+      {
+        "id": "DU/1990/346"
+      },
+      {
+        "id": "DU/1990/341"
+      },
+      {
+        "id": "DU/1990/338"
+      },
+      {
+        "id": "DU/1990/337"
+      },
+      {
+        "id": "DU/1990/332"
+      },
+      {
+        "id": "DU/1990/315"
+      },
+      {
+        "id": "DU/1990/294"
+      },
+      {
+        "id": "DU/1990/239"
+      },
+      {
+        "id": "DU/1990/209"
+      },
+      {
+        "id": "DU/1990/165"
+      },
+      {
+        "id": "DU/1990/143"
+      },
+      {
+        "id": "DU/1990/105"
+      },
+      {
+        "id": "DU/1989/417"
+      },
+      {
+        "id": "DU/1989/39"
+      },
+      {
+        "id": "DU/1989/364"
+      },
+      {
+        "id": "DU/1989/332"
+      },
+      {
+        "id": "DU/1989/314"
+      },
+      {
+        "id": "DU/1989/272"
+      },
+      {
+        "id": "DU/1989/271"
+      },
+      {
+        "id": "DU/1989/266"
+      },
+      {
+        "id": "DU/1989/255"
+      },
+      {
+        "id": "DU/1989/254"
+      },
+      {
+        "id": "DU/1989/247"
+      },
+      {
+        "id": "DU/1989/226"
+      },
+      {
+        "id": "DU/1989/215"
+      },
+      {
+        "id": "DU/1989/177"
+      },
+      {
+        "id": "DU/1989/144"
+      },
+      {
+        "id": "DU/1989/130"
+      },
+      {
+        "id": "DU/1989/129"
+      },
+      {
+        "id": "DU/1988/76"
+      },
+      {
+        "id": "DU/1988/74"
+      },
+      {
+        "id": "DU/1988/73"
+      },
+      {
+        "id": "DU/1988/57"
+      },
+      {
+        "id": "DU/1988/352"
+      },
+      {
+        "id": "DU/1988/329"
+      },
+      {
+        "id": "DU/1988/272"
+      },
+      {
+        "id": "DU/1988/253"
+      },
+      {
+        "id": "DU/1988/237"
+      },
+      {
+        "id": "DU/1988/212"
+      },
+      {
+        "id": "DU/1988/209"
+      },
+      {
+        "id": "DU/1988/201"
+      },
+      {
+        "id": "DU/1988/19"
+      },
+      {
+        "id": "DU/1988/17"
+      },
+      {
+        "id": "DU/1988/16"
+      },
+      {
+        "id": "DU/1988/156"
+      },
+      {
+        "id": "DU/1988/14"
+      },
+      {
+        "id": "DU/1988/127"
+      },
+      {
+        "id": "DU/1987/91"
+      },
+      {
+        "id": "DU/1987/90"
+      },
+      {
+        "id": "DU/1987/86"
+      },
+      {
+        "id": "DU/1987/64"
+      },
+      {
+        "id": "DU/1987/60"
+      },
+      {
+        "id": "DU/1987/59"
+      },
+      {
+        "id": "DU/1987/5"
+      },
+      {
+        "id": "DU/1987/44"
+      },
+      {
+        "id": "DU/1987/4"
+      },
+      {
+        "id": "DU/1987/215"
+      },
+      {
+        "id": "DU/1987/214"
+      },
+      {
+        "id": "DU/1987/21"
+      },
+      {
+        "id": "DU/1986/65"
+      },
+      {
+        "id": "DU/1986/48"
+      },
+      {
+        "id": "DU/1986/3"
+      },
+      {
+        "id": "DU/1986/209"
+      },
+      {
+        "id": "DU/1986/159"
+      },
+      {
+        "id": "DU/1986/120"
+      },
+      {
+        "id": "DU/1986/111"
+      },
+      {
+        "id": "DU/1985/81"
+      },
+      {
+        "id": "DU/1985/80"
+      },
+      {
+        "id": "DU/1985/71"
+      },
+      {
+        "id": "DU/1985/302"
+      },
+      {
+        "id": "DU/1985/299"
+      },
+      {
+        "id": "DU/1985/290"
+      },
+      {
+        "id": "DU/1985/270"
+      },
+      {
+        "id": "DU/1985/268"
+      },
+      {
+        "id": "DU/1985/258"
+      },
+      {
+        "id": "DU/1985/228"
+      },
+      {
+        "id": "DU/1985/195"
+      },
+      {
+        "id": "DU/1985/177"
+      },
+      {
+        "id": "DU/1985/176"
+      },
+      {
+        "id": "DU/1985/175"
+      },
+      {
+        "id": "DU/1985/165"
+      },
+      {
+        "id": "DU/1985/145"
+      },
+      {
+        "id": "DU/1985/1"
+      },
+      {
+        "id": "DU/1984/43"
+      },
+      {
+        "id": "DU/1984/297"
+      },
+      {
+        "id": "DU/1984/263"
+      },
+      {
+        "id": "DU/1984/261"
+      },
+      {
+        "id": "DU/1984/243"
+      },
+      {
+        "id": "DU/1984/235"
+      },
+      {
+        "id": "DU/1984/233"
+      },
+      {
+        "id": "DU/1984/197"
+      },
+      {
+        "id": "DU/1984/188"
+      },
+      {
+        "id": "DU/1984/16"
+      },
+      {
+        "id": "DU/1984/15"
+      },
+      {
+        "id": "DU/1984/143"
+      },
+      {
+        "id": "DU/1984/113"
+      },
+      {
+        "id": "DU/1983/95"
+      },
+      {
+        "id": "DU/1983/91"
+      },
+      {
+        "id": "DU/1983/89"
+      },
+      {
+        "id": "DU/1983/88"
+      },
+      {
+        "id": "DU/1983/71"
+      },
+      {
+        "id": "DU/1983/328"
+      },
+      {
+        "id": "DU/1983/326"
+      },
+      {
+        "id": "DU/1983/316"
+      },
+      {
+        "id": "DU/1983/294"
+      },
+      {
+        "id": "DU/1983/290"
+      },
+      {
+        "id": "DU/1983/282"
+      },
+      {
+        "id": "DU/1983/274"
+      },
+      {
+        "id": "DU/1983/255"
+      },
+      {
+        "id": "DU/1983/208"
+      },
+      {
+        "id": "DU/1983/181"
+      },
+      {
+        "id": "DU/1983/157"
+      },
+      {
+        "id": "DU/1983/13"
+      },
+      {
+        "id": "DU/1982/7"
+      },
+      {
+        "id": "DU/1982/4"
+      },
+      {
+        "id": "DU/1982/34"
+      },
+      {
+        "id": "DU/1982/297"
+      },
+      {
+        "id": "DU/1982/287"
+      },
+      {
+        "id": "DU/1982/247"
+      },
+      {
+        "id": "DU/1982/241"
+      },
+      {
+        "id": "DU/1982/224"
+      },
+      {
+        "id": "DU/1982/223"
+      },
+      {
+        "id": "DU/1982/205"
+      },
+      {
+        "id": "DU/1982/201"
+      },
+      {
+        "id": "DU/1982/15"
+      },
+      {
+        "id": "DU/1982/14"
+      },
+      {
+        "id": "DU/1982/130"
+      },
+      {
+        "id": "DU/1982/13"
+      },
+      {
+        "id": "DU/1982/126"
+      },
+      {
+        "id": "DU/1982/105"
+      },
+      {
+        "id": "DU/1982/103"
+      },
+      {
+        "id": "DU/1981/97"
+      },
+      {
+        "id": "DU/1981/93"
+      },
+      {
+        "id": "DU/1981/53"
+      },
+      {
+        "id": "DU/1981/42"
+      },
+      {
+        "id": "DU/1981/24"
+      },
+      {
+        "id": "DU/1981/176"
+      },
+      {
+        "id": "DU/1981/175"
+      },
+      {
+        "id": "DU/1981/167"
+      },
+      {
+        "id": "DU/1981/15"
+      },
+      {
+        "id": "DU/1981/146"
+      },
+      {
+        "id": "DU/1981/142"
+      },
+      {
+        "id": "DU/1981/137"
+      },
+      {
+        "id": "DU/1981/130"
+      },
+      {
+        "id": "DU/1981/110"
+      },
+      {
+        "id": "DU/1980/60"
+      },
+      {
+        "id": "DU/1980/17"
+      },
+      {
+        "id": "DU/1980/13"
+      },
+      {
+        "id": "DU/1980/114"
+      },
+      {
+        "id": "DU/1979/96"
+      },
+      {
+        "id": "DU/1979/18"
+      },
+      {
+        "id": "DU/1979/104"
+      },
+      {
+        "id": "DU/1979/103"
+      },
+      {
+        "id": "DU/1978/40"
+      },
+      {
+        "id": "DU/1978/30"
+      },
+      {
+        "id": "DU/1978/119"
+      },
+      {
+        "id": "DU/1978/111"
+      },
+      {
+        "id": "DU/1977/9"
+      },
+      {
+        "id": "DU/1977/41"
+      },
+      {
+        "id": "DU/1977/40"
+      },
+      {
+        "id": "DU/1977/33"
+      },
+      {
+        "id": "DU/1977/30"
+      },
+      {
+        "id": "DU/1977/165"
+      },
+      {
+        "id": "DU/1977/160"
+      },
+      {
+        "id": "DU/1976/77"
+      },
+      {
+        "id": "DU/1976/39"
+      },
+      {
+        "id": "DU/1976/238"
+      },
+      {
+        "id": "DU/1976/22"
+      },
+      {
+        "id": "DU/1976/209"
+      },
+      {
+        "id": "DU/1976/19"
+      },
+      {
+        "id": "DU/1976/175"
+      },
+      {
+        "id": "DU/1976/153"
+      },
+      {
+        "id": "DU/1976/138"
+      },
+      {
+        "id": "DU/1975/65"
+      },
+      {
+        "id": "DU/1975/32"
+      },
+      {
+        "id": "DU/1975/219"
+      },
+      {
+        "id": "DU/1975/209"
+      },
+      {
+        "id": "DU/1975/196"
+      },
+      {
+        "id": "DU/1975/195"
+      },
+      {
+        "id": "DU/1975/194"
+      },
+      {
+        "id": "DU/1975/191"
+      },
+      {
+        "id": "DU/1975/179"
+      },
+      {
+        "id": "DU/1975/141"
+      },
+      {
+        "id": "DU/1975/133"
+      },
+      {
+        "id": "DU/1975/117"
+      },
+      {
+        "id": "DU/1975/101"
+      },
+      {
+        "id": "DU/1975/10"
+      },
+      {
+        "id": "DU/1974/335"
+      },
+      {
+        "id": "DU/1974/334"
+      },
+      {
+        "id": "DU/1974/333"
+      },
+      {
+        "id": "DU/1974/332"
+      },
+      {
+        "id": "DU/1974/331"
+      },
+      {
+        "id": "DU/1974/330"
+      },
+      {
+        "id": "DU/1974/329"
+      },
+      {
+        "id": "DU/1974/328"
+      },
+      {
+        "id": "DU/1974/327"
+      },
+      {
+        "id": "DU/1974/326"
+      },
+      {
+        "id": "DU/1974/324"
+      },
+      {
+        "id": "DU/1974/301"
+      },
+      {
+        "id": "DU/1974/300"
+      },
+      {
+        "id": "DU/1974/299"
+      },
+      {
+        "id": "DU/1974/296"
+      },
+      {
+        "id": "DU/1974/292"
+      },
+      {
+        "id": "DU/1974/288"
+      },
+      {
+        "id": "DU/1974/287"
+      },
+      {
+        "id": "DU/1974/285"
+      },
+      {
+        "id": "DU/1974/272"
+      },
+      {
+        "id": "DU/1974/271"
+      },
+      {
+        "id": "DU/1974/270"
+      },
+      {
+        "id": "DU/1974/269"
+      },
+      {
+        "id": "DU/1974/268"
+      },
+      {
+        "id": "DU/1974/260"
+      },
+      {
+        "id": "DU/1974/259"
+      },
+      {
+        "id": "DU/1974/243"
+      },
+      {
+        "id": "DU/1974/236"
+      },
+      {
+        "id": "DU/1974/220"
+      },
+      {
+        "id": "DU/1974/219"
+      },
+      {
+        "id": "DU/1974/218"
+      },
+      {
+        "id": "DU/1974/217"
+      },
+      {
+        "id": "DU/1974/216"
+      },
+      {
+        "id": "DU/1974/215"
+      },
+      {
+        "id": "DU/1974/213"
+      }
+    ],
+    "Akty zmieniające": [
+      {
+        "id": "DU/2026/473",
+        "date": "2026-07-08"
+      },
+      {
+        "id": "DU/2026/25",
+        "date": "2026-01-27"
+      },
+      {
+        "id": "DU/2026/1046",
+        "date": "2026-11-05"
+      },
+      {
+        "id": "DU/2025/807",
+        "date": "2025-12-24"
+      },
+      {
+        "id": "DU/2025/1661",
+        "date": "2025-12-13"
+      },
+      {
+        "id": "DU/2025/1423",
+        "date": "2026-01-01"
+      },
+      {
+        "id": "DU/2024/878",
+        "date": "2024-06-29"
+      },
+      {
+        "id": "DU/2024/1965",
+        "date": "2025-02-01"
+      },
+      {
+        "id": "DU/2024/1871",
+        "date": "2025-03-19"
+      },
+      {
+        "id": "DU/2024/1222",
+        "date": "2024-11-10"
+      },
+      {
+        "id": "DU/2023/641",
+        "date": "2023-04-26"
+      },
+      {
+        "id": "DU/2023/240",
+        "date": "2023-02-21"
+      },
+      {
+        "id": "DU/2022/655",
+        "date": "2022-04-23"
+      },
+      {
+        "id": "DU/2022/2140",
+        "date": "2023-02-01"
+      },
+      {
+        "id": "DU/2022/1700",
+        "date": "2022-09-01"
+      },
+      {
+        "id": "DU/2021/1162",
+        "date": "2021-12-01"
+      },
+      {
+        "id": "DU/2019/730",
+        "date": "2019-05-04"
+      },
+      {
+        "id": "DU/2019/1495",
+        "date": "2020-01-01"
+      },
+      {
+        "id": "DU/2019/1043",
+        "date": "2019-09-07"
+      },
+      {
+        "id": "DU/2018/4",
+        "date": "2018-01-17"
+      },
+      {
+        "id": "DU/2018/357",
+        "date": "2019-01-01"
+      },
+      {
+        "id": "DU/2018/305",
+        "date": "2018-03-01"
+      },
+      {
+        "id": "DU/2018/2432",
+        "date": "2020-12-01"
+      },
+      {
+        "id": "DU/2018/2377",
+        "date": "2018-12-20"
+      },
+      {
+        "id": "DU/2018/2245",
+        "date": "2019-09-01"
+      },
+      {
+        "id": "DU/2018/2244",
+        "date": "2019-01-01"
+      },
+      {
+        "id": "DU/2018/2215",
+        "date": "2019-01-01"
+      },
+      {
+        "id": "DU/2018/1629",
+        "date": "2018-11-25"
+      },
+      {
+        "id": "DU/2018/1608",
+        "date": "2019-01-01"
+      },
+      {
+        "id": "DU/2018/138",
+        "date": "2018-02-01"
+      },
+      {
+        "id": "DU/2018/1076",
+        "date": "2018-06-06"
+      },
+      {
+        "id": "DU/2018/1000",
+        "date": "2018-05-25"
+      },
+      {
+        "id": "DU/2017/962",
+        "date": "2017-06-01"
+      },
+      {
+        "id": "DU/2017/60",
+        "date": "2017-09-01"
+      },
+      {
+        "id": "DU/2016/960",
+        "date": "2016-07-15"
+      },
+      {
+        "id": "DU/2016/910",
+        "date": "2016-09-01"
+      },
+      {
+        "id": "DU/2016/868",
+        "date": "2016-06-18"
+      },
+      {
+        "id": "DU/2016/2255",
+        "date": "2017-01-01"
+      },
+      {
+        "id": "DU/2016/2138",
+        "date": "2017-01-01"
+      },
+      {
+        "id": "DU/2016/1053",
+        "date": "2016-08-03"
+      },
+      {
+        "id": "DU/2015/1268",
+        "date": "2016-01-02"
+      },
+      {
+        "id": "DU/2015/1240",
+        "date": "2015-09-11"
+      },
+      {
+        "id": "DU/2015/1224",
+        "date": "2016-01-01"
+      },
+      {
+        "id": "DU/2015/1220",
+        "date": "2016-02-22"
+      },
+      {
+        "id": "DU/2015/1066",
+        "date": "2016-01-01"
+      },
+      {
+        "id": "DU/2014/208",
+        "date": "2014-03-04"
+      },
+      {
+        "id": "DU/2014/1662",
+        "date": "2015-04-01"
+      },
+      {
+        "id": "DU/2013/896",
+        "date": "2013-08-23"
+      },
+      {
+        "id": "DU/2013/675",
+        "date": "2013-06-17"
+      },
+      {
+        "id": "DU/2013/2",
+        "date": "2013-01-17"
+      },
+      {
+        "id": "DU/2013/1028",
+        "date": "2013-10-01"
+      },
+      {
+        "id": "DU/2012/908",
+        "date": "2012-09-08"
+      },
+      {
+        "id": "DU/2012/1110",
+        "date": "2012-10-08"
+      },
+      {
+        "id": "DU/2011/887",
+        "date": "2012-01-01"
+      },
+      {
+        "id": "DU/2011/855",
+        "date": "2011-07-28"
+      },
+      {
+        "id": "DU/2011/432",
+        "date": "2011-05-16"
+      },
+      {
+        "id": "DU/2011/322",
+        "date": "2011-04-08"
+      },
+      {
+        "id": "DU/2011/181",
+        "date": "2011-03-21"
+      },
+      {
+        "id": "DU/2011/1378",
+        "date": "2012-01-01"
+      },
+      {
+        "id": "DU/2010/912",
+        "date": "2010-07-26"
+      },
+      {
+        "id": "DU/2010/655",
+        "date": "2010-07-16"
+      },
+      {
+        "id": "DU/2010/1700",
+        "date": "2011-01-01"
+      },
+      {
+        "id": "DU/2010/1655",
+        "date": "2011-01-01"
+      },
+      {
+        "id": "DU/2010/1459",
+        "date": "2011-01-01"
+      },
+      {
+        "id": "DU/2010/1228",
+        "date": "2011-01-02"
+      },
+      {
+        "id": "DU/2009/958",
+        "date": "2009-08-05"
+      },
+      {
+        "id": "DU/2009/825",
+        "date": "2009-07-03"
+      },
+      {
+        "id": "DU/2009/817",
+        "date": "2009-07-10"
+      },
+      {
+        "id": "DU/2009/485",
+        "date": "2010-04-11"
+      },
+      {
+        "id": "DU/2009/458",
+        "date": "2018-09-01"
+      },
+      {
+        "id": "DU/2009/33",
+        "date": "2009-02-01"
+      },
+      {
+        "id": "DU/2009/1704",
+        "date": "2010-01-06"
+      },
+      {
+        "id": "DU/2009/1241",
+        "date": "2011-01-01"
+      },
+      {
+        "id": "DU/2008/740",
+        "date": "2009-07-03"
+      },
+      {
+        "id": "DU/2008/586",
+        "date": "2008-06-30"
+      },
+      {
+        "id": "DU/2008/1654",
+        "date": "2009-01-01"
+      },
+      {
+        "id": "DU/2008/1460",
+        "date": "2009-01-18"
+      },
+      {
+        "id": "DU/2007/589",
+        "date": "2007-07-01"
+      },
+      {
+        "id": "DU/2007/426",
+        "date": "2007-04-26"
+      },
+      {
+        "id": "DU/2007/1672",
+        "date": "2007-12-03"
+      },
+      {
+        "id": "DU/2007/1288",
+        "date": "2007-10-16"
+      },
+      {
+        "id": "DU/2007/1239",
+        "date": "2007-10-26"
+      },
+      {
+        "id": "DU/2006/935",
+        "date": "2006-08-05"
+      },
+      {
+        "id": "DU/2006/711",
+        "date": "2006-10-01"
+      },
+      {
+        "id": "DU/2006/708",
+        "date": "2006-07-24"
+      },
+      {
+        "id": "DU/2006/1615",
+        "date": "2006-12-19"
+      },
+      {
+        "id": "DU/2006/1587",
+        "date": "2006-11-30"
+      },
+      {
+        "id": "DU/2005/732",
+        "date": "2005-06-01"
+      },
+      {
+        "id": "DU/2005/71",
+        "date": "2005-02-08"
+      },
+      {
+        "id": "DU/2005/610",
+        "date": "2005-04-25"
+      },
+      {
+        "id": "DU/2005/1398",
+        "date": "2006-03-02"
+      },
+      {
+        "id": "DU/2004/959",
+        "date": "2004-05-01"
+      },
+      {
+        "id": "DU/2004/374",
+        "date": "2004-03-12"
+      },
+      {
+        "id": "DU/2004/2407",
+        "date": "2004-11-23"
+      },
+      {
+        "id": "DU/2004/1252",
+        "date": "2004-06-01"
+      },
+      {
+        "id": "DU/2004/1001",
+        "date": "2004-06-01"
+      },
+      {
+        "id": "DU/2003/2081",
+        "date": "2004-01-01"
+      },
+      {
+        "id": "DU/2003/1608",
+        "date": "2004-01-01"
+      },
+      {
+        "id": "DU/2002/676",
+        "date": "2002-06-29"
+      },
+      {
+        "id": "DU/2002/1679",
+        "date": "2003-01-01"
+      },
+      {
+        "id": "DU/2002/1673",
+        "date": "2003-01-01"
+      },
+      {
+        "id": "DU/2002/1660",
+        "date": "2002-11-26"
+      },
+      {
+        "id": "DU/2002/1146",
+        "date": "2002-11-29"
+      },
+      {
+        "id": "DU/2001/84",
+        "date": "2002-02-15"
+      },
+      {
+        "id": "DU/2001/538",
+        "date": "2001-05-26"
+      },
+      {
+        "id": "DU/2001/301",
+        "date": "2001-05-01"
+      },
+      {
+        "id": "DU/2001/1805",
+        "date": "2002-01-13"
+      },
+      {
+        "id": "DU/2001/1405",
+        "date": "2002-01-01"
+      },
+      {
+        "id": "DU/2001/1354",
+        "date": "2003-01-01"
+      },
+      {
+        "id": "DU/2001/1194",
+        "date": "2002-09-01"
+      },
+      {
+        "id": "DU/2001/1075",
+        "date": "2001-05-26"
+      },
+      {
+        "id": "DU/2000/489",
+        "date": "2001-01-01"
+      },
+      {
+        "id": "DU/2000/239",
+        "date": "2000-04-06"
+      },
+      {
+        "id": "DU/2000/1268",
+        "date": "2001-03-30"
+      },
+      {
+        "id": "DU/2000/1127",
+        "date": "2001-01-01"
+      },
+      {
+        "id": "DU/1999/1152",
+        "date": "2000-01-01"
+      },
+      {
+        "id": "DU/1998/717",
+        "date": "1998-09-01"
+      },
+      {
+        "id": "DU/1998/668",
+        "date": "1999-01-01"
+      },
+      {
+        "id": "DU/1997/770",
+        "date": "1997-10-22"
+      },
+      {
+        "id": "DU/1996/687",
+        "date": "1996-12-17"
+      },
+      {
+        "id": "DU/1996/396",
+        "date": "1996-08-07"
+      },
+      {
+        "id": "DU/1996/110",
+        "date": "1996-06-02"
+      },
+      {
+        "id": "DU/1995/77",
+        "date": "1995-03-01"
+      },
+      {
+        "id": "DU/1994/547",
+        "date": "1995-01-01"
+      },
+      {
+        "id": "DU/1991/237",
+        "date": "1991-06-26"
+      },
+      {
+        "id": "DU/1991/236",
+        "date": "1991-07-27"
+      },
+      {
+        "id": "DU/1991/226",
+        "date": "1991-07-04"
+      },
+      {
+        "id": "DU/1990/319",
+        "date": "1990-08-18"
+      },
+      {
+        "id": "DU/1990/251",
+        "date": "1990-07-03"
+      },
+      {
+        "id": "DU/1990/19",
+        "date": "1990-01-27"
+      },
+      {
+        "id": "DU/1989/192",
+        "date": "1989-07-01"
+      },
+      {
+        "id": "DU/1989/107",
+        "date": "1989-05-01"
+      },
+      {
+        "id": "DU/1988/134",
+        "date": "1988-07-01"
+      },
+      {
+        "id": "DU/1987/124",
+        "date": "1988-01-01"
+      },
+      {
+        "id": "DU/1986/201",
+        "date": "1987-01-01"
+      },
+      {
+        "id": "DU/1985/85",
+        "date": "1985-07-01"
+      },
+      {
+        "id": "DU/1985/162",
+        "date": "1985-08-10"
+      },
+      {
+        "id": "DU/1982/214",
+        "date": "1983-01-01"
+      },
+      {
+        "id": "DU/1981/23",
+        "date": "1981-03-14"
+      },
+      {
+        "id": "DU/1975/91",
+        "date": "1975-06-01"
+      }
+    ],
+    "Inf. o tekście jednolitym": [
+      {
+        "id": "DU/2025/277"
+      },
+      {
+        "id": "DU/2023/1465"
+      },
+      {
+        "id": "DU/2022/1510"
+      },
+      {
+        "id": "DU/2020/1320"
+      },
+      {
+        "id": "DU/2019/1040"
+      },
+      {
+        "id": "DU/2018/917"
+      },
+      {
+        "id": "DU/2018/108"
+      },
+      {
+        "id": "DU/2016/1666"
+      },
+      {
+        "id": "DU/2014/1502"
+      },
+      {
+        "id": "DU/1998/94"
+      }
+    ],
+    "Odesłania": [
+      {
+        "id": "DU/1964/93"
+      },
+      {
+        "id": "DU/1964/296"
+      }
+    ],
+    "Orzeczenie TK": [
+      {
+        "id": "DU/2018/830"
+      },
+      {
+        "id": "DU/2018/2377"
+      },
+      {
+        "id": "DU/2018/1933"
+      },
+      {
+        "id": "DU/2015/1982"
+      },
+      {
+        "id": "DU/2013/904"
+      },
+      {
+        "id": "DU/2013/653"
+      },
+      {
+        "id": "DU/2012/1110"
+      },
+      {
+        "id": "DU/2010/912"
+      },
+      {
+        "id": "DU/2009/909"
+      },
+      {
+        "id": "DU/2009/485"
+      },
+      {
+        "id": "DU/2008/740"
+      },
+      {
+        "id": "DU/2008/1409"
+      },
+      {
+        "id": "DU/2007/1672"
+      },
+      {
+        "id": "DU/2006/1464"
+      },
+      {
+        "id": "DU/2006/1463"
+      },
+      {
+        "id": "DU/2006/1363"
+      },
+      {
+        "id": "DU/2005/610"
+      },
+      {
+        "id": "DU/2005/1758"
+      },
+      {
+        "id": "DU/2005/1678"
+      },
+      {
+        "id": "DU/2005/1062"
+      },
+      {
+        "id": "DU/2004/374"
+      },
+      {
+        "id": "DU/2003/1037"
+      },
+      {
+        "id": "DU/2002/1660"
+      },
+      {
+        "id": "DU/2001/1378"
+      }
+    ],
+    "Przepisy wprowadzające": [
+      {
+        "id": "DU/1974/142"
+      }
+    ]
+  },
+  "releasedBy": [
+    "SEJM"
+  ],
+  "texts": [
+    {
+      "fileName": "text.html",
+      "type": "H"
+    },
+    {
+      "fileName": "D19740141.pdf",
+      "type": "O"
+    },
+    {
+      "fileName": "D19740141.pdf",
+      "type": "I"
+    },
+    {
+      "fileName": "D19740141Lj.pdf",
+      "type": "U"
+    }
+  ],
+  "validFrom": "1975-01-01",
+  "ELI": "DU/1974/141"
+}
