@@ -10,13 +10,24 @@ jobs:
   pytest:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
-      - name: Zainstaluj zależności
+      - name: Zainstaluj CPU-owy torch
+        # sentence-transformers (przez rag_search.py, importowane
+        # tranzytywnie przez file_index.py -> test_file_index.py)
+        # zależy od torch. Domyślne `pip install torch` na Linuksie
+        # ściąga CUDA-owe wheele (nvidia-cublas-cu12, nvidia-cudnn-cu12
+        # itd., >1GB), mimo że w CI nic nie dotyka GPU ani nawet nie
+        # tworzy instancji modelu embeddingowego. Instalacja CPU-owego
+        # torch najpierw satysfakcjonuje tę zależność bez ściągania
+        # zbędnych pakietów NVIDIA.
+        run: pip install torch --index-url https://download.pytorch.org/whl/cpu
+
+      - name: Zainstaluj resztę zależności
         run: pip install -r requirements-common.txt -r requirements-dev.txt
 
       - name: Uruchom pytest
