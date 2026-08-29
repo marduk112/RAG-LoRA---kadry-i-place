@@ -121,9 +121,10 @@ je i użyj `scripts/train_lora_cuda.py` zamiast `mlx_lm.convert`/
 
 # 2c. [opcjonalnie] Coroczne rozporządzenia/obwieszczenia z konkretnymi
 # kwotami, których same ustawy nie zawierają -- patrz PROGRESS.md, Krok
-# 21-22. Niezależne od kroku 2b, ale też wymagają --include-history niżej.
-.venv/bin/python scripts/download_wage_regulations.py       # min. wynagrodzenie, 2004-2026
-.venv/bin/python scripts/download_zus_limit_regulations.py  # limit 30-krotności składek ZUS, 1999-2026
+# 21-23. Niezależne od kroku 2b, ale też wymagają --include-history niżej.
+.venv/bin/python scripts/download_wage_regulations.py        # min. wynagrodzenie, 2004-2026
+.venv/bin/python scripts/download_zus_limit_regulations.py   # limit 30-krotności składek ZUS, 1999-2026
+.venv/bin/python scripts/download_avg_wage_regulations.py    # przeciętne wynagrodzenie GUS, 2003-2025
 
 .venv/bin/python scripts/build_rag_index.py --include-history
 
@@ -175,8 +176,9 @@ kroki 4b i 6.
 # Dla porównania: bez LoRA (sam bazowy model + RAG)
 .venv/bin/python scripts/chat.py --no-adapter
 
-# Większa liczba fragmentów kontekstu
-.venv/bin/python scripts/chat.py --top-k 8
+# Jeszcze więcej fragmentów kontekstu niż domyślne 8 (np. przy pytaniach
+# o kwoty konkurujących z wieloma podobnymi artykułami, patrz niżej)
+.venv/bin/python scripts/chat.py --top-k 12
 
 # Szybszy wariant 4.5B zamiast domyślnego 11B
 .venv/bin/python scripts/chat.py \
@@ -258,7 +260,7 @@ data utrzymuje się między wątkami rozmowy, dopóki nie wyczyścisz jej jawnie
 # Ty: /data            (powrót do stanu bieżącego)
 ```
 
-**Ograniczenie warte znajomości (patrz PROGRESS.md, Krok 18-22):** dane
+**Ograniczenie warte znajomości (patrz PROGRESS.md, Krok 18-24):** dane
 historyczne są dostępne tylko od pierwszego ogłoszonego tekstu jednolitego
 danej ustawy (dla części ustaw to prawie cały okres ich obowiązywania, dla
 innych -- np. ustawy o minimalnym wynagrodzeniu -- dopiero od ok. 2015, mimo
@@ -267,13 +269,11 @@ przyznać się do braku danych zamiast zgadywać, ale to zachowanie nie jest
 niezawodne, gdy jakiś fragment TECHNICZNIE pokrywa żądaną datę, lecz nie
 zawiera odpowiedzi na pytanie -- w takim przypadku model bywał
 niekonsekwentny (raz wiernie cytował nietrafny fragment, raz podawał
-wiarygodnie brzmiącą, ale niepodpartą fragmentem liczbę z pamięci).
-Dwa konkretne przypadki, które to ujawniły -- kwota minimalnego
-wynagrodzenia i limit 30-krotności składek ZUS w złotych, których same
-ustawy nie zawierają -- są już naprawione (krok 2c wyżej, Krok 21-22), ale
-to samo może dotyczyć innych, jeszcze niedodanych rozporządzeń (patrz
-PROGRESS.md, "Co
-dalej" pkt 5). Traktuj takie, wąskie przypadki z ostrożnością i zawsze
+wiarygodnie brzmiącą, ale niepodpartą fragmentem liczbę z pamięci). Trzy
+konkretne przypadki, które to ujawniły -- kwota minimalnego wynagrodzenia,
+limit 30-krotności składek ZUS i przeciętne wynagrodzenie GUS, których same
+ustawy nie zawierają -- są już naprawione (krok 2c wyżej, Krok 21-23).
+Traktuj takie, wąskie przypadki z ostrożnością i zawsze
 zweryfikuj konkretną kwotę w oficjalnym źródle.
 
 ### Alternatywa: RAG + model z LM Studio (`scripts/chat_lmstudio.py`)
@@ -373,22 +373,24 @@ dla pytań mieszających kilka tematów naraz.
 **Konkretne kwoty ustalane osobnymi rozporządzeniami, nie samymi
 ustawami.** Część aktualnych, "twardych" liczb nie jest zapisana wprost w
 ustawach z listy wyżej — ustala je osobne, coroczne rozporządzenie/
-obwieszczenie. **Wysokość minimalnego wynagrodzenia i minimalnej stawki
-godzinowej** (2004-2026, `download_wage_regulations.py`) oraz **roczny
+obwieszczenie/komunikat. **Wysokość minimalnego wynagrodzenia i minimalnej
+stawki godzinowej** (2004-2026, `download_wage_regulations.py`), **roczny
 limit 30-krotności** podstawy wymiaru składek emerytalno-rentowych
-(1999-2026, `download_zus_limit_regulations.py`) są już dodane osobno
-(krok 2c wyżej) i działają razem z `--as-of`/`/data` — ale to jedne z kilku
-takich przypadków; np. przeciętne wynagrodzenie ogłaszane komunikatem
-Prezesa GUS wciąż nie jest pokryte (patrz PROGRESS.md, "Co dalej" pkt 5).
-Dla pytań o kwoty spoza `ACTS`/dodanych rozporządzeń RAG trafia w
-powiązany, ale niewystarczający fragment ustawy, a model bywa
-niekonsekwentny (patrz PROGRESS.md, Krok 20) — zawsze zweryfikuj tego typu
-kwoty w oficjalnym źródle. **Nawet dla już dodanych rozporządzeń:** trafny
-fragment czasem nie mieści się w domyślnym `--top-k 5` (konkuruje z
-tematycznie bliskimi artykułami tej samej ustawy bazowej, sprawdzone
-dwukrotnie — Krok 21 i 22) — jeśli odpowiedź na pytanie o konkretną kwotę
-wygląda na nietrafną, spróbuj wyższego `--top-k` (patrz PROGRESS.md, "Co
-dalej" pkt 6).
+(1999-2026, `download_zus_limit_regulations.py`) i **przeciętne
+wynagrodzenie w gospodarce narodowej** (2003-2025,
+`download_avg_wage_regulations.py`) są już dodane osobno (krok 2c wyżej) i
+działają razem z `--as-of`/`/data` — dla przeciętnego wynagrodzenia zwróć
+uwagę, że pytanie o rok RRRR wymaga `--as-of` z datą w RRRR+1 (to wtedy
+fakt za rok RRRR został ogłoszony, patrz PROGRESS.md Krok 23). Dla pytań o
+kwoty spoza `ACTS`/dodanych rozporządzeń RAG trafia w powiązany, ale
+niewystarczający fragment ustawy, a model bywa niekonsekwentny (patrz
+PROGRESS.md, Krok 20) — zawsze zweryfikuj tego typu kwoty w oficjalnym
+źródle. Domyślne `--top-k` zostało podniesione do 8 właśnie dlatego, że
+nawet dla już dodanych rozporządzeń trafny fragment czasem nie mieścił się
+w dawnym domyślnym `--top-k 5` (konkurował z tematycznie bliskimi
+artykułami tej samej ustawy bazowej, sprawdzone dwukrotnie — Krok 21 i 22,
+domknięte w Kroku 24) — jeśli mimo to odpowiedź na pytanie o konkretną
+kwotę wygląda na nietrafną, spróbuj jeszcze wyższego `--top-k`.
 
 **Poprawna numeracja artykułów z indeksem górnym (np. Art. 11¹).**
 Kodeks pracy od lat jest nowelizowany przez wstawianie nowych artykułów

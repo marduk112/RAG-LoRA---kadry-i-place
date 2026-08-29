@@ -1370,6 +1370,113 @@ ten krok). Przeciętne wynagrodzenie ogłaszane komunikatem Prezesa GUS
 (używane do wielu innych przeliczeń -- odprawy, niektóre zasiłki) wciąż nie
 jest dodane -- ten sam wzorzec powinien się przenosić.
 
+## Krok 23: przeciętne wynagrodzenie GUS -- trzeci przypadek, ostrożniej niż poprzednie dwa
+
+Cel: domknięcie trzeciego, ostatniego znanego kandydata z "Co dalej" pkt 5.
+Nowy `scripts/download_avg_wage_regulations.py` -- ale ten przypadek okazał
+się realnie bardziej ryzykowny niż Kroki 21/22, więc zakres jest tu celowo
+węższy.
+
+**Ryzyko znalezione PRZED napisaniem kodu (dobrze, że sprawdzone najpierw):**
+`/eli/acts/search?title="przeciętnego wynagrodzenia w gospodarce narodowej"`
+zwraca 81 wyników, bo GUS publikuje pod bardzo podobnymi tytułami KILKA
+różnych, prawnie odrębnych wielkości: (1) "Komunikat [...] w sprawie
+przeciętnego wynagrodzenia w gospodarce narodowej w RRRR r." -- wartość
+ROCZNA, podstawa prawna art. 20 ustawy o emeryturach i rentach z FUS (2)
+"Obwieszczenie [...] w sprawie przeciętnego wynagrodzenia MIESIĘCZNEGO w
+gospodarce narodowej w RRRR r. I W DRUGIM PÓŁROCZU RRRR r." -- inna
+wielkość, inne zastosowania (3) "Obwieszczenie [...] w sprawie przeciętnego
+[...] wynagrodzenia [...] W WOJEWÓDZTWACH w RRRR r." -- rozbicie regionalne.
+Luźny filtr podłańcuchowy (jak w Krokach 21/22) złapałby WSZYSTKIE trzy pod
+jednym `act_short`, mieszając odrębne wielkości -- gorsze niż brak danych,
+bo model mógłby podać niewłaściwą, ale przekonująco brzmiącą liczbę.
+**Naprawiono zanim się stało problemem:** `TITLE_EXACT_RE` -- regex
+zakotwiczony na POCZĄTKU i KOŃCU tytułu, nie luźny substring -- łapie
+WYŁĄCZNIE wariant (1). Sprawdzone: dokładny wzorzec zwraca czystą, ciągłą
+serię 23 wpisów, 2003-2025, bez przerw.
+
+**`valid_from`/`valid_to` liczone inaczej niż w Krokach 21/22 -- z
+`promulgation` (faktyczna data ogłoszenia), NIE z "1 stycznia roku z
+tytułu".** Powód: w przeciwieństwie do rozporządzeń płacowych/obwieszczeń
+o limicie (które mają wprost klauzulę "wchodzi w życie z dniem 1 stycznia
+RRRR r."), komunikat GUS o przeciętnym wynagrodzeniu retrospektywnie
+ogłasza fakt za rok miniony, bez klauzuli wskazującej, od kiedy dokładnie
+staje się "tą właściwą" wartością dla różnych, korzystających z niej ustaw
+(zależy od przepisów każdej z osobna). Użycie `promulgation` (zawsze pewne,
+zweryfikowane wprost z metadanych) zamiast zgadywanej daty jest
+bezpieczniejsze -- nie twierdzi nic więcej, niż da się sprawdzić.
+**Konsekwencja UX warta odnotowania:** pytanie "ile wynosiło przeciętne
+wynagrodzenie w 2022 r." wymaga `--as-of` z datą w 2023 r. (kiedy fakt za
+2022 r. został OGŁOSZONY), nie w 2022 r. -- trochę nieintuicyjne, ale
+zgodne z rzeczywistą semantyką tych danych.
+
+**Znalezisko przy pobieraniu (kosmetyczne, nie blokujące):** 6 z 23
+najstarszych wpisów (lata 2003-2008, publikowane 2004-2009) ma zniekształcone
+polskie znaki diakrytyczne w wyekstrahowanym tekście ("przeci´tne" zamiast
+"przeciętne", "wynios∏o" zamiast "wyniosło") -- artefakt starego
+kodowania/fontu w PDF-ach Monitora Polskiego sprzed ~2010 r., którego
+`pypdf` nie mapuje poprawnie. **Sama liczba (kwota w zł) pozostaje
+poprawna** -- sprawdzone bezpośrednio: 2003 -> 1829,24 zł, 2008 -> 2943,88
+zł, oba zgodne ze znanymi historycznymi wartościami. Świadomie NIE
+naprawiono (niska wartość względem nakładu -- naprawa kodowania starych
+fontów PDF to osobny, głębszy problem, dotyczy tylko 6 najstarszych z 23
+wpisów, a sama treść merytoryczna -- liczba -- nie jest uszkodzona).
+
+**Weryfikacja end-to-end (żywe dane, `chat.py`, Bielik-11B):**
+- Pytanie o rok 2022 BEZ `--as-of` (czyli efektywnie "stan bieżący") --
+  model POPRAWNIE odmówił zgadywania ("Nie znalazłem [...] informacji o
+  [...] 2022 roku"), zamiast pomylić to z inną, bieżącą wartością z
+  kontekstu -- oczekiwane i poprawne zgodnie z semantyką `promulgation`
+  opisaną wyżej (as_of=dziś nie pokrywa okna z 2022 r.).
+- Z `--as-of 2023-06-01` (data w oknie ważności komunikatu za 2022 r.) --
+  poprawnie zacytowano "6346,15 zł", zgodne z realną historyczną wartością.
+
+**Testy:** 6 nowych (`tests/test_download_avg_wage_regulations.py`, w tym
+regresja obu świadomie odrzucanych wariantów tytułu -- półrocznego i
+wojewódzkiego). Łącznie **83/83**.
+
+**Zakres "Co dalej" pkt 5 zamknięty:** wszystkie trzy znane kandydaci
+(minimalne wynagrodzenie, limit 30-krotności, przeciętne wynagrodzenie GUS)
+zrobione (Kroki 21-23). Nowe podobne przypadki, jeśli się pojawią, powinny
+najpierw przejść ten sam wstępny test: czy `/eli/acts/search` po
+oczywistym tytule zwraca JEDNĄ, czystą serię, czy kilka pomieszanych --
+zanim się napisze kod zakładający luźny filtr podłańcuchowy.
+
+## Krok 24: podniesienie domyślnego `--top-k` (5 -> 8)
+
+Cel: domknięcie "Co dalej" pkt 6 -- ten sam wzorzec ograniczenia rankingu
+RAG znaleziony niezależnie w Krokach 21 i 22 (nowa treść z rozporządzeń
+przegrywała z domyślnym `--top-k 5` z kilkoma tematycznie bliskimi
+artykułami tej samej ustawy bazowej).
+
+**Decyzja: proste globalne podniesienie (5 -> 8), NIE heurystyka
+adaptacyjna dla pytań o kwoty.** Rozważono odpowiednik `looks_like_meta_question`
+(wykrywanie pytań "ile wynosi/jaki jest limit" i podnoszenie `top_k` tylko
+dla nich) -- odrzucone jako niepotrzebna złożoność: proste globalne
+podniesienie już rozwiązało oba znane, potwierdzone przypadki (Krok 21 i
+22) i nie wprowadziło regresji na kontrolnych pytaniach sprawdzonych
+ręcznie (patrz niżej) -- kolejna heurystyka regexowa dodawałaby kod do
+utrzymania bez potwierdzonej potrzeby.
+
+**Ręczna weryfikacja braku regresji (żywe dane, `chat.py`, Bielik-11B) na
+dwóch znanych pytaniach kontrolnych z wcześniejszych kroków:**
+- "Ile dni urlopu przysługuje po 10 latach pracy?" (znane dobre pytanie z
+  Kroku 4c) -- z `--top-k 8` nadal poprawnie: 26 dni, art. 154 § 1 pkt 2.
+- "Jakie są rodzaje umów o pracę?" (znane SŁABE pytanie z Kroku 3, RAG od
+  zawsze nie trafiał w art. 25 nawet w top-5 na dużo mniejszym indeksie) --
+  z `--top-k 8` na obecnym, znacznie większym indeksie (5770 fragmentów)
+  wciąż nie trafia -- ale model bezpiecznie przyznaje się do braku
+  informacji zamiast zgadywać, zamiast pogorszenia to ten sam, już znany i
+  udokumentowany, bezpieczny tryb awarii.
+
+Zmienione: domyślne `--top-k` w `chat.py`/`chat_lmstudio.py`/`chat_cuda.py`
+(argparse) oraz `RagIndex.search()`/`rag_search.py` CLI (dla spójności --
+te dwa miejsca i tak zawsze były przesłaniane jawnym `args.top_k` z
+chat*.py, ale podniesiono też je, żeby zachowanie biblioteki bez zmian w
+wywołującym kodzie było spójne z nowym domyślnym doświadczeniem czatu).
+Koszt: dłuższy prompt (np. ~8-15k tokenów zamiast ~6-7k na pytaniach z
+tego kroku) -- wciąż daleko poniżej praktycznych limitów, zaakceptowany.
+
 ## Co dalej
 
 1. ~~Zweryfikować ręcznie 3 rozbieżności `changeDate` znalezione przy
@@ -1430,43 +1537,17 @@ jest dodane -- ten sam wzorzec powinien się przenosić.
    datami wejścia w życie, z których trzeba by ręcznie/programowo
    rekonstruować brzmienie -- osobne, znacznie trudniejsze zadanie,
    niezbadane jeszcze pod kątem wykonalności.
-5. **Rozporządzenia/obwieszczenia z konkretnymi kwotami, których nie ma w
-   samych ustawach.** *Zrobione dla dwóch z co najmniej trzech znanych
-   przypadków* (ten sam wzorzec: `search_acts_by_title` + stały `article` +
-   proste, nienakładające się roczne okna -- NIE `references["Akty
-   wykonawcze"]`, bo ta ścieżka okazała się niekompletna, patrz Krok 21):
-   - **Minimalne wynagrodzenie** -- Krok 21, `download_wage_regulations.py`.
-   - **Limit 30-krotności** (roczna podstawa wymiaru składek
-     emerytalno-rentowych, ustawa o systemie ubezpieczeń społecznych) --
-     Krok 22, `download_zus_limit_regulations.py`.
-   - **Pozostaje:** przeciętne wynagrodzenie ogłaszane komunikatem Prezesa
-     GUS (używane do wielu innych przeliczeń -- odprawy, niektóre
-     zasiłki) -- jeszcze nie sprawdzone, czy ma tak samo czystą, ciągłą
-     serię w ELI jak dwa powyższe przypadki.
-
-   Oba zrobione przypadki zweryfikowane end-to-end (`chat.py`, żywe dane):
-   poprawnie cytują realną kwotę, zarówno historycznie (`--as-of`) jak i
-   bieżąco -- ale w OBU przypadkach dopiero przy podniesionym `--top-k`
-   (domyślne 5 nie wystarczało, nowa treść przegrywała rankingiem z kilkoma
-   tematycznie bliskimi artykułami tej samej ustawy bazowej) -- patrz Krok
-   21/22 i nowy punkt 6 niżej.
-
-   Dla kontrastu, **zasiłek dla bezrobotnych** (art. 224 ustawy o rynku
-   pracy) i **progi/ulgi PIT** (np. ulga dla młodych -- limit 85 528 zł)
-   mają konkretne kwoty wprost w tekście ustawy -- nie potrzebowały tego
-   zabiegu.
-6. **Domyślny `--top-k 5` bywa za niski, gdy nowo dodana treść (rozporządzenia
-   z pkt 5) konkuruje z kilkoma tematycznie bliskimi artykułami tej samej
-   ustawy bazowej.** Znalezisko powtórzone dwukrotnie (Krok 21 i 22, dwa
-   niezależne przypadki) -- w obu testach właściwy fragment mieścił się
-   dopiero na 6.-7. miejscu rankingu RAG, poza domyślnym top-5. Nie jest to
-   regresja mechanizmu "as-of" ani powrót halucynacji z Kroku 20 (gdy
-   fragment trafia do kontekstu, model go wiernie i poprawnie cytuje) --
-   czysto kwestia budżetu `--top-k`. Świadomie NIE podniesiono globalnego
-   domyślnego `--top-k`, bo to wpłynęłoby na długość promptu przy
-   WSZYSTKICH pytaniach, nie tylko tych nowych. Do rozważenia: podniesienie
-   `--top-k` tylko dla pytań pasujących do wzorca "ile wynosi/jaki jest
-   limit" (podobna heurystyka do `looks_like_meta_question`), albo prostsze
-   -- po prostu podnieść domyślne `--top-k` teraz, gdy baza dodatkowo
-   urosła o te rozporządzenia, i sprawdzić empirycznie koszt/efekt na
-   szerszym zestawie pytań kontrolnych z wcześniejszych kroków.
+5. ~~Rozporządzenia/obwieszczenia z konkretnymi kwotami, których nie ma w
+   samych ustawach.~~ **Domknięte w Krokach 21-23** -- wszyscy trzej znani
+   kandydaci zrobieni tym samym wzorcem (`search_acts_by_title` + stały
+   `article` + proste roczne okna): minimalne wynagrodzenie (Krok 21), limit
+   30-krotności (Krok 22), przeciętne wynagrodzenie GUS (Krok 23, węższy
+   zakres -- patrz tam po realne ryzyko pomylenia kilku pokrewnych serii
+   GUS). Nowe podobne przypadki, jeśli się pojawią: najpierw sprawdź, czy
+   `/eli/acts/search` po tytule zwraca JEDNĄ czystą serię, nie kilka
+   pomieszanych (patrz Krok 23), zanim napiszesz kod zakładający luźny
+   filtr podłańcuchowy.
+6. ~~Domyślny `--top-k 5` bywa za niski dla nowo dodanych rozporządzeń.~~
+   **Domknięte w Kroku 24** -- podniesiono globalnie do 8 (`chat.py`/
+   `chat_lmstudio.py`/`chat_cuda.py`/`rag_search.py`), zweryfikowano brak
+   regresji na znanych pytaniach kontrolnych z Kroków 3/4c.

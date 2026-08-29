@@ -96,7 +96,14 @@ def main():
     parser.add_argument("--model", type=str, default=str(MODEL_PATH), help="Ścieżka do modelu bazowego w formacie MLX")
     parser.add_argument("--adapter-path", type=str, default=str(DEFAULT_ADAPTER_PATH))
     parser.add_argument("--no-adapter", action="store_true", help="Użyj bazowego modelu bez LoRA")
-    parser.add_argument("--top-k", type=int, default=5, help="Liczba fragmentów RAG dołączanych do kontekstu")
+    parser.add_argument(
+        "--top-k",
+        type=int,
+        default=8,
+        help="Liczba fragmentów RAG dołączanych do kontekstu (domyślnie 8 -- podniesione z 5, patrz "
+        "PROGRESS.md, Krok 21/22/24: przy 5 fragment z nowo dodanych rozporządzeń o konkretnych kwotach "
+        "czasem przegrywał rankingiem z kilkoma tematycznie bliskimi artykułami tej samej ustawy bazowej)",
+    )
     parser.add_argument("--max-turns", type=int, default=6, help="Ile ostatnich par pytanie/odpowiedź zachować w kontekście rozmowy")
     parser.add_argument("--file", type=str, default=None, help="Ścieżka do pliku PDF (tekstowego) wgrywanego jako dodatkowy kontekst")
     parser.add_argument(

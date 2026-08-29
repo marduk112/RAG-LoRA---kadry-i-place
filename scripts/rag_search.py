@@ -4,7 +4,7 @@ Wyszukiwanie w indeksie RAG zbudowanym przez build_rag_index.py.
 Użycie jako biblioteka:
     from rag_search import RagIndex
     idx = RagIndex()
-    results = idx.search("Ile dni urlopu przysługuje po 10 latach pracy?", top_k=5)
+    results = idx.search("Ile dni urlopu przysługuje po 10 latach pracy?", top_k=8)
 
 Użycie z linii poleceń (do szybkiego testowania samego wyszukiwania,
 bez Bielika):
@@ -117,7 +117,7 @@ class RagIndex:
         self.meta = json.loads(INDEX_META_PATH.read_text(encoding="utf-8"))
         self.model = SentenceTransformer(EMBEDDING_MODEL)
 
-    def search(self, query: str, top_k: int = 6, as_of: str | None = None) -> list[dict]:
+    def search(self, query: str, top_k: int = 8, as_of: str | None = None) -> list[dict]:
         query_vec = self.model.encode(
             [QUERY_PREFIX + query], normalize_embeddings=True
         )[0]
@@ -141,7 +141,7 @@ def main():
     query = " ".join(args.query)
 
     idx = RagIndex()
-    results = idx.search(query, top_k=5, as_of=args.as_of)
+    results = idx.search(query, top_k=8, as_of=args.as_of)
 
     as_of_label = f" (stan na {args.as_of})" if args.as_of else ""
     print(f'\nPytanie: "{query}"{as_of_label}\n')
