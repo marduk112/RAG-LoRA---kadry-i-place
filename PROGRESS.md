@@ -1299,6 +1299,77 @@ podobne przypadki -- patrz "Co dalej" pkt 5 niżej, wzorzec z tego kroku
 (`search_acts_by_title` + stały `article` + proste roczne okna) powinien się
 przenosić bez większych zmian.
 
+## Krok 22: limit 30-krotności składek ZUS -- drugi przypadek z tego samego wzorca
+
+Cel: domknięcie drugiego kandydata z "Co dalej" pkt 5 -- roczny limit
+ograniczenia podstawy wymiaru składek emerytalno-rentowych ("30-krotność",
+art. 19 ustawy o systemie ubezpieczeń społecznych, DU/1998/887 -- sama
+ustawa podaje tylko wzór/mnożnik, nie konkretną kwotę w złotych). Nowy
+`scripts/download_zus_limit_regulations.py`, ten sam wzorzec co Krok 21
+(`search_acts_by_title` + stały `article = "1"` + proste, nienakładające
+się roczne okna) -- **świadomie od razu przez `/eli/acts/search`, nie
+`references["Akty wykonawcze"]`**, bo ta druga ścieżka okazała się
+niekompletna dla minimalnego wynagrodzenia (Krok 21); nie było powodu, żeby
+tym razem miała być bardziej wiarygodna.
+
+**Ten sam typ weryfikacji co w Kroku 21, ale bez powtórki tamtych
+problemów:** `/eli/acts/search?title="kwoty ograniczenia rocznej podstawy
+wymiaru składek"` zwrócił od razu kompletną, ciągłą serię 28 wpisów,
+1999-2026, bez żadnych luk (`_warn_on_gaps` -- kopia funkcji z Kroku 21 --
+nic nie zgłosiła). Wzorzec tytułu inny niż przy minimalnym wynagrodzeniu:
+"w roku RRRR" zamiast "w RRRR r.", i -- dla starszych wpisów (1999-2007) --
+rok bywa na samym końcu tytułu, a dla nowszych (od 2008, z dodatkową
+klauzulą "oraz przyjętej do jej ustalenia [...]") -- w środku, nie na
+końcu. Regex dopasowany osobno (`r"w roku (\d{4})"`, bez zakotwiczenia na
+końcu stringa), sprawdzony na obu wariantach.
+
+**Struktura tekstu jeszcze prostsza niż rozporządzenia płacowe:** jedno
+zdanie, bez podziału na "§" w ogóle -- "ogłasza się, że kwota ograniczenia
+[...] w roku RRRR wynosi X zł, a przyjęta do jej ustalenia kwota
+prognozowanego przeciętnego wynagrodzenia wynosi Y zł." (sprawdzone na
+MP/2024/1051). Jeden akt = jeden "artykuł", tak jak w Kroku 21.
+
+**Drobna, nieszkodliwa anomalia znaleziona przy pobieraniu roku 2012
+(MP/2011/1160):** `strip_not_yet_in_force_text` zgłosiła "niesparowane
+nawiasy < >" -- sprawdzone ręcznie w wynikowym tekście: kompletny, spójny,
+nic nie ucięte ani nie uszkodzone (prawdopodobnie artefakt konwersji PDF w
+okolicach przypisu/indeksu górnego, nie prawdziwy fragment "jeszcze
+nieobowiązującego" tekstu -- ten typ oznaczeń dotyczy tekstów ujednoliconych
+ustaw, nie jednorazowych obwieszczeń). Bezpiecznik (niezachłanne
+podstawienie) zadziałał zgodnie z projektem -- nic nie zostało po cichu
+wycięte, tylko wypisane ostrzeżenie do wglądu.
+
+**Weryfikacja end-to-end (żywe dane, `chat.py`, Bielik-11B) -- ten sam
+wzorzec ograniczenia rankingu co w Kroku 21, tym razem jeszcze wyraźniejszy:**
+domyślny `--top-k 5` NIE wystarczał w ŻADNYM z dwóch testów (`--as-of
+2013-05-01` i bez `--as-of`) -- właściwy fragment obwieszczenia mieścił się
+dopiero na 6.-7. miejscu, wyprzedzony przez sześć bardzo blisko
+spunktowanych artykułów samej ustawy systemowej (prawdopodobnie art. 19 i
+jego liczne ustępy, tematycznie nakładające się). **Z `--top-k 8` oba testy
+wypadły bezbłędnie:**
+- `--as-of 2013-05-01`: poprawnie zacytowano zarówno ogólną zasadę (art. 19
+  ust. 1) jak i konkretną, historyczną kwotę za 2013 r. (111 390 zł,
+  obwieszczenie z 14 grudnia 2012 r., poz. 1018) -- model dodatkowo
+  samodzielnie zweryfikował arytmetykę (3713 zł x 30 = 111 390 zł).
+- bez `--as-of` (stan bieżący): poprawnie zacytowano obwieszczenie na 2026
+  r. (poz. 1206), kwota 282 600 zł.
+
+Potwierdza to wniosek z Kroku 21 jako ogólniejszy: mechanizm "as-of" i
+jakość samego groundingu są solidne -- ograniczeniem jest wyłącznie
+domyślny budżet `--top-k`, gdy nowo dodana treść konkuruje z wieloma,
+tematycznie bliskimi artykułami tej samej ustawy bazowej. Świadomie
+pozostawiono bez zmiany globalnego domyślnego `--top-k` (5) z tego samego
+powodu co w Kroku 21.
+
+**Testy:** 5 nowych (`tests/test_download_zus_limit_regulations.py`),
+łącznie **77/77**.
+
+**Zakres:** dwa z co najmniej dwóch znanych kandydatów z "Co dalej" pkt 5
+teraz zrobione (minimalne wynagrodzenie -- Krok 21, limit 30-krotności --
+ten krok). Przeciętne wynagrodzenie ogłaszane komunikatem Prezesa GUS
+(używane do wielu innych przeliczeń -- odprawy, niektóre zasiłki) wciąż nie
+jest dodane -- ten sam wzorzec powinien się przenosić.
+
 ## Co dalej
 
 1. ~~Zweryfikować ręcznie 3 rozbieżności `changeDate` znalezione przy
@@ -1360,37 +1431,42 @@ przenosić bez większych zmian.
    rekonstruować brzmienie -- osobne, znacznie trudniejsze zadanie,
    niezbadane jeszcze pod kątem wykonalności.
 5. **Rozporządzenia/obwieszczenia z konkretnymi kwotami, których nie ma w
-   samych ustawach.** *Minimalne wynagrodzenie: zrobione w Kroku 21
-   (`scripts/download_wage_regulations.py`, 23 lata, 2004-2026, podłączone
-   pod mechanizm "as-of" bez zmian w `rag_search.py`) -- zweryfikowane
-   end-to-end, poprawnie cytuje realną kwotę zarówno historycznie, jak i
-   bieżąco (przy wystarczającym `--top-k`, patrz Krok 21 po szczegóły
-   ograniczenia rankingu).* Pozostałe kandydaty do zrobienia tym samym
-   wzorcem (`search_acts_by_title` + stały `article` + proste roczne okna,
-   patrz Krok 21): **limit 30-krotności** (ustawa o systemie ubezpieczeń
-   społecznych) i ewentualnie inne. *Podniesiona waga po Kroku 20:* ten sam brak danych
-   doprowadził model do podania poprawnej liczby BEZ pokrycia w dostarczonym
-   fragmencie (przy `--as-of`) oraz do wiernego zacytowania złej,
-   przestarzałej liczby z fragmentu (bez `--as-of`) -- w obu wariantach zła
-   odpowiedź z innego powodu, patrz Krok 20 po szczegóły. Znalezisko z Kroku
-   19 (weryfikacja pilotażowa "as-of" na ustawie o minimalnym wynagrodzeniu): sama ta ustawa NIE podaje kwoty w
-   złotówkach -- ustala ją co roku osobne "Rozporządzenie Rady Ministrów w
-   sprawie wysokości minimalnego wynagrodzenia za pracę oraz wysokości
-   minimalnej stawki godzinowej" (upoważnienie z art. 2 ustawy), którego nie
-   ma w `ACTS`. Bez niego RAG trafia w odpowiednią WERSJĘ ustawy na daną
-   datę (dzięki "as-of"), ale nie odpowie "ile złotych". Sprawdzono, czy to
-   odosobniony przypadek -- nie do końca: **limit 30-krotności** (roczna
-   podstawa wymiaru składek emerytalno-rentowych, ustawa o systemie
-   ubezpieczeń społecznych) też jest ogłaszany corocznym obwieszczeniem
-   ministra, nie liczbą wpisaną w ustawę. Dla kontrastu, **zasiłek dla
-   bezrobotnych** (art. 224 ustawy o rynku pracy) i **progi/ulgi PIT** (np.
-   ulga dla młodych -- limit 85 528 zł) mają konkretne kwoty wprost w
-   tekście ustawy -- te już działają dobrze bez dodatkowych dokumentów.
+   samych ustawach.** *Zrobione dla dwóch z co najmniej trzech znanych
+   przypadków* (ten sam wzorzec: `search_acts_by_title` + stały `article` +
+   proste, nienakładające się roczne okna -- NIE `references["Akty
+   wykonawcze"]`, bo ta ścieżka okazała się niekompletna, patrz Krok 21):
+   - **Minimalne wynagrodzenie** -- Krok 21, `download_wage_regulations.py`.
+   - **Limit 30-krotności** (roczna podstawa wymiaru składek
+     emerytalno-rentowych, ustawa o systemie ubezpieczeń społecznych) --
+     Krok 22, `download_zus_limit_regulations.py`.
+   - **Pozostaje:** przeciętne wynagrodzenie ogłaszane komunikatem Prezesa
+     GUS (używane do wielu innych przeliczeń -- odprawy, niektóre
+     zasiłki) -- jeszcze nie sprawdzone, czy ma tak samo czystą, ciągłą
+     serię w ELI jak dwa powyższe przypadki.
 
-   Warto dodać, ale to osobne rozszerzenie od funkcji "as-of" (Krok 18-19+):
-   te rozporządzenia to co roku CAŁKIEM NOWY, osobny akt (nie "tekst
-   ujednolicony" jednej ewoluującej ustawy jak obsługuje mechanizm
-   obwieszczeń z Fazy 1-2), więc potrzebowałyby własnej, prostszej listy
-   rok -> akt, nie tego samego mechanizmu. Do zbadania: czy jest więcej
-   takich przypadków (np. przeciętne wynagrodzenie ogłaszane komunikatem
-   Prezesa GUS, używane do wielu przeliczeń -- odprawy, zasiłki).
+   Oba zrobione przypadki zweryfikowane end-to-end (`chat.py`, żywe dane):
+   poprawnie cytują realną kwotę, zarówno historycznie (`--as-of`) jak i
+   bieżąco -- ale w OBU przypadkach dopiero przy podniesionym `--top-k`
+   (domyślne 5 nie wystarczało, nowa treść przegrywała rankingiem z kilkoma
+   tematycznie bliskimi artykułami tej samej ustawy bazowej) -- patrz Krok
+   21/22 i nowy punkt 6 niżej.
+
+   Dla kontrastu, **zasiłek dla bezrobotnych** (art. 224 ustawy o rynku
+   pracy) i **progi/ulgi PIT** (np. ulga dla młodych -- limit 85 528 zł)
+   mają konkretne kwoty wprost w tekście ustawy -- nie potrzebowały tego
+   zabiegu.
+6. **Domyślny `--top-k 5` bywa za niski, gdy nowo dodana treść (rozporządzenia
+   z pkt 5) konkuruje z kilkoma tematycznie bliskimi artykułami tej samej
+   ustawy bazowej.** Znalezisko powtórzone dwukrotnie (Krok 21 i 22, dwa
+   niezależne przypadki) -- w obu testach właściwy fragment mieścił się
+   dopiero na 6.-7. miejscu rankingu RAG, poza domyślnym top-5. Nie jest to
+   regresja mechanizmu "as-of" ani powrót halucynacji z Kroku 20 (gdy
+   fragment trafia do kontekstu, model go wiernie i poprawnie cytuje) --
+   czysto kwestia budżetu `--top-k`. Świadomie NIE podniesiono globalnego
+   domyślnego `--top-k`, bo to wpłynęłoby na długość promptu przy
+   WSZYSTKICH pytaniach, nie tylko tych nowych. Do rozważenia: podniesienie
+   `--top-k` tylko dla pytań pasujących do wzorca "ile wynosi/jaki jest
+   limit" (podobna heurystyka do `looks_like_meta_question`), albo prostsze
+   -- po prostu podnieść domyślne `--top-k` teraz, gdy baza dodatkowo
+   urosła o te rozporządzenia, i sprawdzić empirycznie koszt/efekt na
+   szerszym zestawie pytań kontrolnych z wcześniejszych kroków.

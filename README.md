@@ -119,11 +119,11 @@ je i użyj `scripts/train_lora_cuda.py` zamiast `mlx_lm.convert`/
 # wersji łącznie na 7 ustaw), więc NIE jest częścią zwykłego kroku 1.
 .venv/bin/python scripts/download_acts_history.py
 
-# 2c. [opcjonalnie] Coroczne rozporządzenia z konkretnymi kwotami, których
-# same ustawy nie zawierają (na razie: wysokość minimalnego wynagrodzenia
-# za pracę i minimalnej stawki godzinowej, 2004-2026) -- patrz PROGRESS.md,
-# Krok 21. Niezależny od kroku 2b, ale też wymaga --include-history niżej.
-.venv/bin/python scripts/download_wage_regulations.py
+# 2c. [opcjonalnie] Coroczne rozporządzenia/obwieszczenia z konkretnymi
+# kwotami, których same ustawy nie zawierają -- patrz PROGRESS.md, Krok
+# 21-22. Niezależne od kroku 2b, ale też wymagają --include-history niżej.
+.venv/bin/python scripts/download_wage_regulations.py       # min. wynagrodzenie, 2004-2026
+.venv/bin/python scripts/download_zus_limit_regulations.py  # limit 30-krotności składek ZUS, 1999-2026
 
 .venv/bin/python scripts/build_rag_index.py --include-history
 
@@ -258,7 +258,7 @@ data utrzymuje się między wątkami rozmowy, dopóki nie wyczyścisz jej jawnie
 # Ty: /data            (powrót do stanu bieżącego)
 ```
 
-**Ograniczenie warte znajomości (patrz PROGRESS.md, Krok 18-21):** dane
+**Ograniczenie warte znajomości (patrz PROGRESS.md, Krok 18-22):** dane
 historyczne są dostępne tylko od pierwszego ogłoszonego tekstu jednolitego
 danej ustawy (dla części ustaw to prawie cały okres ich obowiązywania, dla
 innych -- np. ustawy o minimalnym wynagrodzeniu -- dopiero od ok. 2015, mimo
@@ -268,10 +268,11 @@ niezawodne, gdy jakiś fragment TECHNICZNIE pokrywa żądaną datę, lecz nie
 zawiera odpowiedzi na pytanie -- w takim przypadku model bywał
 niekonsekwentny (raz wiernie cytował nietrafny fragment, raz podawał
 wiarygodnie brzmiącą, ale niepodpartą fragmentem liczbę z pamięci).
-Konkretny przypadek, który to ujawnił -- kwota minimalnego wynagrodzenia w
-złotych, której sama ustawa nie zawiera -- jest już naprawiony
-(`download_wage_regulations.py`, krok 2c wyżej, Krok 21), ale to samo może
-dotyczyć innych, jeszcze niedodanych rozporządzeń (patrz PROGRESS.md, "Co
+Dwa konkretne przypadki, które to ujawniły -- kwota minimalnego
+wynagrodzenia i limit 30-krotności składek ZUS w złotych, których same
+ustawy nie zawierają -- są już naprawione (krok 2c wyżej, Krok 21-22), ale
+to samo może dotyczyć innych, jeszcze niedodanych rozporządzeń (patrz
+PROGRESS.md, "Co
 dalej" pkt 5). Traktuj takie, wąskie przypadki z ostrożnością i zawsze
 zweryfikuj konkretną kwotę w oficjalnym źródle.
 
@@ -373,18 +374,21 @@ dla pytań mieszających kilka tematów naraz.
 ustawami.** Część aktualnych, "twardych" liczb nie jest zapisana wprost w
 ustawach z listy wyżej — ustala je osobne, coroczne rozporządzenie/
 obwieszczenie. **Wysokość minimalnego wynagrodzenia i minimalnej stawki
-godzinowej** (2004-2026) są już dodane osobno (`download_wage_regulations.py`,
-krok 2c wyżej) i działają razem z `--as-of`/`/data` -- ale są jednym z kilku
-takich przypadków: np. **roczny limit 30-krotności** podstawy wymiaru
-składek emerytalno-rentowych wciąż nie jest pokryty (patrz PROGRESS.md,
-"Co dalej" pkt 5). Dla pytań o kwoty spoza `ACTS`/dodanych rozporządzeń
-RAG trafia w powiązany, ale niewystarczający fragment ustawy, a model bywa
+godzinowej** (2004-2026, `download_wage_regulations.py`) oraz **roczny
+limit 30-krotności** podstawy wymiaru składek emerytalno-rentowych
+(1999-2026, `download_zus_limit_regulations.py`) są już dodane osobno
+(krok 2c wyżej) i działają razem z `--as-of`/`/data` — ale to jedne z kilku
+takich przypadków; np. przeciętne wynagrodzenie ogłaszane komunikatem
+Prezesa GUS wciąż nie jest pokryte (patrz PROGRESS.md, "Co dalej" pkt 5).
+Dla pytań o kwoty spoza `ACTS`/dodanych rozporządzeń RAG trafia w
+powiązany, ale niewystarczający fragment ustawy, a model bywa
 niekonsekwentny (patrz PROGRESS.md, Krok 20) — zawsze zweryfikuj tego typu
-kwoty w oficjalnym źródle. **Nawet dla już dodanego minimalnego
-wynagrodzenia:** trafny fragment czasem nie mieści się w domyślnym
-`--top-k 5` (konkuruje z niezwiązanymi fragmentami innych ustaw) — jeśli
-odpowiedź wygląda na nietrafną, spróbuj wyższego `--top-k` (patrz
-PROGRESS.md, Krok 21).
+kwoty w oficjalnym źródle. **Nawet dla już dodanych rozporządzeń:** trafny
+fragment czasem nie mieści się w domyślnym `--top-k 5` (konkuruje z
+tematycznie bliskimi artykułami tej samej ustawy bazowej, sprawdzone
+dwukrotnie — Krok 21 i 22) — jeśli odpowiedź na pytanie o konkretną kwotę
+wygląda na nietrafną, spróbuj wyższego `--top-k` (patrz PROGRESS.md, "Co
+dalej" pkt 6).
 
 **Poprawna numeracja artykułów z indeksem górnym (np. Art. 11¹).**
 Kodeks pracy od lat jest nowelizowany przez wstawianie nowych artykułów
