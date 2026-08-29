@@ -331,34 +331,40 @@ def parse_articles(clean_text: str) -> list[dict]:
     return articles
 
 
-def process_act(act: dict) -> dict:
-    print(f"[{act['short']}] pobieram metadane...")
-    meta = fetch_meta(act)
+def _extract_articles(source: dict, act_short: str) -> tuple[dict, str, str, list[dict], bytes, str, str]:
+    """Pobiera i parsuje DOWOLNY akt ELI (`{'publisher','year','position'}`)
+    -- akt bazowy z ACTS ALBO obwieszczenie ogłaszające historyczny tekst
+    jednolity, oba mają identyczny kształt -- do listy artykułów. Wydzielone
+    z `process_act()`, żeby ten sam pipeline (fetch meta -> wybór tekstu ->
+    PDF -> czyszczenie -> parsowanie -> korekta indeksu górnego) obsługiwał
+    też historyczne wersje w `process_act_version()`
+    (`download_acts_history.py`) bez duplikacji kodu.
+
+    Czysta ekstrakcja+parsowanie -- żadnych zapisów na dysk (wołający
+    decyduje, co i czy w ogóle zapisać). Zwraca też `meta`/`pdf_bytes`, żeby
+    `process_act()` mógł zapisać `data/raw/{short}.pdf`/`_meta.json` bez
+    drugiego zapytania HTTP o te same metadane."""
+    print(f"[{act_short}] pobieram metadane...")
+    meta = fetch_meta(source)
     title = meta.get("title", "")
-    eli = meta.get("ELI", f"{act['publisher']}/{act['year']}/{act['position']}")
-    print(f"[{act['short']}] {title}  (status: {meta.get('status')})")
+    eli = meta.get("ELI", f"{source['publisher']}/{source['year']}/{source['position']}")
+    print(f"[{act_short}] {title}  (status: {meta.get('status')})")
 
     kind, file_name = pick_text_file(meta)
-    print(f"[{act['short']}] pobieram tekst typu '{kind}' ({file_name})...")
-    pdf_bytes = fetch_pdf_bytes(act, kind, file_name)
+    print(f"[{act_short}] pobieram tekst typu '{kind}' ({file_name})...")
+    pdf_bytes = fetch_pdf_bytes(source, kind, file_name)
 
-    RAW_DIR.mkdir(parents=True, exist_ok=True)
-    (RAW_DIR / f"{act['short']}.pdf").write_bytes(pdf_bytes)
-    (RAW_DIR / f"{act['short']}_meta.json").write_text(
-        json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8"
-    )
-
-    print(f"[{act['short']}] wyciągam i czyszczę tekst z PDF...")
+    print(f"[{act_short}] wyciągam i czyszczę tekst z PDF...")
     clean_text = pdf_to_clean_text(pdf_bytes)
     clean_text = strip_not_yet_in_force_text(clean_text)
     clean_text = recover_midtext_superscript_headers(clean_text)
     clean_text = fix_stray_space_before_period(clean_text)
 
-    print(f"[{act['short']}] tnę na artykuły...")
+    print(f"[{act_short}] tnę na artykuły...")
     articles = parse_articles(clean_text)
-    print(f"[{act['short']}] znaleziono {len(articles)} artykułów")
+    print(f"[{act_short}] znaleziono {len(articles)} artykułów")
 
-    print(f"[{act['short']}] sprawdzam numerację pod kątem indeksów górnych...")
+    print(f"[{act_short}] sprawdzam numerację pod kątem indeksów górnych...")
     detected_numbers = find_article_numbers_pdfplumber(pdf_bytes)
     if len(detected_numbers) == len(articles):
         fixed = 0
@@ -368,13 +374,25 @@ def process_act(act: dict) -> dict:
                 article["article"] = detected
                 fixed += 1
         if fixed:
-            print(f"[{act['short']}] poprawiono numerację indeksu górnego w {fixed} artykułach")
+            print(f"[{act_short}] poprawiono numerację indeksu górnego w {fixed} artykułach")
     else:
         print(
-            f"[{act['short']}] UWAGA: liczba nagłówków wykrytych przez pdfplumber "
+            f"[{act_short}] UWAGA: liczba nagłówków wykrytych przez pdfplumber "
             f"({len(detected_numbers)}) != liczba artykułów z pypdf ({len(articles)}) "
             "-- pomijam korektę indeksu górnego dla tego aktu, numeracja zostaje jak z pypdf"
         )
+
+    return meta, title, eli, articles, pdf_bytes, kind, file_name
+
+
+def process_act(act: dict) -> dict:
+    meta, title, eli, articles, pdf_bytes, kind, file_name = _extract_articles(act, act["short"])
+
+    RAW_DIR.mkdir(parents=True, exist_ok=True)
+    (RAW_DIR / f"{act['short']}.pdf").write_bytes(pdf_bytes)
+    (RAW_DIR / f"{act['short']}_meta.json").write_text(
+        json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
 
     source_url = (
         f"{API_BASE}/acts/{act['publisher']}/{act['year']}/{act['position']}/text/{kind}/{file_name}"
@@ -397,6 +415,170 @@ def process_act(act: dict) -> dict:
         json.dumps(chunks, ensure_ascii=False, indent=2), encoding="utf-8"
     )
     return {"short": act["short"], "title": title, "eli": eli, "chunks": chunks}
+
+
+def _parse_eli_ref(ref_id: str) -> dict:
+    """'DU/2020/2207' -> {'publisher': 'DU', 'year': 2020, 'position': 2207}
+    -- kształt identyczny z wpisami ACTS, gotowy do fetch_meta()/_extract_articles()."""
+    publisher, year, position = ref_id.split("/")
+    return {"publisher": publisher, "year": int(year), "position": int(position)}
+
+
+def fetch_unified_text_announcements(base_meta: dict) -> list[dict]:
+    """PURE (bez HTTP) -- parsuje `references['Inf. o tekście jednolitym']`
+    z już pobranych metadanych aktu bazowego (lista obwieszczeń ogłaszających
+    kolejne teksty ujednolicone w historii ustawy) na listę słowników
+    `{'publisher','year','position'}`. Pusta lista, jeśli akt nigdy nie miał
+    ogłoszonego tekstu jednolitego (np. bardzo młode ustawy -- sprawdzone
+    empirycznie na ustawie o rynku pracy, PROGRESS.md krok 18)."""
+    refs = base_meta.get("references", {}).get("Inf. o tekście jednolitym", [])
+    return [_parse_eli_ref(ref["id"]) for ref in refs]
+
+
+def _version_sort_key(meta: dict) -> str:
+    """Klucz do chronologicznego sortowania obwieszczeń: `legalStatusDate`
+    kiedy jest ustawione, inaczej `announcementDate` (data ogłoszenia SAMEGO
+    obwieszczenia -- niezawodnie uzupełniona nawet w najstarszych wpisach, w
+    przeciwieństwie do `legalStatusDate`, i bliska rzeczywistemu początkowi
+    okresu, w przeciwieństwie do `expirationDate`, który bywa o lata późniejszy
+    dla starych, długo obowiązujących wpisów i fałszywie przesuwa je ZA
+    późniejsze wpisy z ustawionym `legalStatusDate` -- sprawdzone empirycznie
+    na ustawie systemowej: `DU/2009/1585` ma `expirationDate=2013-12-04`, co
+    plasowałoby go PO `DU/2013/1442` (`legalStatusDate=2013-10-16`), mimo że
+    `DU/2009/1585` jest faktycznie wcześniejszy -- `announcementDate` obu
+    (2009-11-10 vs 2013-10-24) sortuje poprawnie). `expirationDate` zostaje
+    jako ostateczny fallback, gdyby oba pozostałe pola brakowały. Poleganie
+    na kolejności zwróconej przez API jest błędne dla wpisów bez
+    `legalStatusDate` (sprawdzone empirycznie: `DU/2009/1585` występuje PRZED
+    `DU/2007/74` w surowej liście `references`, mimo że jest chronologicznie
+    późniejsze) -- patrz PROGRESS.md, krok 18, znalezisko 1."""
+    return meta.get("legalStatusDate") or meta.get("announcementDate") or meta.get("expirationDate") or ""
+
+
+def compute_version_windows(base_meta: dict, announcement_metas: list[dict]) -> list[dict]:
+    """PURE (bez HTTP). Zwraca chronologicznie posortowaną listę okien
+    ważności tekstu ustawy: po jednym słowniku na każde PRZESZŁE
+    obwieszczenie -- `{'publisher','year','position','valid_from','valid_to',
+    'announcement_eli'}` -- plus syntetyczny wpis na końcu,
+    `{'is_current': True, 'valid_from': <granica>, 'valid_to': None}`,
+    reprezentujący już pobrany bieżący tekst "U" (nieparsowany tu ponownie).
+
+    `valid_from`/`valid_to` każdej wersji to bezpośrednio jej własne pola
+    `legalStatusDate`/`expirationDate` z ELI -- CELOWO nie wymuszamy, żeby
+    sąsiednie okna stykały się idealnie (empirycznie się nie stykają, różnice
+    rzędu dni-tygodni na wszystkich 7 sprawdzonych ustawach, czasem się nawet
+    zachodzą -- patrz PROGRESS.md, krok 18, znalezisko 2). To cecha danych
+    ELI, nie błąd do naprawienia tutaj -- nie logujemy ostrzeżenia przy
+    każdym niedopasowaniu granic, bo to oczekiwany szum, już scharakteryzowany.
+
+    Granica bieżącej wersji: dla chronologicznie najnowszego obwieszczenia
+    -- jego `expirationDate`, jeśli ustawione (oznacza, że nawet ono zostało
+    już wyprzedzone przez nowelizacje widoczne tylko w żywym tekście "U"),
+    w przeciwnym razie jego `legalStatusDate`. Zero obwieszczeń -> granica
+    `None` (brak znanej dolnej granicy dla bieżącego tekstu).
+
+    Obwieszczenia z `expirationDate=None` (wciąż oficjalnie obowiązujące, w
+    praktyce zawsze najnowsze w łańcuchu -- nic go jeszcze nie zastąpiło) są
+    CELOWO pomijane w liście przeszłych okien, nie tylko przy wyliczaniu
+    granicy: taki wpis opisuje dokładnie ten sam, wciąż otwarty okres co
+    syntetyczny wpis "is_current" (zweryfikowane na ustawie o PPK -- oba
+    miałyby `valid_from=2026-02-10, valid_to=None`) -- zwrócenie go też jako
+    osobnej "przeszłej" wersji dałoby dwie identyczne, nakładające się na
+    siebie wersje tego samego artykułu w indeksie. Jego treść i tak pokrywa
+    się (lub prawie pokrywa) z już posiadanym bieżącym tekstem "U", więc nie
+    ma potrzeby pobierać go drugi raz jako "historię"."""
+    sorted_metas = sorted(announcement_metas, key=_version_sort_key)
+
+    windows = []
+    for m in sorted_metas:
+        if m.get("expirationDate") is None:
+            continue
+        windows.append(
+            {
+                "publisher": m["publisher"],
+                "year": m["year"],
+                "position": m["pos"],
+                "valid_from": m.get("legalStatusDate"),
+                "valid_to": m.get("expirationDate"),
+                "announcement_eli": m.get("ELI", f"{m['publisher']}/{m['year']}/{m['pos']}"),
+            }
+        )
+
+    if sorted_metas:
+        latest = sorted_metas[-1]
+        current_valid_from = latest.get("expirationDate") or latest.get("legalStatusDate")
+    else:
+        current_valid_from = None
+
+    windows.append({"is_current": True, "valid_from": current_valid_from, "valid_to": None})
+    return windows
+
+
+def fetch_version_windows(base_act: dict) -> tuple[str, str, list[dict]]:
+    """I/O wrapper wokół `compute_version_windows()`: pobiera metadane aktu
+    bazowego + każdego jego obwieszczenia (`fetch_unified_text_announcements`),
+    potem woła czystą `compute_version_windows()`. Zwraca `(base_eli,
+    base_title, windows)` -- `base_eli`/`base_title` osobno, żeby
+    `process_act_version()` mógł zawsze podpisywać zwrócone artykuły
+    tytułem/ELI AKTU BAZOWEGO (tym się cytuje ustawę użytkownikowi), nie
+    tytułem/numerem samego obwieszczenia (`_extract_articles()` zwróciłaby
+    tytuł obwieszczenia "Obwieszczenie Marszałka Sejmu ..." dla źródła
+    historycznego -- pomylenie tych dwóch pól było realnym błędem znalezionym
+    przy smoke teście na ustawie o PPK: `eli` poprawnie wskazywał akt bazowy,
+    ale `act_title` po cichu wyciekał tytuł obwieszczenia)."""
+    base_meta = fetch_meta(base_act)
+    base_eli = base_meta.get("ELI", f"{base_act['publisher']}/{base_act['year']}/{base_act['position']}")
+    base_title = base_meta.get("title", "")
+
+    announcement_sources = fetch_unified_text_announcements(base_meta)
+    announcement_metas = []
+    for src in announcement_sources:
+        announcement_metas.append(fetch_meta(src))
+        time.sleep(0.3)
+
+    windows = compute_version_windows(base_meta, announcement_metas)
+    return base_eli, base_title, windows
+
+
+def process_act_version(
+    source: dict, act_short: str, base_eli: str, base_title: str, valid_from, valid_to, announcement_eli
+) -> list[dict]:
+    """Pobiera i parsuje JEDNĄ historyczną wersję tekstu (obwieszczenie) tym
+    samym pipeline'em co `process_act()` (przez `_extract_articles()`). NIE
+    zapisuje niczego do `data/raw/` (kolidowałoby z plikami bieżącego tekstu
+    już tam obecnymi dla tej samej ustawy) -- zwraca tylko listę artykułów;
+    zapis do `data/processed/{short}_history.json` należy do wołającego
+    (`download_acts_history.py`).
+
+    Pola `eli`/`act_title` w zwróconych artykułach to zawsze `base_eli`/
+    `base_title` (akt bazowy) -- NIE to, co zwróciłaby `_extract_articles()`
+    dla samego obwieszczenia -- bo to akt bazowy ma być cytowany
+    użytkownikowi, nie techniczny numer/tytuł obwieszczenia (ten trafia
+    osobno do pola `announcement_eli`)."""
+    label = f"{act_short}@{valid_from or 'current'}"
+    _meta, _announcement_title, _announcement_eli, articles, _pdf_bytes, kind, file_name = _extract_articles(
+        source, label
+    )
+
+    source_url = (
+        f"{API_BASE}/acts/{source['publisher']}/{source['year']}/{source['position']}/text/{kind}/{file_name}"
+    )
+    version_suffix = valid_from or "current"
+    return [
+        {
+            "id": f"{act_short}_art_{a['article']}@{version_suffix}",
+            "act_short": act_short,
+            "act_title": base_title,
+            "eli": base_eli,
+            "article": a["article"],
+            "text": a["text"],
+            "source_url": source_url,
+            "valid_from": valid_from,
+            "valid_to": valid_to,
+            "announcement_eli": announcement_eli,
+        }
+        for a in articles
+    ]
 
 
 def main():

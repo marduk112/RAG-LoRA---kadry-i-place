@@ -112,6 +112,14 @@ je i użyj `scripts/train_lora_cuda.py` zamiast `mlx_lm.convert`/
 # 2. Zbudowanie indeksu RAG (embeddingi artykułów) -> data/processed/rag_index*.
 .venv/bin/python scripts/build_rag_index.py
 
+# 2b. [opcjonalnie] Historyczne wersje ustaw -> odpowiadanie "na dany dzień
+# w przeszłości" (--as-of / /data w chat.py, patrz sekcja "Użycie" niżej).
+# Osobny, opt-in krok -- znacznie więcej zapytań do publicznego API ELI niż
+# krok 1 (jedno obwieszczenie + jeden PDF na historyczną wersję tekstu, ~60
+# wersji łącznie na 7 ustaw), więc NIE jest częścią zwykłego kroku 1.
+.venv/bin/python scripts/download_acts_history.py
+.venv/bin/python scripts/build_rag_index.py --include-history
+
 # 3. [macOS/MLX] Pobranie i konwersja Bielika do MLX (kwantyzacja 4-bit) -> models/
 # (dla wariantu 4.5B podmień hf-path/mlx-path na Bielik-4.5B-v3.0-Instruct)
 .venv/bin/hf download speakleash/Bielik-11B-v3.0-Instruct  # najpierw pełny snapshot, patrz uwaga niżej
@@ -223,6 +231,41 @@ dowolnym momencie kolejnym `/plik`.
 # Ty: /plik umowa.pdf
 ```
 
+**Prawo obowiązujące na dany dzień w przeszłości** (we wszystkich trzech
+wariantach): wpisz `/data RRRR-MM-DD` w trybie interaktywnym albo podaj
+`--as-of RRRR-MM-DD` przy starcie, żeby dostać odpowiedź opartą o wersję
+przepisów obowiązującą na tę konkretną datę, nie stan bieżący -- przydatne
+przy przeliczaniu zaległego urlopu/wynagrodzenia, korektach list płac za
+miniony okres czy sporach o zdarzenie sprzed lat (patrz PROGRESS.md, Krok
+18-20). Wymaga wcześniejszego uruchomienia `download_acts_history.py` +
+`build_rag_index.py --include-history` (krok 2b wyżej) -- bez tego `--as-of`
+nie ma czego przeszukiwać i pytanie efektywnie wraca do stanu bieżącego. Samo
+`/data` (bez daty) czyści ustawioną datę z powrotem na stan bieżący; `/nowy`
+świadomie NIE czyści ustawionej daty (tak jak nie czyści wgranego pliku) --
+data utrzymuje się między wątkami rozmowy, dopóki nie wyczyścisz jej jawnie.
+
+```bash
+.venv/bin/python scripts/chat.py --as-of 2018-01-15 --prompt "Ile wynosi minimalne wynagrodzenie za pracę?"
+# albo w trakcie rozmowy:
+# Ty: /data 2018-01-15
+# Ty: /data            (powrót do stanu bieżącego)
+```
+
+**Ograniczenie warte znajomości (patrz PROGRESS.md, Krok 18-20):** dane
+historyczne są dostępne tylko od pierwszego ogłoszonego tekstu jednolitego
+danej ustawy (dla części ustaw to prawie cały okres ich obowiązywania, dla
+innych -- np. ustawy o minimalnym wynagrodzeniu -- dopiero od ok. 2015, mimo
+że ustawa obowiązuje od 2003). Dla dat wcześniejszych model ma wprost
+przyznać się do braku danych zamiast zgadywać, ale to zachowanie nie jest
+niezawodne, gdy jakiś fragment TECHNICZNIE pokrywa żądaną datę, lecz nie
+zawiera odpowiedzi na pytanie (np. ustawa o minimalnym wynagrodzeniu w ogóle
+nie podaje kwoty w złotych -- ustala ją osobne, coroczne rozporządzenie, poza
+zakresem tego projektu) -- w takim przypadku model bywał niekonsekwentny
+(raz wiernie cytował nietrafny fragment, raz podawał wiarygodnie brzmiącą,
+ale niepodpartą fragmentem liczbę z pamięci). Traktuj takie, wąskie
+przypadki z ostrożnością i zawsze zweryfikuj konkretną kwotę w oficjalnym
+źródle.
+
 ### Alternatywa: RAG + model z LM Studio (`scripts/chat_lmstudio.py`)
 
 Jeśli masz już jakiś model załadowany w [LM Studio](https://lmstudio.ai/)
@@ -265,7 +308,8 @@ hiperparametry co w PROGRESS.md (krok 4b/6), ten sam RAG i prompt
 systemowy (`scripts/prompt.py`).
 
 **Ten wariant nie został uruchomiony na żadnej karcie NVIDIA** — środowisko,
-w którym powstał ten projekt, to Mac bez GPU CUDA. API zostało
+w którym powstał ten projekt, to Mac bez GPU CUDA, a autor nie ma dostępu do
+sprzętu NVIDIA i nie planuje testować tego wariantu samodzielnie. API zostało
 zweryfikowane względem aktualnej dokumentacji `peft`/`trl`, ale nie
 przetestowane end-to-end. Jeśli coś nie zadziała, to prawdopodobnie
 drobna niezgodność wersji bibliotek — daj znać (issue) albo od razu
@@ -315,6 +359,16 @@ Poza tym zakresem (np. VAT, ZUS dla działalności gospodarczej,
 prawo spółek) model jest trenowany tak, by przyznać się do niewiedzy
 zamiast zgadywać — ale to nie jest gwarancja stuprocentowa, zwłaszcza
 dla pytań mieszających kilka tematów naraz.
+
+**Konkretne kwoty ustalane osobnymi rozporządzeniami, nie samymi
+ustawami.** Część aktualnych, "twardych" liczb (np. wysokość minimalnego
+wynagrodzenia w złotówkach, roczny limit 30-krotności podstawy wymiaru
+składek emerytalno-rentowych) nie jest zapisana wprost w ustawach z listy
+wyżej — ustala je osobne, coroczne rozporządzenie/obwieszczenie, poza
+`ACTS`. Dla takich pytań RAG trafia w powiązany, ale niewystarczający
+fragment ustawy, a model bywa niekonsekwentny (patrz PROGRESS.md, Krok 20) —
+zawsze zweryfikuj tego typu kwoty w oficjalnym źródle. Patrz PROGRESS.md,
+"Co dalej" pkt 5.
 
 **Poprawna numeracja artykułów z indeksem górnym (np. Art. 11¹).**
 Kodeks pracy od lat jest nowelizowany przez wstawianie nowych artykułów

@@ -31,6 +31,7 @@ Uruchomienie:
     python scripts/build_rag_index.py
 """
 
+import argparse
 import json
 from pathlib import Path
 
@@ -38,6 +39,7 @@ import numpy as np
 from sentence_transformers import SentenceTransformer
 
 ROOT = Path(__file__).resolve().parent.parent
+RAW_DIR = ROOT / "data" / "raw"
 PROCESSED_DIR = ROOT / "data" / "processed"
 ARTICLES_PATH = PROCESSED_DIR / "all_articles.json"
 INDEX_EMB_PATH = PROCESSED_DIR / "rag_index.npy"
@@ -87,24 +89,121 @@ def build_chunks(articles: list[dict]) -> list[dict]:
         pieces = split_long_text(art["text"], MAX_CHUNK_CHARS, OVERLAP_CHARS)
         for i, piece in enumerate(pieces):
             chunk_id = art["id"] if len(pieces) == 1 else f"{art['id']}_part{i + 1}"
-            chunks.append(
-                {
-                    "chunk_id": chunk_id,
-                    "act_short": art["act_short"],
-                    "act_title": art["act_title"],
-                    "eli": art["eli"],
-                    "article": art["article"],
-                    "source_url": art["source_url"],
-                    "chunk_text": piece,
-                    "full_article_text": art["text"],
-                }
-            )
+            chunk = {
+                "chunk_id": chunk_id,
+                "act_short": art["act_short"],
+                "act_title": art["act_title"],
+                "eli": art["eli"],
+                "article": art["article"],
+                "source_url": art["source_url"],
+                "chunk_text": piece,
+                "full_article_text": art["text"],
+            }
+            # Wymiar czasowy ("as-of") -- opcjonalny, patrz PROGRESS.md Krok 18
+            # i download_acts_history.py. Dopisywany TYLKO gdy artykuł źródłowy
+            # faktycznie niesie choć jedno z tych pól (wpis dograny/załatany
+            # przez load_articles_with_history() z --include-history) --
+            # CELOWO nie `.get(..., None)` bezwarunkowo dla każdego artykułu,
+            # bo to zmieniłoby format rag_index_meta.json (trzy dodatkowe
+            # klucze z wartością null) nawet przy zwykłym uruchomieniu bez
+            # --include-history, łamiąc obietnicę "bajtowo identyczny wynik
+            # domyślnie" z planu implementacji. Zwykłe wpisy z all_articles.json
+            # (bez historii) w ogóle nie mają tych kluczy w słowniku, więc `in`
+            # poprawnie je pomija.
+            if "valid_from" in art or "valid_to" in art or "announcement_eli" in art:
+                chunk["valid_from"] = art.get("valid_from")
+                chunk["valid_to"] = art.get("valid_to")
+                chunk["announcement_eli"] = art.get("announcement_eli")
+            chunks.append(chunk)
     return chunks
 
 
-def main():
-    print(f"Wczytuję fragmenty z {ARTICLES_PATH} ...")
+def _entry_into_force(short: str) -> str | None:
+    """`entryIntoForce` (data wejścia ustawy w życie) z `data/raw/{short}_meta.json`
+    -- pobrane i zapisane przez zwykły `download_acts.py`, więc dostępne
+    niezależnie od tego, czy dla tej ustawy istnieje `_history.json`. Brak
+    pliku (np. świeży klon repo bez lokalnie pobranej bazy) -> `None`,
+    bez wywalania się -- wołający po prostu nie dostanie dolnej granicy."""
+    path = RAW_DIR / f"{short}_meta.json"
+    if not path.exists():
+        return None
+    return json.loads(path.read_text(encoding="utf-8")).get("entryIntoForce")
+
+
+def load_articles_with_history(include_history: bool) -> list[dict]:
+    """Wczytuje all_articles.json (bieżący stan, jak zawsze) i -- jeśli
+    `include_history` -- dogrywa artykuły z każdego istniejącego
+    `data/processed/{short}_history.json` (produkowanego opt-in przez
+    `download_acts_history.py`), oraz nadaje BIEŻĄCYM artykułom KAŻDEJ
+    ustawy realną dolną granicę `valid_from`:
+    - jeśli ustawa ma plik `_history.json` -- `current_valid_from` z tego
+      pliku (granica wyliczona z łańcucha obwieszczeń, patrz Krok 18);
+      inaczej "bieżąca" wersja zachowywałaby się jak "-nieskończoność" i
+      mogłaby przegrać w rankingu z wersją historyczną przy zwykłym
+      zapytaniu bez podanej daty (patrz `rag_search._version_covers`);
+    - NIEZALEŻNIE od powyższego, spodem podbita (max) datą
+      `entryIntoForce` z `data/raw/{short}_meta.json` -- bez tego ustawa
+      bez pliku `_history.json`, ale wciąż młodsza niż zapytanie `as_of`
+      (np. ustawa o rynku pracy, w mocy dopiero od 2025-06-01), zostawałaby
+      z `valid_from=None` i błędnie "obowiązywałaby" dla dowolnie starej
+      daty -- realny błąd znaleziony przy ręcznej weryfikacji Fazy 2
+      (`as_of=2010-01-01` błędnie zwracał jej artykuły). `entryIntoForce`
+      brakujące w metadanych (rzadkie) -- bez podbicia, `valid_from`
+      zostaje czym było."""
     articles = json.loads(ARTICLES_PATH.read_text(encoding="utf-8"))
+    if not include_history:
+        return articles
+
+    history_files = sorted(PROCESSED_DIR.glob("*_history.json"))
+    if not history_files:
+        print("  [UWAGA] --include-history podane, ale brak plików *_history.json -- "
+              "uruchom najpierw scripts/download_acts_history.py")
+
+    current_valid_from_by_short = {
+        path.name.removesuffix("_history.json"): json.loads(path.read_text(encoding="utf-8")).get(
+            "current_valid_from"
+        )
+        for path in history_files
+    }
+
+    acts_present = {art["act_short"] for art in articles}
+    for short in sorted(acts_present):
+        history_bound = current_valid_from_by_short.get(short)
+        entry_bound = _entry_into_force(short)
+        # data/raw/{short}_meta.json to daty ISO ("RRRR-MM-DD"), więc zwykłe
+        # porównanie leksykograficzne stringów = porównanie chronologiczne
+        candidates = [d for d in (history_bound, entry_bound) if d]
+        valid_from = max(candidates) if candidates else None
+        n_patched = 0
+        for art in articles:
+            if art["act_short"] == short:
+                art["valid_from"] = valid_from
+                n_patched += 1
+        print(f"  [{short}] valid_from bieżących artykułów -> {valid_from!r} ({n_patched} artykułów)")
+
+    for path in history_files:
+        short = path.name.removesuffix("_history.json")
+        data = json.loads(path.read_text(encoding="utf-8"))
+        history_articles = data.get("articles", [])
+        articles.extend(history_articles)
+        print(f"  [{short}] dograno {len(history_articles)} artykułów historycznych")
+
+    return articles
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument(
+        "--include-history",
+        action="store_true",
+        help="Dograj też historyczne wersje tekstu (data/processed/*_history.json, "
+        "produkowane przez download_acts_history.py) -- domyślnie wyłączone, "
+        "bez zmiany w formacie/treści wynikowego indeksu.",
+    )
+    args = parser.parse_args()
+
+    print(f"Wczytuję fragmenty z {ARTICLES_PATH} ...")
+    articles = load_articles_with_history(args.include_history)
     print(f"  {len(articles)} artykułów")
 
     chunks = build_chunks(articles)

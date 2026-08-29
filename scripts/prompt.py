@@ -22,7 +22,13 @@ napisz, że nie znalazłeś tego w dostępnych materiałach, i nie zgaduj.
 Fragmenty z wgranego pliku użytkownika wyraźnie oznaczaj jako treść \
 tego pliku, a NIE jako obowiązujące prawo -- to różne źródła.
 4. Nie jesteś substytutem porady prawnej ani księgowej -- w sprawach \
-spornych zasugeruj konsultację ze specjalistą."""
+spornych zasugeruj konsultację ze specjalistą.
+5. Jeśli zapytanie dotyczy konkretnej daty w przeszłości (zobaczysz to w \
+notatce "Data, na którą ma obowiązywać odpowiedź" i/lub w adnotacjach \
+"stan prawny" przy fragmentach), odpowiadaj TĄ wersją przepisu i wyraźnie \
+zaznacz w odpowiedzi, że dotyczy ona tej konkretnej daty. Jeśli żaden \
+dostarczony fragment nie obejmuje tej daty, powiedz to wprost -- nie \
+zgaduj i nie podawaj w zamian stanu bieżącego."""
 
 
 MAX_ARTICLE_CHARS = 6000
@@ -38,7 +44,20 @@ def build_context(results: list[dict]) -> str:
             # kontekstu modelu -- patrz PROGRESS.md, krok 10. Ucinamy i
             # odsyłamy do source_url zamiast wstrzykiwać całość.
             text = text[:MAX_ARTICLE_CHARS] + f"\n[...treść artykułu skrócona, pełny tekst: {r['source_url']}...]"
-        parts.append(f"### {r['act_title']} -- art. {r['article']}\n{text}")
+        header = f"### {r['act_title']} -- art. {r['article']}"
+        # Adnotacja "stan prawny" -- tylko gdy fragment faktycznie niesie
+        # wymiar czasowy (indeks zbudowany z --include-history, patrz
+        # PROGRESS.md Krok 19). Gdy oba pola None (dotychczasowy, domyślny
+        # przypadek), nagłówek zostaje DOKŁADNIE taki jak dziś -- celowo,
+        # żeby nie zmieniać formatu promptu dla nikogo, kto tej funkcji
+        # nie używa (`as_of` samego `build_context` nie jest tu nawet
+        # potrzebne do tej decyzji -- to obecność pól w wyniku decyduje,
+        # nie to, czy wołający w ogóle podał `as_of`).
+        if r.get("valid_from") or r.get("valid_to"):
+            valid_from = r.get("valid_from") or "..."
+            valid_to = r.get("valid_to") or "nadal"
+            header += f" (stan prawny: {valid_from} – {valid_to})"
+        parts.append(f"{header}\n{text}")
     return "\n\n".join(parts)
 
 
@@ -49,8 +68,20 @@ def build_file_context(file_results: list[dict]) -> str:
     return "\n\n".join(parts)
 
 
-def build_user_message(question: str, results: list[dict], file_results: list[dict] | None = None) -> str:
-    parts = [f"Fragmenty aktów prawnych:\n\n{build_context(results)}"]
+def build_user_message(
+    question: str, results: list[dict], file_results: list[dict] | None = None, as_of: str | None = None
+) -> str:
+    parts = []
+    if as_of:
+        # Notatka niezależna od adnotacji "stan prawny" na pojedynczych
+        # fragmentach w build_context() -- ważne zwłaszcza gdy ŻADEN
+        # dostarczony fragment jakiejś ustawy nie pokrywa tej daty (taki
+        # fragment nie ma czego adnotować), a model i tak musi wiedzieć,
+        # że konkretna data była proszona, żeby mógł to wprost powiedzieć
+        # zamiast po cichu odpowiedzieć stanem bieżącym (patrz punkt 5
+        # SYSTEM_PROMPT).
+        parts.append(f"[Data, na którą ma obowiązywać odpowiedź: {as_of}]")
+    parts.append(f"Fragmenty aktów prawnych:\n\n{build_context(results)}")
     if file_results:
         parts.append(f"Fragmenty z wgranego przez użytkownika pliku:\n\n{build_file_context(file_results)}")
     parts.append(f"---\n\nPytanie: {question}")
@@ -90,7 +121,9 @@ ELLIPTICAL_SCORE_THRESHOLD = 0.75
 MAX_LOOKBACK_QUESTIONS = 3
 
 
-def search_with_history(rag, history: list[dict], question: str, top_k: int) -> list[dict]:
+def search_with_history(
+    rag, history: list[dict], question: str, top_k: int, as_of: str | None = None
+) -> list[dict]:
     """RAG search z fallbackiem dla pytań eliptycznych typu "a po 15
     latach?", które same w sobie nie mają wystarczających słów
     kluczowych do trafnego wyszukania (np. brak słowa "urlop") -- w
@@ -111,13 +144,13 @@ def search_with_history(rag, history: list[dict], question: str, top_k: int) -> 
     niezwiązanego pytania do zapytania psuje trafność (sprawdzone
     empirycznie), dlatego każde poprzednie pytanie jest próbowane
     osobno."""
-    results = rag.search(question, top_k=top_k)
+    results = rag.search(question, top_k=top_k, as_of=as_of)
     if not history or not results or results[0]["score"] >= ELLIPTICAL_SCORE_THRESHOLD:
         return results
     best_results, best_score = results, results[0]["score"]
     prior_questions = [m["content"] for m in history if m["role"] == "user"][-MAX_LOOKBACK_QUESTIONS:]
     for prior in prior_questions:
-        candidate = rag.search(f"{prior} {question}", top_k=top_k)
+        candidate = rag.search(f"{prior} {question}", top_k=top_k, as_of=as_of)
         if candidate and candidate[0]["score"] > best_score:
             best_results, best_score = candidate, candidate[0]["score"]
     return best_results

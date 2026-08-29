@@ -1,7 +1,7 @@
 {
   "address": "WDU19981370887",
   "announcementDate": "1998-10-13",
-  "changeDate": "2026-07-28T15:04:28",
+  "changeDate": "2026-08-20T00:00:00",
   "displayAddress": "Dz.U. 1998 nr 137 poz. 887",
   "pos": 887,
   "promulgation": "1998-11-10",
@@ -152,6 +152,9 @@
       }
     ],
     "Akty wykonawcze": [
+      {
+        "id": "MP/2026/838"
+      },
       {
         "id": "MP/2026/564"
       },

@@ -994,6 +994,224 @@ ostatniego pobrania (Kodeks pracy, ustawa systemowa, ustawa o PIT) --
 miękki sygnał "coś się ruszyło", do ręcznej weryfikacji, nie
 potwierdzona jeszcze nowelizacja.
 
+## Krok 18: spike walidacyjny dla wersjonowania czasowego ("as-of")
+
+Cel: przed pisaniem docelowego kodu dla funkcji "prawo obowiązujące na dany
+dzień w przeszłości" (patrz "Co dalej" pkt 4 niżej -- pełny plan
+zaakceptowany, zapisany w `/Users/szymon/.claude/plans/drifting-toasting-wozniak.md`)
+zweryfikować na żywym ELI API dla WSZYSTKICH 7 ustaw (nie tylko ustawy o
+minimalnym wynagrodzeniu, jedynej sprawdzonej ręcznie wcześniej), czy
+podejście oparte o `references["Inf. o tekście jednolitym"]` (lista
+obwieszczeń ogłaszających kolejne teksty ujednolicone, każde z własnymi
+`legalStatusDate`/`expirationDate`) faktycznie daje spójny, ciągły łańcuch
+okien czasowych -- rzucany skrypt, zero zmian w kodzie produkcyjnym.
+
+**Wynik (66 zapytań HTTP, tylko metadane):**
+
+| Ustawa | W mocy od | Obwieszczeń | Najstarsza data z `legalStatusDate` | `current_valid_from` (heurystyka) |
+|---|---|---|---|---|
+| kodeks_pracy | 1975-01-01 | 10 | 2014-09-16 (najstarsze ma `legalStatusDate=None`) | 2025-02-07 |
+| ustawa_o_systemie_ubezpieczen_spolecznych | 1999-01-01 | 14 | 2013-10-16 (2 najstarsze mają `None`) | 2026-02-06 |
+| ustawa_o_minimalnym_wynagrodzeniu | 2003-01-01 | 5 | 2015-11-09 (wszystkie mają datę) | 2024-11-27 |
+| ustawa_zasilkowa | 1999-09-01 | 12 | 2013-12-16 (2 najstarsze mają `None`) | 2026-06-17 |
+| ustawa_o_pit | 1992-01-01 | 14 | 2012-01-05 (3 najstarsze mają `None`) | 2026-04-01 |
+| ustawa_o_ppk | 2019-01-01 | 4 | 2022-10-26 (wszystkie mają datę) | 2026-02-10 |
+| ustawa_o_rynku_pracy | 2025-06-01 | 0 | -- (brak obwieszczeń, ustawa za młoda) | brak |
+
+**Znalezisko 1 (ważne, wymaga poprawki w docelowym kodzie): kolejność
+obwieszczeń bez `legalStatusDate` w odpowiedzi API NIE jest chronologiczna.**
+Cztery ustawy (kodeks_pracy, ustawa systemowa, ustawa zasiłkowa, PIT) mają
+2-3 najstarsze obwieszczenia z `legalStatusDate=None` (pole najwyraźniej nie
+było uzupełniane w starszych wpisach metadanych ELI, mimo że `expirationDate`
+jest podane) -- np. dla ustawy systemowej `DU/2009/1585` (expirationDate
+2013-12-04) występuje w surowej liście `references` PRZED `DU/2007/74`
+(expirationDate 2009-11-10), czyli w odwrotnej kolejności niż faktyczna. Prosty
+`sort(key=lambda a: a["legalStatusDate"] or "")` (użyty w spike'u) tego nie
+wyłapuje -- stabilne sortowanie zostawia oryginalną (błędną) kolejność API dla
+wpisów z tym samym kluczem `""`. **Do zastosowania w `compute_version_windows`
+(faza 1 planu):** dla wpisów bez `legalStatusDate` sortować dodatkowo po
+`expirationDate` (który jest uzupełniony nawet dla najstarszych wpisów) jako
+kluczu drugorzędnym, zamiast ufać kolejności z API.
+
+**Znalezisko 2 (do udokumentowania jako znane ograniczenie, nie błąd do
+naprawienia): sąsiednie okna NIE stykają się idealnie.** `expirationDate`
+jednego obwieszczenia i `legalStatusDate` następnego różnią się typowo o
+kilka dni do kilku tygodni (czasem `legalStatusDate` następnego wypada
+WCZEŚNIEJ niż `expirationDate` poprzedniego, czyli okna się nawet zachodzą) --
+sprawdzone na wszystkich 7 ustawach, to systemowa cecha danych ELI (czas
+między "stan prawny na dzień" a formalnym wygaśnięciem poprzedniego obwieszczenia
+w rejestrze), nie błąd naszego kodu. **Wniosek dla `compute_version_windows`:**
+nie próbować wymuszać jednej, idealnie ciągłej osi czasu -- każda wersja ma
+swoje własne, niezależne `valid_from`/`valid_to` z własnych pól API; w wąskim
+oknie kilku tygodni wokół granicy dwóch wersji dokładność co do dnia nie jest
+gwarantowana. Do zapisania jako ograniczenie w README/kodzie.
+
+**Znalezisko 3 (pozytywne, koryguje wcześniejsze szacunki z "Co dalej" pkt 4):
+zasięg historyczny sięga dalej wstecz niż sądzono.** Dla ustaw, których
+najstarsze obwieszczenie ma `legalStatusDate=None` (kodeks_pracy, ustawa
+systemowa, ustawa zasiłkowa, PIT), ten wpis i tak ma sens jako wersja "od
+zawsze do jego `expirationDate`" (pole `valid_from=None` w naszym modelu
+danych oznacza właśnie brak znanej dolnej granicy, nie brak pokrycia) -- czyli
+realny brak pokrycia (data sprzed najstarszego obwieszczenia w łańcuchu)
+dotyczy w praktyce głównie ustawy o minimalnym wynagrodzeniu (~12 lat, 2003-2015)
+i ustawy o PPK (~1,5 roku, 2019-2020), a nie wszystkich 7 ustaw jak sugerował
+wcześniejszy, ostrożniejszy zapis w "Co dalej" pkt 4.
+
+**Koszt pełnego przebiegu `--history`:** 59 obwieszczeń łącznie (10+14+5+12+14+4+0)
+-- 59 dodatkowych zapytań o metadane + 59 pobrań PDF + parsowanie każdego tym
+samym pipeline'em co dziś (włącznie z geometrią `pdfplumber`). Rząd wielkości
+akceptowalny dla rzadko uruchamianego, opt-in kroku z zachowaniem grzecznościowych
+opóźnień między zapytaniami (ten sam wzorzec co już w `download_acts.py`).
+
+Rzucany skrypt spike'a (nie część repo, w scratchpadzie sesji) importował
+bezpośrednio `ACTS`/`fetch_meta` z `scripts/download_acts.py` -- zero zmian w
+kodzie produkcyjnym na tym etapie, zgodnie z fazą 0 planu.
+
+## Krok 19: warstwa danych i indeksu dla wersjonowania czasowego ("as-of")
+
+Cel: Faza 1 (dane) i Faza 2 (indeks) planu z Kroku 18 --
+`/Users/szymon/.claude/plans/drifting-toasting-wozniak.md`. Zaimplementowane
+przez dwa kolejne uruchomienia w tle (forki), z ręczną weryfikacją i jedną
+dodatkową poprawką na wierzchu.
+
+**Faza 1 (`scripts/download_acts.py`, nowy `scripts/download_acts_history.py`):**
+wydzielono `_extract_articles()` z `process_act()` (współdzielony pipeline
+fetch->czyszczenie->parsowanie dla aktu bazowego LUB obwieszczenia -- ten sam
+kształt `{publisher, year, position}`), dodano `compute_version_windows()`
+(czysta), `fetch_version_windows()`, `process_act_version()`. Zweryfikowano
+bajtową identyczność `all_articles.json` przed/po refaktorze (`cmp`) --
+identyczne. Dwa odchylenia od pierwotnego planu, oba potwierdzone empirycznie
+na żywym API i udokumentowane w kodzie:
+- **Klucz sortowania obwieszczeń bez `legalStatusDate`:** plan proponował
+  fallback na `expirationDate`, ale to fałszywie przestawiało stare, długo
+  obowiązujące wpisy ZA późniejsze (sprawdzone na ustawie systemowej:
+  `DU/2009/1585`, `expirationDate=2013-12-04`, plasowałby się po
+  `DU/2013/1442`, mimo że jest wcześniejszy) -- zamiast tego użyto
+  `announcementDate` (data ogłoszenia samego obwieszczenia), niezawodnie
+  uzupełnianego nawet w najstarszych wpisach i poprawnie sortującego.
+- **Obwieszczenia z `expirationDate=None` (wciąż otwarte) wykluczone z listy
+  PRZESZŁYCH okien**, nie tylko z wyliczania granicy bieżącej wersji -- inaczej
+  dawałyby drugą, identyczną "historyczną" wersję pokrywającą się z
+  syntetycznym wpisem "bieżący" (znalezione przy smoke teście na ustawie o PPK).
+
+Przy okazji smoke testu znaleziono i naprawiono też realny błąd: `act_title`/
+`eli` zwracanych artykułów historycznych po cichu wyciekał tytuł/numer
+SAMEGO OBWIESZCZENIA ("Obwieszczenie Marszałka Sejmu...") zamiast aktu
+bazowego -- naprawione przepuszczeniem `base_eli`/`base_title` osobno przez
+`fetch_version_windows()`/`process_act_version()`.
+
+7 nowych testów jednostkowych dla `compute_version_windows` (łańcuch
+chronologiczny, regresja błędu sortowania, otwarte/wygasłe najnowsze
+obwieszczenie, zero obwieszczeń) plus jeden `skipif`-guarded test end-to-end.
+
+**Faza 2 (`scripts/build_rag_index.py --include-history`, `scripts/rag_search.py`):**
+`rag_search.py` dostał `rank_chunks()`/`_version_covers()` (czyste, testowalne
+bez modelu/dysku -- pierwsze bezpośrednie testy prawdziwej logiki rankingu w
+tym projekcie, wcześniej tylko atrapa `FakeRag`) i `RagIndex.search(...,
+as_of=None)`. **Ważna zasada poprawności:** `as_of=None` filtruje "na dziś",
+NIE pomija filtrowania -- inaczej przestarzała wersja historyczna mogłaby po
+cichu wygrać rankingiem ze zwykłą, bieżącą wersją przy zapytaniu bez podanej
+daty. Dowiedzione bajtowo no-opem na danych sprzed tej funkcji (wszystkie mają
+`valid_from=valid_to=None`, więc filtr zawsze przepuszcza).
+
+**Błąd złapany i naprawiony w trakcie implementacji (nie na etapie
+przeglądu):** pierwsza wersja `build_chunks()` dopisywała pola
+`valid_from`/`valid_to`/`announcement_eli` bezwarunkowo (`.get(..., None)`)
+do KAŻDEGO chunka -- co łamało obietnicę "bajtowo identyczny wynik domyślnie"
+z planu (zwykłe uruchomienie bez `--include-history` dostawało trzy dodatkowe
+klucze o wartości `null` w każdym wpisie `rag_index_meta.json`). Wykryte
+dopiero przez faktyczny `cmp` zapisanego wcześniej baseline'u względem
+świeżego przebiegu domyślnego, nie przez samo czytanie kodu -- naprawione:
+pola dopisywane TYLKO gdy artykuł źródłowy faktycznie niesie choć jedno z
+nich. Ponownie zweryfikowano `cmp` -- bajtowa identyczność domyślnej ścieżki
+potwierdzona zarówno dla `rag_index_meta.json`, jak i `rag_index.npy`.
+
+**Realny błąd znaleziony przy ręcznej weryfikacji pilotażowej, naprawiony
+osobno (poza zakresem forka, dograne od razu):** ustawy BEZ pliku
+`_history.json` (czyli `download_acts_history.py` nigdy dla nich nie
+uruchomiony) zostawały z `valid_from=None` bezwarunkowo -- bezpieczne dla
+starych ustaw bez konkurencyjnych wersji, ale błędne dla ustawy o rynku pracy
+(w mocy dopiero od 2025-06-01, bez obwieszczeń w ogóle, patrz Krok 18):
+`as_of=2010-01-01` błędnie zwracał jej artykuły, jakby zawsze obowiązywała.
+**Naprawiono** w `load_articles_with_history()`: `valid_from` bieżących
+artykułów KAŻDEJ ustawy (nie tylko tych z `_history.json`) jest teraz
+dodatkowo podbijane (`max`) datą `entryIntoForce` z już posiadanego
+`data/raw/{short}_meta.json` -- bez dodatkowych zapytań HTTP, to pole jest
+tam od zawsze. Zweryfikowano na żywo: `rag_search.py "zasiłek dla
+bezrobotnych..." --as-of 2010-01-01` po poprawce nie zwraca już żadnego
+artykułu ustawy o rynku pracy w top-5. Dodano 7 nowych testów jednostkowych
+(`tests/test_build_rag_index.py`, z `monkeypatch` na ścieżki plików -- brak
+pliku `_meta.json` też pokryty, nie wywala się).
+
+**Ręczna weryfikacja end-to-end (`ustawa_o_minimalnym_wynagrodzeniu`, żywe
+API):** pobrano 4 wersje historyczne (93 artykuły), przebudowano indeks z
+`--include-history` (4364 -> 5604 fragmentów po dograniu PPK i minimalnego
+wynagrodzenia). `rag_search.py "ile wynosi minimalne wynagrodzenie za pracę"
+--as-of <data>` dla 5 dat z różnych okien poprawnie zwracał inny, zgodny z
+datą fragment za każdym razem, z adnotacją `[stan: valid_from -- valid_to]`;
+`as_of=None` i data bliska dziś poprawnie trafiały w to samo, bieżące okno
+(`2024-11-27 -- nadal`). Zastrzeżenie: sama ustawa o minimalnym wynagrodzeniu
+nie podaje kwoty w złotówkach wprost (ustala ją coroczne rozporządzenie Rady
+Ministrów, poza `ACTS`) -- zweryfikowano więc poprawny wybór wersji artykułu
+dla danej daty, nie literalną historyczną kwotę PLN.
+
+**Stan testów:** 59/59 (było 36 przed Krokiem 18/19).
+
+## Krok 20: warstwa prompt/czat dla "as-of" -- i ważne sprostowanie własnej weryfikacji
+
+Cel: Faza 3 planu z Kroku 18 -- `prompt.py` (adnotacje wersji w
+`build_context`, nowy punkt w `SYSTEM_PROMPT`, `as_of` przez
+`search_with_history`/`build_user_message`) i identyczna, mechaniczna zmiana
+w `chat.py`/`chat_lmstudio.py`/`chat_cuda.py` (`--as-of`, `/data RRRR-MM-DD`,
+`/nowy` świadomie NIE czyści `as_of` -- ten sam precedens co z wgranym
+plikiem). 6 nowych testów (65/65 łącznie), w tym regresja pilnująca, że
+nagłówek fragmentu bez dat wersji jest bajtowo identyczny z dotychczasowym.
+
+**Ważne sprostowanie ręcznej weryfikacji end-to-end.** Pierwsza próba
+(`chat.py --as-of 2018-01-15 --prompt "Ile wynosi minimalne wynagrodzenie za
+pracę?"`) zwróciła odpowiedź "2100 zł" z cytatem "art. 25 ... (stan prawny na
+dzień 2018-01-15)" -- **liczba jest faktycznie poprawna historycznie (realna
+płaca minimalna w styczniu 2018), ale NIE POCHODZI z dostarczonego
+fragmentu.** Sprawdzone bezpośrednio w `data/processed/ustawa_o_minimalnym_wynagrodzeniu_history.json`:
+art. 25 dla tego okna (2017-04-07 -- 2018-11-21) to legacy definicja
+("ilekroć w przepisach jest mowa o »najniższym wynagrodzeniu« ... oznacza to
+kwotę 760 zł") -- kompletnie inny, przestarzały koncept, niezwiązany z
+faktyczną płacą minimalną z tamtego okresu. Model dostał więc poprawnie
+wyszukany, poprawnie oznaczony datą fragment (mechanizm wyboru WERSJI
+zadziałał bez zarzutu -- `rag_search.py --as-of 2018-01-15` zwraca dokładnie
+ten sam, poprawnie oznaczony `[stan: 2017-04-07 -- 2018-11-21]` art. 25), ale
+zamiast wprost przyznać się do braku danych (co nowy punkt 5 `SYSTEM_PROMPT`
+miał wymusić), **zignorował treść fragmentu i podał poprawnie brzmiącą,
+ale niepodpartą liczbę z pamięci wag, podpisując ją tak, jakby pochodziła z
+cytowanego artykułu.**
+
+**Dla kontrastu, to samo pytanie BEZ `--as-of` (bieżące prawo)** zwróciło
+"760 zł" -- czyli model w tym wariancie WIERNIE zacytował dokładnie to, co
+jest we fragmencie (poprawne zachowanie w sensie groundingu), ale to i tak
+zła odpowiedź merytorycznie, bo 760 zł to ta sama, przestarzała definicja, nie
+realna bieżąca płaca minimalna (rząd wielkości: ~4666 zł w 2025 -- ustawa w
+ogóle nie zawiera aktualnej kwoty, patrz "Co dalej" pkt 5 niżej). **Ten
+konkretny błąd (RAG trafiający w art. 25 zamiast w faktyczną informację o
+kwocie, bo ta ostatnia po prostu nie istnieje w tej ustawie) jest
+niezależny od funkcji "as-of" -- to ten sam, pre-existing problem co "Co
+dalej" pkt 5** (kwota ustalana osobnym rozporządzeniem, poza `ACTS`).
+
+**Wniosek:** mechanizm wyboru wersji artykułu na zadaną datę działa poprawnie
+i to jest udowodnione niezależnie na dwa sposoby -- bezpośrednio przez
+`rag_search.py --as-of` (Krok 19, wielokrotnie, na żywych danych) oraz teraz
+na tym samym pytaniu. To, co NIE działa niezawodnie, to zachowanie modelu,
+gdy dostarczony (poprawnie wybrany) fragment nie zawiera odpowiedzi na
+zadane pytanie -- nowy punkt 5 `SYSTEM_PROMPT` obsługuje tylko przypadek
+"żaden fragment nie pokrywa tej daty", nie przypadek "fragment pokrywa tę
+datę, ale nie odpowiada na pytanie". To realne, warte odnotowania
+ograniczenie warstwy modelu (ten sam rodzaj problemu co PPK 1,5%/2,5% z
+Kroku 16), nie błąd w kodzie tej fazy -- naprawa wymagałaby albo lepszego
+źródła danych (patrz "Co dalej" pkt 5 -- prawdziwa kwota w RAG rozwiązałaby
+oba warianty pytania), albo dalszej pracy nad `SYSTEM_PROMPT`/LoRA nad
+rozróżnianiem "fragment obecny" od "fragment odpowiada na pytanie" -- świadomie
+NIE podjęto tej drugiej naprawy w tej fazie (spory, niepewny zakres, wykracza
+poza plan wersjonowania czasowego).
+
 ## Co dalej
 
 1. Zweryfikować ręcznie 3 rozbieżności `changeDate` znalezione przy
@@ -1007,6 +1225,68 @@ potwierdzona jeszcze nowelizacja.
    dodatkowej w PPK"), jeśli zależałoby nam na tym, żeby wariant 4.5B
    był tak samo niezawodny jak 11B na nowo dodanych tematach.
 3. Wariant CUDA (krok 9) wymaga realnego testu na maszynie z kartą
-   NVIDIA -- jeśli ktoś to zrobi, zaktualizować ten plik i README
-   (usunąć oznaczenie "nieprzetestowane", poprawić ewentualne
-   niezgodności API).
+   NVIDIA -- użytkownik nie ma takiego sprzętu i nie planuje testować
+   tego samodzielnie, więc pozostaje "nieprzetestowane" do czasu, aż
+   zrobi to ktoś inny z dostępem do NVIDIA; jeśli to nastąpi,
+   zaktualizować ten plik i README (usunąć oznaczenie, poprawić
+   ewentualne niezgodności API).
+4. **Wersjonowanie w czasie -- prawo obowiązujące na dany dzień w
+   przeszłości, nie tylko aktualne.** *Status: w trakcie realizacji wg planu
+   w `/Users/szymon/.claude/plans/drifting-toasting-wozniak.md`; spike
+   walidacyjny zakończony, patrz Krok 18.* Obecnie `download_acts.py`
+   celowo pobiera WYŁĄCZNIE bieżący tekst ujednolicony (typ "U") i
+   wycina fragmenty jeszcze nieobowiązujące
+   (`strip_not_yet_in_force_text`) -- indeks RAG to jeden, aktualny
+   stan prawa, bez dat obowiązywania poszczególnych brzmień. W realnej
+   pracy kadrowo-płacowej to realna luka: przeliczanie zaległego
+   urlopu/wynagrodzenia z zakończonego stosunku pracy, korekta list
+   płac po kontroli ZUS/PIP za miniony okres, spór sądowy o zdarzenie
+   sprzed lat -- we wszystkich tych sytuacjach liczy się brzmienie
+   przepisu z daty zdarzenia, nie dzisiejsze.
+
+   Wstępne rozpoznanie ELI API (`api.sejm.gov.pl/eli`) pokazuje, że jest
+   to wykonalne, ale ograniczone: każde "Obwieszczenie ... w sprawie
+   ogłoszenia jednolitego tekstu ustawy" (referencje `"Inf. o tekście
+   jednolitym"` w metadanych aktu bazowego) to osobny akt ELI z własnymi
+   polami `legalStatusDate`/`expirationDate` (okno obowiązywania tej
+   konkretnej wersji tekstu ujednoliconego) i własnym plikiem tekstu --
+   sprawdzone empirycznie na `DU/2020/2207` (obwieszczenie dla ustawy o
+   minimalnym wynagrodzeniu, `legalStatusDate: 2020-11-12`,
+   `expirationDate: 2024-12-03`, referencja `"Tekst jednolity dla aktu"`
+   -> `DU/2002/1679`). To daje punkty w czasie, między którymi można
+   wybrać właściwą wersję tekstu dla zadanej daty. **Ale:** te
+   obwieszczenia zaczynają się dopiero od pewnego momentu (dla ustawy o
+   min. wynagrodzeniu: od 2015 r., mimo że ustawa obowiązuje od 2003) --
+   dla dat wcześniejszych niż pierwsze obwieszczenie nie ma gotowego
+   tekstu ujednoliconego z tego okresu, tylko tekst pierwotny (typ "O",
+   bez późniejszych nowelizacji) plus lista `"Akty zmieniające"` z
+   datami wejścia w życie, z których trzeba by ręcznie/programowo
+   rekonstruować brzmienie -- osobne, znacznie trudniejsze zadanie,
+   niezbadane jeszcze pod kątem wykonalności.
+5. **Rozporządzenia/obwieszczenia z konkretnymi kwotami, których nie ma w
+   samych ustawach.** *Podniesiona waga po Kroku 20:* ten sam brak danych
+   doprowadził model do podania poprawnej liczby BEZ pokrycia w dostarczonym
+   fragmencie (przy `--as-of`) oraz do wiernego zacytowania złej,
+   przestarzałej liczby z fragmentu (bez `--as-of`) -- w obu wariantach zła
+   odpowiedź z innego powodu, patrz Krok 20 po szczegóły. Znalezisko z Kroku
+   19 (weryfikacja pilotażowa "as-of" na ustawie o minimalnym wynagrodzeniu): sama ta ustawa NIE podaje kwoty w
+   złotówkach -- ustala ją co roku osobne "Rozporządzenie Rady Ministrów w
+   sprawie wysokości minimalnego wynagrodzenia za pracę oraz wysokości
+   minimalnej stawki godzinowej" (upoważnienie z art. 2 ustawy), którego nie
+   ma w `ACTS`. Bez niego RAG trafia w odpowiednią WERSJĘ ustawy na daną
+   datę (dzięki "as-of"), ale nie odpowie "ile złotych". Sprawdzono, czy to
+   odosobniony przypadek -- nie do końca: **limit 30-krotności** (roczna
+   podstawa wymiaru składek emerytalno-rentowych, ustawa o systemie
+   ubezpieczeń społecznych) też jest ogłaszany corocznym obwieszczeniem
+   ministra, nie liczbą wpisaną w ustawę. Dla kontrastu, **zasiłek dla
+   bezrobotnych** (art. 224 ustawy o rynku pracy) i **progi/ulgi PIT** (np.
+   ulga dla młodych -- limit 85 528 zł) mają konkretne kwoty wprost w
+   tekście ustawy -- te już działają dobrze bez dodatkowych dokumentów.
+
+   Warto dodać, ale to osobne rozszerzenie od funkcji "as-of" (Krok 18-19+):
+   te rozporządzenia to co roku CAŁKIEM NOWY, osobny akt (nie "tekst
+   ujednolicony" jednej ewoluującej ustawy jak obsługuje mechanizm
+   obwieszczeń z Fazy 1-2), więc potrzebowałyby własnej, prostszej listy
+   rok -> akt, nie tego samego mechanizmu. Do zbadania: czy jest więcej
+   takich przypadków (np. przeciętne wynagrodzenie ogłaszane komunikatem
+   Prezesa GUS, używane do wielu przeliczeń -- odprawy, zasiłki).
