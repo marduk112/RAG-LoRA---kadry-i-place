@@ -1504,39 +1504,26 @@ tego kroku) -- wciąż daleko poniżej praktycznych limitów, zaakceptowany.
    zrobi to ktoś inny z dostępem do NVIDIA; jeśli to nastąpi,
    zaktualizować ten plik i README (usunąć oznaczenie, poprawić
    ewentualne niezgodności API).
-4. **Wersjonowanie w czasie -- prawo obowiązujące na dany dzień w
-   przeszłości, nie tylko aktualne.** *Status: w trakcie realizacji wg planu
-   w `/Users/szymon/.claude/plans/drifting-toasting-wozniak.md`; spike
-   walidacyjny zakończony, patrz Krok 18.* Obecnie `download_acts.py`
-   celowo pobiera WYŁĄCZNIE bieżący tekst ujednolicony (typ "U") i
-   wycina fragmenty jeszcze nieobowiązujące
-   (`strip_not_yet_in_force_text`) -- indeks RAG to jeden, aktualny
-   stan prawa, bez dat obowiązywania poszczególnych brzmień. W realnej
-   pracy kadrowo-płacowej to realna luka: przeliczanie zaległego
-   urlopu/wynagrodzenia z zakończonego stosunku pracy, korekta list
-   płac po kontroli ZUS/PIP za miniony okres, spór sądowy o zdarzenie
-   sprzed lat -- we wszystkich tych sytuacjach liczy się brzmienie
-   przepisu z daty zdarzenia, nie dzisiejsze.
-
-   Wstępne rozpoznanie ELI API (`api.sejm.gov.pl/eli`) pokazuje, że jest
-   to wykonalne, ale ograniczone: każde "Obwieszczenie ... w sprawie
-   ogłoszenia jednolitego tekstu ustawy" (referencje `"Inf. o tekście
-   jednolitym"` w metadanych aktu bazowego) to osobny akt ELI z własnymi
-   polami `legalStatusDate`/`expirationDate` (okno obowiązywania tej
-   konkretnej wersji tekstu ujednoliconego) i własnym plikiem tekstu --
-   sprawdzone empirycznie na `DU/2020/2207` (obwieszczenie dla ustawy o
-   minimalnym wynagrodzeniu, `legalStatusDate: 2020-11-12`,
-   `expirationDate: 2024-12-03`, referencja `"Tekst jednolity dla aktu"`
-   -> `DU/2002/1679`). To daje punkty w czasie, między którymi można
-   wybrać właściwą wersję tekstu dla zadanej daty. **Ale:** te
-   obwieszczenia zaczynają się dopiero od pewnego momentu (dla ustawy o
-   min. wynagrodzeniu: od 2015 r., mimo że ustawa obowiązuje od 2003) --
-   dla dat wcześniejszych niż pierwsze obwieszczenie nie ma gotowego
-   tekstu ujednoliconego z tego okresu, tylko tekst pierwotny (typ "O",
-   bez późniejszych nowelizacji) plus lista `"Akty zmieniające"` z
-   datami wejścia w życie, z których trzeba by ręcznie/programowo
-   rekonstruować brzmienie -- osobne, znacznie trudniejsze zadanie,
-   niezbadane jeszcze pod kątem wykonalności.
+4. ~~Wersjonowanie w czasie -- prawo obowiązujące na dany dzień w
+   przeszłości, nie tylko aktualne.~~ **Domknięte w Krokach 18-24**, wg
+   planu w `/Users/szymon/.claude/plans/drifting-toasting-wozniak.md`
+   (spike -> warstwa danych/indeksu -> warstwa prompt/czat -> integracja z
+   rozporządzeniami o kwotach -> top-k). `download_acts_history.py`
+   pobiera i wersjonuje historyczne obwieszczenia (`{short}_history.json`),
+   `build_rag_index.py --include-history` scala je z bieżącym indeksem,
+   `rag_search.py`/`prompt.py`/`chat*.py` przyjmują `--as-of RRRR-MM-DD`
+   / `/data RRRR-MM-DD`. Zweryfikowane end-to-end na żywych danych (Krok
+   20) z jawnym sprostowaniem własnej pierwszej, zbyt optymistycznej
+   weryfikacji (halucynacja modelu omyłkowo uznana za poprawne
+   grounding). Świadomie poza zakresem, nienaprawione: daty sprzed
+   pierwszego dostępnego obwieszczenia danej ustawy (dla większości ustaw
+   to lata 2012-2016, dla ustawy o minimalnym wynagrodzeniu ~2015 mimo że
+   ustawa obowiązuje od 2003 -- patrz Krok 18, tabela) nie mają pokrycia;
+   model ma to wprost powiedzieć, zamiast zgadywać z tekstu pierwotnego.
+   Rekonstrukcja brzmienia sprzed pierwszego obwieszczenia z listy "Akty
+   zmieniające" pozostaje niezbadana i nierozpoczęta -- osobne,
+   znacznie trudniejsze zadanie, do rozważenia tylko jeśli pojawi się
+   konkretna potrzeba.
 5. ~~Rozporządzenia/obwieszczenia z konkretnymi kwotami, których nie ma w
    samych ustawach.~~ **Domknięte w Krokach 21-23** -- wszyscy trzej znani
    kandydaci zrobieni tym samym wzorcem (`search_acts_by_title` + stały
