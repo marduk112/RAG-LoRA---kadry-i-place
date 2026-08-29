@@ -156,8 +156,9 @@ zrzutu repo. Szczegóły w PROGRESS.md, krok 4a.
 
 **Uwaga o kroku 4:** monitoruj `Val loss` w trakcie treningu. W naszych
 przebiegach najlepszy wynik walidacyjny wypadał bardzo wcześnie
-(iteracja 50 dla 4.5B, iteracja 25 dla 11B) — dalszy trening tylko
-przeuczał model na 35-elementowym zbiorze treningowym. Zalecane jest
+(iteracja 25 dla obu wariantów przy obecnym, 50-elementowym zbiorze —
+patrz PROGRESS.md, Krok 25) — dalszy trening tylko przeuczał model.
+Zalecane jest
 ręczne sprawdzenie kilku zapisanych checkpointów
 (`adapters/*/0000XXX_adapters.safetensors`) na pytaniach spoza
 dosłownej treści zbioru treningowego i wybranie najlepszego, a nie
@@ -183,14 +184,19 @@ kroki 4b i 6.
 # Szybszy wariant 4.5B zamiast domyślnego 11B
 .venv/bin/python scripts/chat.py \
   --model models/Bielik-4.5B-v3.0-Instruct-mlx \
-  --adapter-path adapters/bielik-kadry-lora-iter50
+  --adapter-path adapters/bielik-kadry-lora-v3-iter25
 ```
 
 **4.5B vs 11B:** oba warianty są wytrenowane i dostępne. Domyślny jest
-**11B** — daje zauważalnie dokładniejsze odpowiedzi na pytania
-graniczne (patrz PROGRESS.md, krok 6) kosztem szybkości (~26 tok/s vs
-~50+ tok/s) i pamięci (~8.3GB vs ~4-5GB peak). Użyj `--model` +
-`--adapter-path` jak wyżej, żeby przełączyć się na szybszy 4.5B.
+**11B** kosztem szybkości (~26 tok/s vs ~50+ tok/s) i pamięci (~8.3GB
+vs ~4-5GB peak). Do kroku 6/16 4.5B potrafił przesłonić poprawny
+kontekst z RAG błędną liczbą z wag przy pytaniach z kilkoma blisko
+siebie leżącymi wartościami w tym samym akcie (np. PPK: 1,5% vs 2,5%) —
+**Krok 25 naprawił oba znane przypadki tego typu** kontrastującymi
+przykładami treningowymi, ale nie gwarantuje niezawodności na
+dowolnych, nieprzewidzianych kombinacjach takich pytań (patrz tam).
+Użyj `--model` + `--adapter-path` jak wyżej, żeby przełączyć się na
+szybszy 4.5B.
 
 **Kontekst rozmowy:** tryb interaktywny (we wszystkich trzech
 wariantach — `chat.py`, `chat_lmstudio.py`, `chat_cuda.py`) pamięta

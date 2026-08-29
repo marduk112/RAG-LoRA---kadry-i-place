@@ -1477,6 +1477,83 @@ wywołującym kodzie było spójne z nowym domyślnym doświadczeniem czatu).
 Koszt: dłuższy prompt (np. ~8-15k tokenów zamiast ~6-7k na pytaniach z
 tego kroku) -- wciąż daleko poniżej praktycznych limitów, zaakceptowany.
 
+## Krok 25: przykłady kontrastujące dla 4.5B ("Co dalej" pkt 2)
+
+Cel: Krok 16 znalazł, że 4.5B (w przeciwieństwie do 11B) potrafi
+przesłonić poprawny kontekst z RAG błędną, ale pewnie brzmiącą liczbą z
+wag, gdy artykuł zawiera kilka blisko siebie leżących wartości -- dwa
+udokumentowane przypadki: PPK (wpłata podstawowa pracodawcy 1,5%
+mylona z wpłatą dodatkową 2,5%, art. 26 ust. 1 vs ust. 2) i ustawa o
+rynku pracy (365 dni mylone z oknem 18 miesięcy, w którym te dni się
+liczy, art. 218 ust. 1). Zadanie z "Co dalej" pkt 2: dodać przykłady
+KONTRASTUJĄCE wprost te wartości w tym samym akcie.
+
+**Dodano 3 przykłady do `train.jsonl` i 1 do `valid.jsonl`** (47/8 ->
+50/9), każdy zweryfikowany względem realnego tekstu artykułu w
+`data/processed/`: PPK pracodawca (1,5% obowiązkowa vs 2,5% dobrowolna,
+art. 26), PPK pracownik (2% standardowa vs 0,5-2% obniżona przy niskich
+zarobkach vs do 2% dodatkowa, art. 27), rynek pracy (365 dni vs 18
+miesięcy, art. 218) w `train.jsonl`; przeformułowany wariant PPK
+pracodawcy (inne sformułowanie pytania, ten sam fakt) w `valid.jsonl`
+jako test generalizacji, nie tylko zapamiętania dosłownego zdania.
+
+**Ponowny trening LoRA na 4.5B** (`mlx_lm.lora`, te same hiperparametry
+co krok 16: batch 2, 200 iteracji, eval/zapis co 25) --
+`adapters/bielik-kadry-lora-v3/`. Ten sam wzorzec przeuczenia co
+zawsze: val loss minimum (1.178) przy iter 50, ale w przeciwieństwie do
+poprzednich przebiegów **iter 25 (val loss 1.274, drugi najniższy) był
+zauważalnie lepszy praktycznie niż iter 50** -- patrz niżej. Oba
+checkpointy sprawdzone ręcznie end-to-end (`chat.py --model
+models/Bielik-4.5B-v3.0-Instruct-mlx --adapter-path ...`) na dokładnie
+tych samych pytaniach, które zawiodły w Kroku 16:
+
+- **PPK, wpłata podstawowa pracodawcy** ("Ile procent wynagrodzenia
+  wpłaca pracodawca do PPK jako wpłatę podstawową?") -- iter 25:
+  poprawnie "1,5% wynagrodzenia (art. 26 ust. 1)", czysto i bez
+  sprzeczności. **Iter 50 nadal błędnie odpowiedział "2,5%"**, myląc
+  wpłatę dodatkową z podstawową dokładnie jak przed tą zmianą --
+  przeuczenie na 50-elementowym zbiorze zdążyło już zatrzeć efekt tych
+  konkretnych 3 nowych przykładów mimo niższego val loss. Sprawdzono
+  też iter 75/100/125: niespójne (75 i 125 błędne "2,5%", 100
+  przypadkowo poprawne) -- potwierdza, że **val loss nie jest tu
+  wiarygodnym predyktorem tej konkretnej umiejętności**, trzeba
+  sprawdzać ręcznie na docelowym pytaniu, zgodnie z już przyjętą
+  praktyką (README, "Uwaga o kroku 4").
+- **Zasiłek dla bezrobotnych, wymagany okres pracy** ("Przez ile dni w
+  ciągu ostatnich 18 miesięcy trzeba było pracować...") -- zarówno
+  iter 25, jak i iter 50 (i iter 100) poprawnie podały "365 dni" z
+  właściwym cytowaniem art. 218 ust. 1 -- w przeciwieństwie do Kroku
+  16, gdzie model cytował przepis, ale nigdy nie podawał samej liczby.
+  Ten przypadek naprawiony solidniej niż PPK -- zgodny wynik na kilku
+  checkpointach.
+- **Pytanie kontrolne z Kodeksu pracy** (zatrudniony 7 lat -> okres
+  wypowiedzenia) na iter 25 -- bez zmian, poprawne (3 miesiące, art. 36
+  § 1 pkt 3). Brak regresji na istniejącej mocnej stronie.
+- **Pytanie złożone, celowo poza wzorcem przykładów treningowych**
+  ("Ile maksymalnie może wynosić dobrowolna wpłata dodatkowa pracownika
+  do PPK, a ile pracodawcy?", łączy w jednym pytaniu oba warianty
+  wpłaty dodatkowej) na iter 25 -- częściowo błędne: dla pracownika
+  model wplótł warunek obniżonej wpłaty PODSTAWOWEJ (art. 27 ust. 2, "nie
+  mniej niż 0,5%... jeśli wynagrodzenie nie przekracza 1,2-krotności
+  minimalnego") do opisu wpłaty DODATKOWEJ (art. 27 ust. 3), która
+  takiego warunku nie ma; dla pracodawcy wymyślił nieistniejący warunek
+  "art. 26 ust. 3" ograniczający wpłatę dodatkową do 2%. **Uczciwy
+  wniosek: kontrastujące przykłady naprawiły oba KONKRETNE,
+  udokumentowane w Kroku 16 przypadki pomyłek, ale nie dają ogólnej
+  odporności na dowolne, nieprzewidziane pytania składające fakty z
+  kilku ustępów naraz** -- to węższy, ale realny i zweryfikowany
+  postęp, nie pełne domknięcie "4.5B tak niezawodny jak 11B".
+
+**Wybrany checkpoint: `adapters/bielik-kadry-lora-v3-iter25`**
+(skopiowany z `0000025_adapters.safetensors`, analogicznie do
+`bielik-kadry-lora-v2-iter50` z Kroku 16) -- zastępuje `-v2-iter50` jako
+zalecany adapter dla wariantu 4.5B w README. `DEFAULT_ADAPTER_PATH` w
+`chat.py` **pozostaje bez zmian** (11B, decyzja z Kroku 16) -- ten krok
+poprawia opcjonalny, szybszy wariant, nie zmienia domyślnego zachowania.
+
+`pytest -v` -- 83/83 (bez regresji; zmiana dotyczy wyłącznie
+`data/finetune/*.jsonl`, poza zakresem istniejących testów jednostkowych).
+
 ## Co dalej
 
 1. ~~Zweryfikować ręcznie 3 rozbieżności `changeDate` znalezione przy
@@ -1492,12 +1569,15 @@ tego kroku) -- wciąż daleko poniżej praktycznych limitów, zaakceptowany.
    wypchnięciu na `origin` kolejny przebieg `acts-freshness.yml` powinien
    znów raportować "aktualne" dla wszystkich 7 ustaw -- potwierdzono lokalnie
    `check_acts_freshness.py` (2026-08-29): wszystkie 7 OK.
-2. Mniejsza waga niż wcześniej sądzono (patrz krok 16, domknięcie na
-   11B) -- ale wciąż warto: wzmocnić dane treningowe dla 4.5B
-   przykładami KONTRASTUJĄCYMI wprost różne, blisko siebie leżące
-   wartości w tym samym akcie (np. "czym różni się wpłata podstawowa od
-   dodatkowej w PPK"), jeśli zależałoby nam na tym, żeby wariant 4.5B
-   był tak samo niezawodny jak 11B na nowo dodanych tematach.
+2. ~~Wzmocnić dane treningowe dla 4.5B przykładami KONTRASTUJĄCYMI wprost
+   różne, blisko siebie leżące wartości w tym samym akcie.~~ **Częściowo
+   domknięte w Kroku 25** -- naprawiono oba konkretne przypadki
+   udokumentowane w Kroku 16 (PPK 1,5%/2,5%, zasiłek dla bezrobotnych
+   365 dni/18 miesięcy), ale bez ogólnej gwarancji na dowolne,
+   nieprzewidziane pytania łączące fakty z kilku ustępów naraz -- patrz
+   tam po pełny, uczciwy opis granic tej naprawy. 4.5B pozostaje
+   wariantem opcjonalnym (`--model`/`--adapter-path`), 11B zostaje
+   domyślny w `chat.py`.
 3. Wariant CUDA (krok 9) wymaga realnego testu na maszynie z kartą
    NVIDIA -- użytkownik nie ma takiego sprzętu i nie planuje testować
    tego samodzielnie, więc pozostaje "nieprzetestowane" do czasu, aż
