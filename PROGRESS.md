@@ -1212,12 +1212,108 @@ rozróżnianiem "fragment obecny" od "fragment odpowiada na pytanie" -- świadom
 NIE podjęto tej drugiej naprawy w tej fazie (spory, niepewny zakres, wykracza
 poza plan wersjonowania czasowego).
 
+## Krok 21: rozporządzenia o wysokości minimalnego wynagrodzenia ("Co dalej" pkt 5)
+
+Cel: znalezisko z Kroku 20 -- ustawa o minimalnym wynagrodzeniu nie zawiera
+samej kwoty w złotych, ustala ją co roku osobny akt. Nowy skrypt
+`scripts/download_wage_regulations.py` pobiera i wersjonuje te akty,
+podłączając się pod ten sam mechanizm "as-of" z Kroków 18-20 (bez ŻADNYCH
+zmian w `rag_search.py` -- patrz niżej).
+
+**Odkrycie źródła listy: `references["Akty wykonawcze"]` okazało się
+NIEKOMPLETNE.** Pierwsza wersja skryptu czerpała listę lat z tego pola w
+metadanych ustawy bazowej -- dało 22 wpisy, ale z DZIURĄ: brakowało roku
+2021. Sprawdzone ręcznie przez `/eli/acts/search?title=...`: akt na 2021 r.
+(`DU/2020/1596`) istnieje i jest poprawnie zindeksowany w ELI. **Przyczyna
+znaleziona przy odczycie treści aktu, nie zgadywana:** to jedyny rok w całej
+serii wydany na podstawie prawnej INNEJ ustawy -- "art. 79 ust. 5 ustawy z
+dnia 31 marca 2020 r. o zmianie ustawy o szczególnych rozwiązaniach
+związanych z zapobieganiem [...] COVID-19 [...]", nie na podstawie zwykłego
+art. 2 ust. 5 ustawy o minimalnym wynagrodzeniu jak wszystkie pozostałe lata
+-- covidowa nowelizacja tymczasowo przeniosła tę samą delegację do innej
+ustawy, więc ELI poprawnie NIE zlinkował go jako "Akt wykonawczy" ustawy o
+minimalnym wynagrodzeniu (wierne odzwierciedlenie realnej podstawy prawnej,
+nie błąd/luka w samym ELI). **Naprawiono:** źródłem listy jest teraz
+`/eli/acts/search?title="wysokości minimalnego wynagrodzenia za pracę"` --
+zwraca kompletną, ciągłą serię 23 wpisów, po jednym na każdy rok 2004-2026,
+w tym dwa najstarsze (2009, 2010) jako "Obwieszczenie Prezesa Rady
+Ministrów" zamiast "Rozporządzenie Rady Ministrów" (inny mechanizm prawny z
+tamtego okresu, ten sam wzorzec tytułu i treści). Dodano `_warn_on_gaps()` --
+sprawdza ciągłość lat i ostrzega, gdyby ten sam typ luki wystąpił ponownie
+przy odświeżeniu w przyszłości (nie zaufano samej liczbie wyników z
+`search` bez weryfikacji).
+
+**Model danych -- prostszy niż dla obwieszczeń "tekst jednolity" (Krok
+18/19).** Każdy akt to jednorazowe, całkowicie odrębne rozporządzenie
+(wchodzi w życie 1 stycznia danego roku, obowiązuje do wejścia w życie
+NASTĘPNEGO w kolejności) -- `valid_from`/`valid_to` liczone wprost z roku w
+tytule (regex, niezawodny nawet dla dwóch najstarszych wpisów bez pola
+`entryIntoForce`), bez fuzzy granic i nakładających się okien, które
+komplikowały Krok 18. Tekst używa numeracji "§ N." (nie "Art. N." jak w
+ustawach) i jest krótki (2-3 paragrafy, dobrze poniżej `MAX_CHUNK_CHARS`),
+więc traktowany jako JEDEN "artykuł" na wersję (`article = "1"` stałe na
+wszystkie lata) -- działa od razu z niezmienionym mechanizmem grupowania
+`(act_short, article)` w `rag_search.py`, zero zmian w tamtym pliku.
+
+**Nowy typ pliku wejściowego dla `build_rag_index.py --include-history`:**
+`data/processed/*_series.json` -- w przeciwieństwie do `*_history.json`
+(wymaga patchowania "bieżącej", wcześniej już pobranej gdzie indziej wersji),
+plik `*_series.json` to samodzielny, kompletny "akt" -- KAŻDA wersja,
+łącznie z bieżącą, ma `valid_from`/`valid_to` ustawione już przy zapisie,
+więc dogrywana wprost, bez patchowania. `load_articles_with_history()`
+rozszerzona o obsługę tego wzorca (`PROCESSED_DIR.glob("*_series.json")`).
+
+**Weryfikacja end-to-end (żywe dane, `chat.py`, Bielik-11B) -- ważna
+poprawa względem Kroku 20:**
+- `--as-of 2018-06-01 --prompt "Ile wynosi minimalne wynagrodzenie za
+  pracę?"` -> poprawnie: "art. 1 Rozporządzenia [...] z 2017 r. [...]
+  (Dz.U. z 2017 r. poz. 1747) [...] 2100 zł" -- **prawdziwie ugruntowane w
+  dostarczonym fragmencie** (nie zmyślone jak w Kroku 20 -- ten sam
+  scenariusz, teraz z realną, cytowalną treścią w kontekście), zgodne z
+  realną stawką z 2018 r.
+- Bez `--as-of` (domyślny `--top-k 5`): model **wciąż** odpowiadał "760 zł"
+  (stary błąd z Kroku 20) -- **przyczyna: nowy fragment o kwocie bieżącej
+  (rozporządzenie na 2026 r.) mieścił się w top-6 wyników RAG (score 0.847),
+  ale NIE w domyślnym top-5** -- wyprzedzony przez dwa niezwiązane
+  fragmenty ustawy o rynku pracy (art. 145, art. 218 -- o zasiłku dla
+  bezrobotnych), które przypadkiem mają wysoki wynik podobieństwa
+  semantycznego dla tego pytania. **Z `--top-k 8`** ten sam prompt (bez
+  `--as-of`) poprawnie zwrócił "4806 zł" (rozporządzenie na 2026 r.,
+  poprawnie zacytowane z Dz.U.). To ograniczenie samego RANKINGU RAG (ten
+  sam rodzaj problemu co "rodzaje umów o pracę" z Kroku 3), NIE regresja
+  mechanizmu "as-of" (który w obu testach -- historycznym i bieżącym --
+  poprawnie wybrał właściwe okno czasowe) ani powrót hallucynacji z Kroku 20
+  (gdy fragment trafia do kontekstu, model go wiernie i poprawnie cytuje w
+  obu testach). Świadomie NIE zmieniono globalnego domyślnego `--top-k` (5)
+  -- szerszy wpływ na długość promptu przy WSZYSTKICH pytaniach, nie tylko
+  tych konkurujących z ustawą o rynku pracy; użytkownik może użyć wyższego
+  `--top-k` dla tego typu pytań.
+
+**Testy:** 6 nowych (`tests/test_download_wage_regulations.py`) dla
+`extract_year`/`_warn_on_gaps`, w tym regresja dokładnie tej luki z roku
+2021. **72/72 łącznie.**
+
+**Zakres:** na razie tylko minimalne wynagrodzenie (na wyraźną prośbę
+użytkownika, jako pilotaż). Limit 30-krotności (ustawa systemowa) i inne
+podobne przypadki -- patrz "Co dalej" pkt 5 niżej, wzorzec z tego kroku
+(`search_acts_by_title` + stały `article` + proste roczne okna) powinien się
+przenosić bez większych zmian.
+
 ## Co dalej
 
-1. Zweryfikować ręcznie 3 rozbieżności `changeDate` znalezione przy
-   kroku 17 (Kodeks pracy, ustawa systemowa, PIT) -- sprawdzić, czy to
-   realna nowelizacja wymagająca ponownego pobrania (`download_acts.py`
-   + `build_rag_index.py`), czy nieistotna zmiana metadanych.
+1. ~~Zweryfikować ręcznie 3 rozbieżności `changeDate` znalezione przy
+   kroku 17~~ **Domknięte przy okazji Kroku 19.** Bajtowa weryfikacja
+   refaktoru `_extract_articles` (dwa pełne, żywe uruchomienia
+   `download_acts.py`) potwierdziła, że `all_articles.json` jest bajtowo
+   identyczny mimo że `changeDate` w metadanych 5 z 7 ustaw (Kodeks pracy,
+   ustawa systemowa, PIT, ustawa zasiłkowa, ustawa o rynku pracy) się
+   przesunęło -- to nieistotne zmiany metadanych ELI (np. techniczne
+   odświeżenie rekordu), nie realne nowelizacje wymagające ponownego
+   przebudowania indeksu. Świeże `data/raw/*_meta.json` scommitowane w
+   ramach Kroku 19 (`git log`, "Dodaj wersjonowanie czasowe..."); po
+   wypchnięciu na `origin` kolejny przebieg `acts-freshness.yml` powinien
+   znów raportować "aktualne" dla wszystkich 7 ustaw -- potwierdzono lokalnie
+   `check_acts_freshness.py` (2026-08-29): wszystkie 7 OK.
 2. Mniejsza waga niż wcześniej sądzono (patrz krok 16, domknięcie na
    11B) -- ale wciąż warto: wzmocnić dane treningowe dla 4.5B
    przykładami KONTRASTUJĄCYMI wprost różne, blisko siebie leżące
@@ -1264,7 +1360,15 @@ poza plan wersjonowania czasowego).
    rekonstruować brzmienie -- osobne, znacznie trudniejsze zadanie,
    niezbadane jeszcze pod kątem wykonalności.
 5. **Rozporządzenia/obwieszczenia z konkretnymi kwotami, których nie ma w
-   samych ustawach.** *Podniesiona waga po Kroku 20:* ten sam brak danych
+   samych ustawach.** *Minimalne wynagrodzenie: zrobione w Kroku 21
+   (`scripts/download_wage_regulations.py`, 23 lata, 2004-2026, podłączone
+   pod mechanizm "as-of" bez zmian w `rag_search.py`) -- zweryfikowane
+   end-to-end, poprawnie cytuje realną kwotę zarówno historycznie, jak i
+   bieżąco (przy wystarczającym `--top-k`, patrz Krok 21 po szczegóły
+   ograniczenia rankingu).* Pozostałe kandydaty do zrobienia tym samym
+   wzorcem (`search_acts_by_title` + stały `article` + proste roczne okna,
+   patrz Krok 21): **limit 30-krotności** (ustawa o systemie ubezpieczeń
+   społecznych) i ewentualnie inne. *Podniesiona waga po Kroku 20:* ten sam brak danych
    doprowadził model do podania poprawnej liczby BEZ pokrycia w dostarczonym
    fragmencie (przy `--as-of`) oraz do wiernego zacytowania złej,
    przestarzałej liczby z fragmentu (bez `--as-of`) -- w obu wariantach zła

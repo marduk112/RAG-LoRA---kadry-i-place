@@ -118,6 +118,13 @@ je i użyj `scripts/train_lora_cuda.py` zamiast `mlx_lm.convert`/
 # krok 1 (jedno obwieszczenie + jeden PDF na historyczną wersję tekstu, ~60
 # wersji łącznie na 7 ustaw), więc NIE jest częścią zwykłego kroku 1.
 .venv/bin/python scripts/download_acts_history.py
+
+# 2c. [opcjonalnie] Coroczne rozporządzenia z konkretnymi kwotami, których
+# same ustawy nie zawierają (na razie: wysokość minimalnego wynagrodzenia
+# za pracę i minimalnej stawki godzinowej, 2004-2026) -- patrz PROGRESS.md,
+# Krok 21. Niezależny od kroku 2b, ale też wymaga --include-history niżej.
+.venv/bin/python scripts/download_wage_regulations.py
+
 .venv/bin/python scripts/build_rag_index.py --include-history
 
 # 3. [macOS/MLX] Pobranie i konwersja Bielika do MLX (kwantyzacja 4-bit) -> models/
@@ -251,20 +258,22 @@ data utrzymuje się między wątkami rozmowy, dopóki nie wyczyścisz jej jawnie
 # Ty: /data            (powrót do stanu bieżącego)
 ```
 
-**Ograniczenie warte znajomości (patrz PROGRESS.md, Krok 18-20):** dane
+**Ograniczenie warte znajomości (patrz PROGRESS.md, Krok 18-21):** dane
 historyczne są dostępne tylko od pierwszego ogłoszonego tekstu jednolitego
 danej ustawy (dla części ustaw to prawie cały okres ich obowiązywania, dla
 innych -- np. ustawy o minimalnym wynagrodzeniu -- dopiero od ok. 2015, mimo
 że ustawa obowiązuje od 2003). Dla dat wcześniejszych model ma wprost
 przyznać się do braku danych zamiast zgadywać, ale to zachowanie nie jest
 niezawodne, gdy jakiś fragment TECHNICZNIE pokrywa żądaną datę, lecz nie
-zawiera odpowiedzi na pytanie (np. ustawa o minimalnym wynagrodzeniu w ogóle
-nie podaje kwoty w złotych -- ustala ją osobne, coroczne rozporządzenie, poza
-zakresem tego projektu) -- w takim przypadku model bywał niekonsekwentny
-(raz wiernie cytował nietrafny fragment, raz podawał wiarygodnie brzmiącą,
-ale niepodpartą fragmentem liczbę z pamięci). Traktuj takie, wąskie
-przypadki z ostrożnością i zawsze zweryfikuj konkretną kwotę w oficjalnym
-źródle.
+zawiera odpowiedzi na pytanie -- w takim przypadku model bywał
+niekonsekwentny (raz wiernie cytował nietrafny fragment, raz podawał
+wiarygodnie brzmiącą, ale niepodpartą fragmentem liczbę z pamięci).
+Konkretny przypadek, który to ujawnił -- kwota minimalnego wynagrodzenia w
+złotych, której sama ustawa nie zawiera -- jest już naprawiony
+(`download_wage_regulations.py`, krok 2c wyżej, Krok 21), ale to samo może
+dotyczyć innych, jeszcze niedodanych rozporządzeń (patrz PROGRESS.md, "Co
+dalej" pkt 5). Traktuj takie, wąskie przypadki z ostrożnością i zawsze
+zweryfikuj konkretną kwotę w oficjalnym źródle.
 
 ### Alternatywa: RAG + model z LM Studio (`scripts/chat_lmstudio.py`)
 
@@ -361,14 +370,21 @@ zamiast zgadywać — ale to nie jest gwarancja stuprocentowa, zwłaszcza
 dla pytań mieszających kilka tematów naraz.
 
 **Konkretne kwoty ustalane osobnymi rozporządzeniami, nie samymi
-ustawami.** Część aktualnych, "twardych" liczb (np. wysokość minimalnego
-wynagrodzenia w złotówkach, roczny limit 30-krotności podstawy wymiaru
-składek emerytalno-rentowych) nie jest zapisana wprost w ustawach z listy
-wyżej — ustala je osobne, coroczne rozporządzenie/obwieszczenie, poza
-`ACTS`. Dla takich pytań RAG trafia w powiązany, ale niewystarczający
-fragment ustawy, a model bywa niekonsekwentny (patrz PROGRESS.md, Krok 20) —
-zawsze zweryfikuj tego typu kwoty w oficjalnym źródle. Patrz PROGRESS.md,
-"Co dalej" pkt 5.
+ustawami.** Część aktualnych, "twardych" liczb nie jest zapisana wprost w
+ustawach z listy wyżej — ustala je osobne, coroczne rozporządzenie/
+obwieszczenie. **Wysokość minimalnego wynagrodzenia i minimalnej stawki
+godzinowej** (2004-2026) są już dodane osobno (`download_wage_regulations.py`,
+krok 2c wyżej) i działają razem z `--as-of`/`/data` -- ale są jednym z kilku
+takich przypadków: np. **roczny limit 30-krotności** podstawy wymiaru
+składek emerytalno-rentowych wciąż nie jest pokryty (patrz PROGRESS.md,
+"Co dalej" pkt 5). Dla pytań o kwoty spoza `ACTS`/dodanych rozporządzeń
+RAG trafia w powiązany, ale niewystarczający fragment ustawy, a model bywa
+niekonsekwentny (patrz PROGRESS.md, Krok 20) — zawsze zweryfikuj tego typu
+kwoty w oficjalnym źródle. **Nawet dla już dodanego minimalnego
+wynagrodzenia:** trafny fragment czasem nie mieści się w domyślnym
+`--top-k 5` (konkuruje z niezwiązanymi fragmentami innych ustaw) — jeśli
+odpowiedź wygląda na nietrafną, spróbuj wyższego `--top-k` (patrz
+PROGRESS.md, Krok 21).
 
 **Poprawna numeracja artykułów z indeksem górnym (np. Art. 11¹).**
 Kodeks pracy od lat jest nowelizowany przez wstawianie nowych artykułów

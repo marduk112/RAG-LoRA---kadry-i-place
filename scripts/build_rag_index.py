@@ -134,8 +134,13 @@ def load_articles_with_history(include_history: bool) -> list[dict]:
     """Wczytuje all_articles.json (bieżący stan, jak zawsze) i -- jeśli
     `include_history` -- dogrywa artykuły z każdego istniejącego
     `data/processed/{short}_history.json` (produkowanego opt-in przez
-    `download_acts_history.py`), oraz nadaje BIEŻĄCYM artykułom KAŻDEJ
-    ustawy realną dolną granicę `valid_from`:
+    `download_acts_history.py`) ORAZ z każdego `data/processed/*_series.json`
+    (samodzielne, w pełni zwersjonowane "akty" spoza `ACTS`, np. coroczne
+    rozporządzenia o wysokości minimalnego wynagrodzenia --
+    `download_wage_regulations.py`, Krok 21 -- każda wersja ma już ustawione
+    `valid_from`/`valid_to` przy zapisie, więc dogrywane wprost, bez
+    patchowania jak przy `_history.json`), oraz nadaje BIEŻĄCYM artykułom
+    KAŻDEJ ustawy z `all_articles.json` realną dolną granicę `valid_from`:
     - jeśli ustawa ma plik `_history.json` -- `current_valid_from` z tego
       pliku (granica wyliczona z łańcucha obwieszczeń, patrz Krok 18);
       inaczej "bieżąca" wersja zachowywałaby się jak "-nieskończoność" i
@@ -187,6 +192,17 @@ def load_articles_with_history(include_history: bool) -> list[dict]:
         history_articles = data.get("articles", [])
         articles.extend(history_articles)
         print(f"  [{short}] dograno {len(history_articles)} artykułów historycznych")
+
+    # "Serie" -- akty samodzielne, całkowicie odrębne od czegokolwiek w
+    # all_articles.json (np. coroczne rozporządzenia o wysokości minimalnego
+    # wynagrodzenia, download_wage_regulations.py, Krok 21) -- KAŻDA wersja,
+    # łącznie z bieżącą, ma już ustawione valid_from/valid_to przy zapisie,
+    # więc -- w przeciwieństwie do *_history.json -- nie ma tu nic do
+    # patchowania, dogrywamy wprost.
+    for path in sorted(PROCESSED_DIR.glob("*_series.json")):
+        series_articles = json.loads(path.read_text(encoding="utf-8"))
+        articles.extend(series_articles)
+        print(f"  [{path.stem}] dograno {len(series_articles)} artykułów z serii")
 
     return articles
 
