@@ -228,3 +228,20 @@ def test_build_user_message_includes_as_of_note_when_given():
 def test_build_user_message_omits_as_of_note_when_none():
     msg = build_user_message("pytanie", [make_result("1", 0.9)])
     assert "Data, na którą ma obowiązywać odpowiedź" not in msg
+
+
+def test_build_user_message_warns_when_best_score_below_threshold():
+    msg = build_user_message("pytanie", [make_result("1", 0.5)])
+    assert "[Uwaga: żaden odnaleziony fragment nie jest wysoko dopasowany" in msg
+    assert "0.50" in msg
+
+
+def test_build_user_message_warns_when_no_results():
+    msg = build_user_message("pytanie", [])
+    assert "[Uwaga: żaden odnaleziony fragment nie jest wysoko dopasowany" in msg
+    assert "brak wyników" in msg
+
+
+def test_build_user_message_no_warning_when_best_score_above_threshold():
+    msg = build_user_message("pytanie", [make_result("1", 0.9)])
+    assert "[Uwaga: żaden odnaleziony fragment" not in msg

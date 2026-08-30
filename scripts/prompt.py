@@ -34,6 +34,9 @@ zgaduj i nie podawaj w zamian stanu bieżącego."""
 MAX_ARTICLE_CHARS = 6000
 
 
+LOW_CONFIDENCE_SCORE_THRESHOLD = 0.75
+
+
 def build_context(results: list[dict]) -> str:
     parts = []
     for r in results:
@@ -81,6 +84,24 @@ def build_user_message(
         # zamiast po cichu odpowiedzieć stanem bieżącym (patrz punkt 5
         # SYSTEM_PROMPT).
         parts.append(f"[Data, na którą ma obowiązywać odpowiedź: {as_of}]")
+    if not results or results[0]["score"] < LOW_CONFIDENCE_SCORE_THRESHOLD:
+        # Jawny sygnał zamiast liczenia na to, że model sam zauważy słabe
+        # dopasowanie -- testy end-to-end pokazały, że nawet z regułą 1/2
+        # SYSTEM_PROMPT ("nie korzystaj z własnej wiedzy o liczbach") model
+        # potrafi po cichu dopowiedzieć konkretną wartość z pamięci, gdy
+        # żaden fragment tematycznie nie pasuje (patrz PROGRESS.md, temat
+        # spoza pobranych ustaw). NIE pomaga to w przypadku, gdy fragment
+        # jest trafiony tematycznie, ale mimo to nie zawiera szukanej
+        # liczby (np. artykuł delegujący do nieobecnego w indeksie
+        # rozporządzenia) -- na to nie ma tu obrony, to wymagałoby
+        # sprawdzania treści, nie samego score'u dopasowania.
+        best_score = results[0]["score"] if results else None
+        score_note = f" (najlepszy wynik dopasowania: {best_score:.2f})" if best_score is not None else " (brak wyników)"
+        parts.append(
+            f"[Uwaga: żaden odnaleziony fragment nie jest wysoko dopasowany do tego pytania{score_note} "
+            "-- fragmenty poniżej prawdopodobnie NIE zawierają odpowiedzi. Jeśli faktycznie jej nie "
+            "zawierają, powiedz to wprost zamiast zgadywać (patrz zasada 2 wyżej).]"
+        )
     parts.append(f"Fragmenty aktów prawnych:\n\n{build_context(results)}")
     if file_results:
         parts.append(f"Fragmenty z wgranego przez użytkownika pliku:\n\n{build_file_context(file_results)}")
