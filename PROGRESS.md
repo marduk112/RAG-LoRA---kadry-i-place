@@ -1692,10 +1692,86 @@ kwantyzacja modelu bazowego (bnb nf4 vs własna kwantyzacja
 `q_proj`/`v_proj`, `mlx_lm.lora` domyślnie tylko ostatnie 16 z 60). Nie
 da się go bezpośrednio doczepić do `chat.py` -- wariant MLX wymaga
 osobnego treningu `mlx_lm.lora` (teraz z tymi samymi, już
-zaktualizowanymi danymi, patrz punkt 2 niżej w "Co dalej").
+zaktualizowanymi danymi -- zrobione w Kroku 27, od razu po tym kroku).
 
 `pytest -v` -- 86/86 (83 sprzed tego kroku + 3 nowe dla warningu o
 niskim score w `build_user_message`).
+
+## Krok 27: przeniesienie danych z hedgingiem na MLX 11B -- lokalnie, bez kosztu GPU
+
+Cel: `data/finetune/train.jsonl` z Kroku 26 (58/9, 8 nowych przykładów
+hedgingu) jest wspólne dla obu wariantów -- ten krok trenuje `mlx_lm.lora`
+na 11B z tymi samymi danymi, lokalnie na Macu (M4 Pro), zero kosztu
+w przeciwieństwie do CUDA na RunPod.
+
+Adapter (peft/`bitsandbytes`) z Kroku 26 **nie jest kompatybilny** z
+`mlx_lm` -- inne nazewnictwo kluczy w pliku wag, inna kwantyzacja
+modelu bazowego, inny domyślny zakres warstw (`mlx_lm.lora` domyślnie
+tylko ostatnie 16 z 60 warstw, `num_layers` w `linear_to_lora_layers`)
+-- więc to osobny trening, nie konwersja.
+
+```
+mlx_lm.lora --model models/Bielik-11B-v3.0-Instruct-mlx --train \
+    --data data/finetune --batch-size 2 --iters 200 --steps-per-eval 25 \
+    --save-every 25 --mask-prompt --adapter-path adapters/bielik11b-kadry-lora-hedge
+```
+
+**Ten sam wzorzec przeuczenia co we WSZYSTKICH dotychczasowych
+przebiegach MLX w tym pliku** (w przeciwieństwie do CUDA -- potwierdza
+to ustalenie z Kroku 26, że różnica leży w schedulerze LR, nie w
+samych danych):
+
+| iter | val loss | train loss |
+|---|---|---|
+| 25 | 0.554 | -- |
+| **50** | **0.516 (min)** | 0.170 |
+| 75 | 0.530 | 0.101 |
+| 100 | 0.586 | 0.014 |
+| 125 | 0.634 | 0.004 |
+| 150 | 0.650 | 0.002 |
+| 175 | 0.682 | 0.000 |
+| 200 | 0.737 | 0.000 |
+
+**Test end-to-end iter25 vs iter50** na tych samych 4 pytaniach co na
+CUDA (Krok 26) -- wynik MIESZANY, żaden checkpoint nie jest w pełni
+czysty:
+
+- PPK -- oba poprawnie 1,5% (iter50 dodatkowo poprawnie odróżnia 2,5%
+  dodatkową).
+- Dieta Niemcy (temat trafiony, brak liczby w RAG) -- **iter25 zaczyna
+  "Nie mam tej informacji...", ale zaraz potem i tak dopowiada "54
+  euro"** (ten sam wzorzec co 4.5B+adapter na VAT w Kroku 26). **iter50:
+  czysta odmowa, żadnej liczby.**
+- VAT (spoza domeny) -- **iter25: czysta odmowa.** iter50: hedge, ale
+  wspomina "23%" jako sugestię w nawiasie -- miękczej niż jawne
+  dopowiedzenie, ale to wciąż liczba, której reguła 1 SYSTEM_PROMPT
+  zabrania.
+- Staż dokładnie 3 lata -> okres wypowiedzenia -- oba poprawnie 3
+  miesiące, bez regresji.
+
+**Uczciwy wniosek, spójny z Krokiem 26:** nawet z jawnymi przykładami
+hedgingu w danych, LoRA (na CUDA i na MLX, na 4.5B i na 11B) **nie daje
+100% niezawodności** w przyznawaniu się do niewiedzy -- **czysty model
+bazowy bez adaptera** (`--no-adapter`, patrz Krok 26) był jedynym
+wariantem bezbłędnym na obu testach (dieta i VAT) we wszystkich
+dotychczasowych próbach. Fine-tuning na tak małym zbiorze (58
+przykładów) wprowadza pewne ryzyko w tym konkretnym wymiarze, którego
+sam RAG + SYSTEM_PROMPT nie mają.
+
+**Decyzja: `adapters/bielik11b-kadry-lora-hedge-iter50` zastępuje
+`bielik11b-kadry-lora-v2-iter25` jako `DEFAULT_ADAPTER_PATH` w
+`chat.py`** -- wybrany mimo niepełnej czystości, bo poprawnie
+odmawia na trudniejszym z dwóch testów ("dieta", fragment tematycznie
+trafiony) kosztem miękkiego wspomnienia liczby na łatwiejszym ("VAT",
+fragment całkiem nietrafiony) -- zgodnie z ustaloną w projekcie zasadą
+podziału ról (RAG = fakty, LoRA = styl/kalibracja), z jawnym
+zastrzeżeniem w docstringu `chat.py`, że `--no-adapter` pozostaje
+bezpieczniejszą opcją, gdy priorytetem jest właśnie ta niezawodność, a
+nie styl odpowiedzi.
+
+`pytest -v` -- 86/86 (bez regresji; zmiana dotyczy wyłącznie stałej
+`DEFAULT_ADAPTER_PATH` i docstringu w `chat.py`, poza zakresem
+istniejących testów jednostkowych).
 
 ## Co dalej
 

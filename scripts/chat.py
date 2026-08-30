@@ -8,9 +8,14 @@ wystarcza). Fakty mają pochodzić z kontekstu RAG, a nie z pamięci wag
 modelu -- to naprawia niedokładności zaobserwowane w testach samego
 douczonego modelu bez kontekstu (patrz PROGRESS.md, krok 4b).
 
-Domyślny model: Bielik-11B-v3.0-Instruct + adapter bielik11b-kadry-lora-v2-iter25
-(patrz PROGRESS.md, krok 16 -- douczony na rozszerzonym zbiorze, obejmującym
-też ustawę zasiłkową, PIT, PPK i ustawę o rynku pracy).
+Domyślny model: Bielik-11B-v3.0-Instruct + adapter
+bielik11b-kadry-lora-hedge-iter50 (patrz PROGRESS.md, Krok 27 -- douczony
+na zbiorze z Kroku 26 rozszerzonym o przykłady hedgingu). Zastrzeżenie:
+ten adapter NIE jest w 100% niezawodny w przyznawaniu się do niewiedzy
+poza korpusem RAG (patrz Krok 27, test VAT) -- czysty model bazowy bez
+adaptera (--no-adapter) wypadał na tym wymiarze czyściej we wszystkich
+dotąd przetestowanych przypadkach, kosztem gorszego stylu/cytowania na
+faktach, które RAG dostarcza poprawnie.
 
 Tryb interaktywny pamięta kontekst rozmowy (poprzednie pytania i
 odpowiedzi trafiają do promptu przy kolejnych turach) -- wpisz /nowy,
@@ -51,7 +56,7 @@ from rag_search import RagIndex
 
 ROOT = Path(__file__).resolve().parent.parent
 MODEL_PATH = ROOT / "models" / "Bielik-11B-v3.0-Instruct-mlx"
-DEFAULT_ADAPTER_PATH = ROOT / "adapters" / "bielik11b-kadry-lora-v2-iter25"
+DEFAULT_ADAPTER_PATH = ROOT / "adapters" / "bielik11b-kadry-lora-hedge-iter50"
 
 
 def answer(
