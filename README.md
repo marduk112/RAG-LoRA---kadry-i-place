@@ -4,7 +4,7 @@ Lokalny (offline po pierwszym pobraniu) asystent odpowiadający na pytania
 z zakresu polskiego prawa pracy i ubezpieczeń społecznych, bez wysyłania
 niczego do chmury. Natywnie na Apple Silicon (MLX) — plus alternatywne
 ścieżki dla Linuksa/Windows z kartą NVIDIA (CUDA, patrz niżej;
-nieprzetestowane) i dla dowolnego modelu już załadowanego w LM Studio.
+przetestowane na RunPod A40) i dla dowolnego modelu już załadowanego w LM Studio.
 
 Dziennik tego, jak to powstawało krok po kroku — z napotkanymi
 pułapkami i decyzjami — jest w [PROGRESS.md](PROGRESS.md). Ten plik to
@@ -47,7 +47,7 @@ niżej po instalacji):
 |---|---|---|---|
 | `chat.py` (MLX) | macOS + Apple Silicon | ✅ Przetestowane: macOS 26 (Tahoe), Apple M4 Pro, 64GB RAM | Konto HF z zaakceptowaną licencją Bielika (patrz niżej) |
 | `chat.py` (MLX) | macOS + Apple Silicon, starsze chipy z serii M lub inna wersja macOS | ⚠️ Nieprzetestowane, ale powinno działać — MLX wspiera cały Apple Silicon | jw. |
-| `chat_cuda.py` (CUDA) | Linux/Windows + karta NVIDIA | ⚠️ Nieprzetestowane (brak dostępu do sprzętu NVIDIA) | Sterowniki CUDA, `torch` z obsługą CUDA, konto HF z licencją Bielika |
+| `chat_cuda.py` (CUDA) | Linux/Windows + karta NVIDIA | ✅ Przetestowane na RunPod (A40, 48GB VRAM) — patrz PROGRESS.md, Krok 26 | Sterowniki CUDA, `torch` z obsługą CUDA, konto HF z licencją Bielika |
 | `chat_lmstudio.py` (LM Studio) | dowolna (tam, gdzie działa LM Studio) | ✅ Przetestowane na macOS; LM Studio samo wspiera też Windows/Linux z CUDA | [LM Studio](https://lmstudio.ai/) z załadowanym modelem -- **nie wymaga** konta HF/licencji Bielika, bo model przynosisz swój |
 
 Reszta projektu (`download_acts.py`, `build_rag_index.py`, `rag_search.py`,
@@ -314,22 +314,24 @@ kalibracji z kroku 4b–4c. W testach samo grounding przez RAG
 wystarczyło jednak do trafnych, precyzyjnie cytowanych odpowiedzi
 (patrz PROGRESS.md, krok 7).
 
-### Linux/Windows + karta NVIDIA (CUDA) — ⚠️ NIEPRZETESTOWANE
+### Linux/Windows + karta NVIDIA (CUDA)
 
 MLX (a więc `chat.py` i `mlx_lm.lora`) działa tylko na Apple Silicon.
 Dla maszyn z kartą NVIDIA jest równoległy stos oparty o `transformers`
 + `peft` + `bitsandbytes` (kwantyzacja 4-bit) + `trl` (`SFTTrainer`)
-zamiast `mlx-lm` — te same dane treningowe (`data/finetune/`), te same
-hiperparametry co w PROGRESS.md (krok 4b/6), ten sam RAG i prompt
+zamiast `mlx-lm` — te same dane treningowe (`data/finetune/`), zbliżone
+hiperparametry co w PROGRESS.md (krok 4b/6, ale inny domyślny
+scheduler LR niż `mlx_lm.lora` — patrz Krok 26), ten sam RAG i prompt
 systemowy (`scripts/prompt.py`).
 
-**Ten wariant nie został uruchomiony na żadnej karcie NVIDIA** — środowisko,
-w którym powstał ten projekt, to Mac bez GPU CUDA, a autor nie ma dostępu do
-sprzętu NVIDIA i nie planuje testować tego wariantu samodzielnie. API zostało
-zweryfikowane względem aktualnej dokumentacji `peft`/`trl`, ale nie
-przetestowane end-to-end. Jeśli coś nie zadziała, to prawdopodobnie
-drobna niezgodność wersji bibliotek — daj znać (issue) albo od razu
-wyślij PR z poprawką i aktualizacją tego pliku oraz PROGRESS.md.
+**Przetestowane end-to-end na RunPod (instancja A40, 48GB VRAM)** —
+patrz PROGRESS.md, Krok 26, po pełny opis: dwa bugi w API znalezione i
+naprawione (`SFTTrainer` bez `processing_class`, chat_template Bielika
+niekompatybilny z `assistant_only_loss`), analiza różnicy w
+zachowaniu treningu względem MLX (scheduler LR), oraz porównanie
+4.5B/11B — **zalecany jest model 11B**, 4.5B ma udokumentowaną
+tendencję do przesłaniania niepełnego kontekstu z RAG zmyśloną, ale
+pewnie brzmiącą liczbą z wag.
 
 ```bash
 # Torch z obsługą CUDA zainstaluj osobno wg https://pytorch.org/get-started/locally/
@@ -337,6 +339,7 @@ wyślij PR z poprawką i aktualizacją tego pliku oraz PROGRESS.md.
 .venv/bin/pip install -r requirements-common.txt -r requirements-cuda.txt
 
 # Fine-tuning LoRA (odpowiednik kroku 4 wyżej, ale przez transformers+peft+trl)
+# -- domyślnie 11B, patrz wyżej dlaczego
 .venv/bin/python scripts/train_lora_cuda.py
 
 # Czat (RAG + doduczony model) -- transformers+peft zamiast MLX

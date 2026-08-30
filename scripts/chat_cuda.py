@@ -1,7 +1,11 @@
 """
-UWAGA: NIEPRZETESTOWANE (patrz train_lora_cuda.py -- ten sam zastrzeżenie:
-napisane bez dostępu do karty NVIDIA/CUDA, API zweryfikowane względem
-dokumentacji, ale nie uruchomione end-to-end).
+Przetestowane end-to-end na realnej karcie NVIDIA (RunPod, A40) --
+patrz PROGRESS.md, Krok 26, oraz train_lora_cuda.py po dwa bugi
+znalezione i naprawione przy tej okazji. Domyślny model/adapter to
+11B: 4.5B ma udokumentowaną (Krok 16, Krok 25, Krok 26) tendencję do
+przesłaniania niepełnego/brakującego kontekstu z RAG pewną, ale
+zmyśloną liczbą z wag -- 11B tego problemu nie miał w żadnym
+przetestowanym przypadku, nawet bez adaptera (`--no-adapter`).
 
 Odpowiednik scripts/chat.py dla Linuksa/Windows z kartą NVIDIA:
 RAG (rag_search.RagIndex) + Bielik doduczony przez
@@ -32,8 +36,8 @@ Użycie:
     python scripts/chat_cuda.py --file umowa.pdf
     python scripts/chat_cuda.py --as-of 2019-06-01
     python scripts/chat_cuda.py \\
-        --model speakleash/Bielik-11B-v3.0-Instruct \\
-        --adapter-path adapters-cuda/bielik11b-kadry-lora/final
+        --model speakleash/Bielik-4.5B-v3.0-Instruct \\
+        --adapter-path adapters-cuda/bielik4.5b-kadry-lora-hedge/final
 """
 
 import argparse
@@ -48,7 +52,7 @@ from prompt import SYSTEM_PROMPT, build_user_message, looks_like_meta_question, 
 from rag_search import RagIndex
 
 DEFAULT_MODEL = "speakleash/Bielik-11B-v3.0-Instruct"
-DEFAULT_ADAPTER_PATH = "adapters-cuda/bielik11b-kadry-lora/final"
+DEFAULT_ADAPTER_PATH = "adapters-cuda/bielik11b-kadry-lora-hedge/final"
 
 
 def load_model(model_id: str, adapter_path: str | None):

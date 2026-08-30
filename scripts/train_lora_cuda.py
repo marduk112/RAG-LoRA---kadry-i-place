@@ -1,11 +1,13 @@
 """
-UWAGA: NIEPRZETESTOWANE. Ten skrypt został napisany bez dostępu do
-karty NVIDIA/CUDA (środowisko deweloperskie to Mac/Apple Silicon) --
-API (peft, trl, transformers) zweryfikowano względem aktualnej
-dokumentacji, ale end-to-end przebieg treningu nie został uruchomiony.
-Jeśli coś nie zadziała, to najpewniej drobna niezgodność wersji
-bibliotek -- daj znać (issue) albo od razu wyślij PR z poprawką i
-aktualizacją PROGRESS.md.
+Przetestowane end-to-end na realnej karcie NVIDIA (RunPod, A40, 48GB
+VRAM) -- patrz PROGRESS.md, Krok 26. Dwa bugi znalezione i naprawione
+przy tej okazji: brak `processing_class` w `SFTTrainer` (parametr
+`tokenizer` został usunięty z API `trl`) oraz niekompatybilny z
+`assistant_only_loss` chat_template Bielika (ChatML sklejony w jednym
+bloku Jinja -- wymaga ręcznego dopisania `{% generation %}`, `trl` nie
+potrafi go auto-załatać). Zalecany model/adapter: 11B, patrz Krok 26 --
+4.5B ma udokumentowaną (Krok 16, Krok 25, Krok 26) tendencję do
+przesłaniania kontekstu z RAG pewną, ale zmyśloną liczbą z wag.
 
 Odpowiednik `mlx_lm.lora` (patrz PROGRESS.md, kroki 4b i 6) dla
 Linuksa/Windows z kartą NVIDIA: LoRA fine-tuning Bielika przez
@@ -14,13 +16,17 @@ transformers + peft + bitsandbytes (kwantyzacja 4-bit) + trl
 (data/finetune/train.jsonl, valid.jsonl, format {"messages": [...]}).
 
 Domyślne hiperparametry (batch 2, 200 kroków, ewaluacja/zapis co 25,
-lr 1e-5, maskowanie promptu w loss) są 1:1 przeniesione z przebiegów
-na MLX opisanych w PROGRESS.md. Tam model przeuczał się bardzo szybko
-(najlepszy val loss już przy iteracji 25-50 z 200) -- to zjawisko
-zależy od optymalizatora/precyzji i może wypaść inaczej tutaj, więc
-mimo wspólnego punktu startowego OBSERWUJ `eval_loss` w logach i wybierz
-checkpoint z najniższą wartością, a nie automatycznie ostatni
-(patrz --save-steps -- każdy zapis trafia do osobnego podkatalogu
+lr 1e-5, maskowanie promptu w loss) startowo przeniesione 1:1 z
+przebiegów na MLX -- ale `SFTConfig` domyślnie ustawia
+`lr_scheduler_type="linear"` (LR opada do ~0 przez cały trening), a
+`mlx_lm.lora` nie ma żadnego schedulera (LR stały przez wszystkie
+iteracje). W testach (Krok 26) TA różnica -- nie sam framework --
+tłumaczy, dlaczego tu (w przeciwieństwie do MLX) `eval_loss` maleje
+monotonicznie i się wypłaszcza zamiast rosnąć po znalezieniu minimum:
+`--lr-scheduler-type constant` odtwarza bliżej dynamikę MLX (przydatne
+do porównań), ale przy dłuższym treningu i tak zaleca się obejrzeć
+`eval_loss` w logach, nie ufać ślepo ostatniemu krokowi (patrz
+--save-steps -- każdy zapis trafia do osobnego podkatalogu
 checkpoint-N w --output-dir).
 
 Użycie:
@@ -43,7 +49,7 @@ from trl import SFTConfig, SFTTrainer
 ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = ROOT / "data" / "finetune"
 DEFAULT_MODEL = "speakleash/Bielik-11B-v3.0-Instruct"
-DEFAULT_OUTPUT_DIR = ROOT / "adapters-cuda" / "bielik11b-kadry-lora"
+DEFAULT_OUTPUT_DIR = ROOT / "adapters-cuda" / "bielik11b-kadry-lora-hedge"
 
 
 def main():

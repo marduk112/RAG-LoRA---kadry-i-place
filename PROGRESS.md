@@ -1554,6 +1554,149 @@ poprawia opcjonalny, szybszy wariant, nie zmienia domyślnego zachowania.
 `pytest -v` -- 83/83 (bez regresji; zmiana dotyczy wyłącznie
 `data/finetune/*.jsonl`, poza zakresem istniejących testów jednostkowych).
 
+## Krok 26: realny test wariantu CUDA na karcie NVIDIA ("Co dalej" pkt 3)
+
+Cel: wariant CUDA (`train_lora_cuda.py`, `chat_cuda.py`) był od Kroku 9
+oznaczony jako nieprzetestowany -- napisany bez dostępu do sprzętu
+NVIDIA, API zweryfikowane tylko względem dokumentacji. Sprzęt: pod
+wynajęty na godziny na RunPod, GPU A40 (48GB VRAM), obraz
+`runpod/pytorch:...-cu1281-torch280-ubuntu2404`.
+
+**Dwa bugi w API znalezione i naprawione przed pierwszym udanym
+przebiegiem:**
+1. `SFTTrainer` nie dostawał tokenizera -- `trl` całkowicie usunął
+   parametr `tokenizer` na rzecz `processing_class`, a skrypt ładował
+   tokenizer do zmiennej, ale nigdy jej nie przekazywał. Naprawione:
+   `processing_class=tokenizer` jawnie w konstruktorze (poleganie na
+   auto-inferencji z opakowanego w PEFT, skwantyzowanego modelu byłoby
+   mniej pewne).
+2. Domyślny chat_template Bielika (ChatML: `<|im_start|>rola\ntreść
+   <|im_end|>`, rola i treść sklejone w jednym bloku Jinja) nie dawał
+   się auto-załatać przez `trl` markerami `{% generation %}` wymaganymi
+   przez `assistant_only_loss=True` -- `ValueError: chat template is
+   not training-compatible`. Naprawione: `tokenizer.chat_template`
+   nadpisywany w skrypcie funkcjonalnie identyczną wersją (zweryfikowano
+   lokalnie w czystym `jinja2.Environment`, że renderuje bajtowo ten sam
+   tekst dla przykładowej rozmowy), tylko z turą asystenta owiniętą w
+   `{% generation %}...{% endgeneration %}`.
+
+**Różnica w dynamice treningu względem MLX -- zdiagnozowana, nie
+naprawiona (bo nie jest bugiem):** `SFTConfig` domyślnie ustawia
+`lr_scheduler_type="linear"` (LR opada do ~0 przez cały trening), a
+`mlx_lm.lora` używa `optim.Adam(learning_rate=...)` bez żadnego
+schedulera (LR stały przez wszystkie iteracje) -- potwierdzone w
+dokumentacji `mlx-lm`. Test na 4.5B (te same dane co Krok 25, 50/9)
+przy domyślnym `linear`:
+
+| kroki | eval_loss (200) | eval_loss (400) |
+|---|---|---|
+| 25 | 1.869 | 1.868 |
+| 100 | 1.811 | 1.798 |
+| 200 | 1.789 (final) | 1.726 |
+| 300 | -- | 1.708 |
+| 325 | -- | 1.706 (min) |
+| 400 (final) | -- | 1.707 |
+
+W przeciwieństwie do wszystkich przebiegów MLX w tym pliku (val loss
+minimum przy iter 25-50, potem monotoniczny wzrost), tu `eval_loss`
+maleje przez cały trening i się wypłaszcza -- **żadnego przeuczenia
+faktów nawet przy 400 krokach (16 epok) na 50-elementowym zbiorze**.
+Dodano flagę `--lr-scheduler-type` (domyślnie `linear`) do
+`train_lora_cuda.py`, żeby dało się odtworzyć bliżej dynamikę MLX
+(`constant`) do dalszych porównań.
+
+**Znaleziona i naprawiona osobna, poważniejsza usterka: brak
+przykładów hedgingu w danych treningowych.** Test end-to-end na
+pytaniu spoza pobranych ustaw ("Jaka jest wysokość diety za dobę
+zagranicznej podróży służbowej do Niemiec?" -- art. 77⁵ KP deleguje do
+nieobecnego w indeksie rozporządzenia) pokazał, że adapter 4.5B (przy
+`linear`/400 kroków I przy `constant`/50 kroków, bliżej dynamiki MLX)
+**zawsze pewnie dopowiadał konkretną liczbę** ("1000 zł", potem "49
+euro") zamiast przyznać się do braku danych, mimo reguły 2
+SYSTEM_PROMPT wprost tego zabraniającej. Programowe przeszukanie
+`data/finetune/train.jsonl` (50 przykładów) wykazało **0 przykładów**
+demonstrujących ten wzorzec -- jedyny istniejący w projekcie przykład
+tego typu (pytanie o VAT) leżał w `valid.jsonl`, więc nigdy nie
+trafiał do gradientu, tylko do liczenia `eval_loss`. LoRA na 50
+przykładach uczy się stylu z tego, co widzi -- skoro wszystkie
+demonstrowały pewną, cytowaną odpowiedź, trening naturalnie erodował
+(a nie budował) odruch przyznania się do niewiedzy. **Dodano 8 nowych
+przykładów do `train.jsonl`** (CIT, przyszła płaca minimalna, spór o
+mobbing, alimenty, przyszła składka zdrowotna, RODO/NDA, zagraniczna
+płaca minimalna, dieta zagraniczna do innego kraju niż w teście) w tym
+samym stylu co istniejący przykład VAT -- `train.jsonl` 50 -> 58,
+`valid.jsonl` celowo nietknięty (9), żeby `eval_loss` pozostał
+porównywalny z przebiegami wyżej.
+
+**Dodatkowe strukturalne zabezpieczenie w `scripts/prompt.py`:**
+`build_user_message` teraz dokłada jawne ostrzeżenie tekstowe (z
+realnym score'em dopasowania), gdy najlepszy wynik RAG jest poniżej
+`LOW_CONFIDENCE_SCORE_THRESHOLD = 0.75` -- ten sam próg co
+`ELLIPTICAL_SCORE_THRESHOLD`, już wcześniej empirycznie sprawdzony w
+tym projekcie dla tego samego modelu embeddingowego. Zastrzeżenie:
+pokrywa pytania całkiem spoza domeny (niski score, np. VAT), NIE
+przypadek "diety" (fragment tematycznie trafiony, score wysoki, ale
+bez konkretnej liczby) -- to wymagałoby sprawdzania treści fragmentu,
+nie samego score'u. 3 nowe testy w `tests/test_prompt.py` (86/86 w
+całym projekcie).
+
+**Model 4.5B po obu poprawkach (dane + warning) -- częściowy sukces:**
+na pytaniu o VAT model teraz explicite zauważa brak pokrycia
+("Niestety, w dostarczonych fragmentach... nie ma informacji..."), ale
+mimo to zaraz potem dopowiada "23%" z pamięci. Ostrzeżenie działa
+częściowo (model wie, że brakuje danych), ale nie powstrzymuje przed
+użyciem własnej wiedzy wbrew regule 1 SYSTEM_PROMPT.
+
+**Test modelu 11B (ten sam sprzęt/pipeline, bez żadnego adaptera) na
+identycznym pytaniu o dietę: pełny sukces bez jakiegokolwiek
+fine-tuningu** -- poprawnie zidentyfikował, że art. 77⁵ KP tylko
+deleguje do rozporządzenia, wprost powiedział że go nie dostarczono, i
+nie zgadł żadnej liczby. **Potwierdza to na CUDA dokładnie to, co Krok
+16 i Krok 25 udokumentowały na MLX: 11B jest strukturalnie znacznie
+bardziej odporny na przesłanianie RAG własną pamięcią niż 4.5B** -- to
+różnica pojemności modelu, nie coś, co samo LoRA/hiperparametry na
+4.5B naprawią.
+
+**Trening LoRA na 11B z zaktualizowanymi danymi** (58/9, `linear`, 250
+kroków -- nieco więcej niż 200 z Kroku 16, bo zbiór urósł z 50 do 58):
+`eval_loss` malał monotonicznie 0.850 (krok 25) -> 0.788 (krok
+225-250, wypłaszczenie) -- ten sam brak przeuczenia co na 4.5B, ale
+wyraźnie niższy bezwzględny poziom lossu i wyższy
+`mean_token_accuracy` (~0.84 vs ~0.66 na 4.5B), spodziewane przy
+mocniejszym modelu bazowym. `adapters-cuda/bielik11b-kadry-lora-hedge/final`.
+
+**Test end-to-end 11B+adapter na 4 pytaniach -- czysty komplet:**
+- PPK, wpłata podstawowa -- poprawnie 1,5%, poprawnie odróżnia od 2,5%
+  dodatkowej (art. 26 ust. 1 vs ust. 5).
+- Dieta zagraniczna Niemcy -- poprawnie odmówił zgadywania, wyjaśnił
+  delegację do rozporządzenia. Identycznie z i bez adaptera -- LoRA
+  nie zepsuła wrodzonej odporności 11B.
+- VAT -- **czysta odmowa, zero halucynacji** ("fragmenty dotyczą PIT,
+  nie VAT") -- wyraźnie lepiej niż 4.5B+adapter+warning (tam mimo
+  przyznania się do braku danych model i tak dopowiadał liczbę).
+- Staż dokładnie 3 lata -> okres wypowiedzenia -- poprawnie 3 miesiące,
+  art. 36 § 1 pkt 3, bez regresji na tej mocnej stronie.
+
+**Decyzja: `adapters-cuda/bielik11b-kadry-lora-hedge/final` (i model
+11B) staje się nowym domyślnym adapterem/modelem dla wariantu CUDA** --
+`DEFAULT_MODEL`/`DEFAULT_ADAPTER_PATH` w `chat_cuda.py` i
+`DEFAULT_OUTPUT_DIR` w `train_lora_cuda.py` zaktualizowane, docstringi
+obu skryptów i README (tabela wariantów + sekcja CUDA) zdjęte z
+"NIEPRZETESTOWANE".
+
+**Uwaga na przyszłość:** adapter wytrenowany tym pipeline'em (peft/
+`bitsandbytes`) **nie jest kompatybilny** z formatem `mlx_lm` -- inne
+nazewnictwo kluczy w pliku wag (`peft` vs `mlx_lm.tuner`), inna
+kwantyzacja modelu bazowego (bnb nf4 vs własna kwantyzacja
+`mlx_lm.convert`), inny domyślny zakres warstw (tu wszystkie warstwy z
+`q_proj`/`v_proj`, `mlx_lm.lora` domyślnie tylko ostatnie 16 z 60). Nie
+da się go bezpośrednio doczepić do `chat.py` -- wariant MLX wymaga
+osobnego treningu `mlx_lm.lora` (teraz z tymi samymi, już
+zaktualizowanymi danymi, patrz punkt 2 niżej w "Co dalej").
+
+`pytest -v` -- 86/86 (83 sprzed tego kroku + 3 nowe dla warningu o
+niskim score w `build_user_message`).
+
 ## Co dalej
 
 1. ~~Zweryfikować ręcznie 3 rozbieżności `changeDate` znalezione przy
@@ -1578,12 +1721,16 @@ poprawia opcjonalny, szybszy wariant, nie zmienia domyślnego zachowania.
    tam po pełny, uczciwy opis granic tej naprawy. 4.5B pozostaje
    wariantem opcjonalnym (`--model`/`--adapter-path`), 11B zostaje
    domyślny w `chat.py`.
-3. Wariant CUDA (krok 9) wymaga realnego testu na maszynie z kartą
-   NVIDIA -- użytkownik nie ma takiego sprzętu i nie planuje testować
-   tego samodzielnie, więc pozostaje "nieprzetestowane" do czasu, aż
-   zrobi to ktoś inny z dostępem do NVIDIA; jeśli to nastąpi,
-   zaktualizować ten plik i README (usunąć oznaczenie, poprawić
-   ewentualne niezgodności API).
+3. ~~Wariant CUDA (krok 9) wymaga realnego testu na maszynie z kartą
+   NVIDIA.~~ **Domknięte w Kroku 26** -- wynajęty pod RunPod (A40),
+   znalezione i naprawione 2 bugi w API (`processing_class`,
+   chat_template pod `assistant_only_loss`), zdiagnozowana różnica
+   dynamiki treningu względem MLX (scheduler LR), naprawiony brak
+   przykładów hedgingu w danych, dodane zabezpieczenie przy niskim
+   score RAG, i potwierdzone na CUDA (nie tylko MLX) że 11B jest
+   znacznie bardziej odporny na halucynacje niż 4.5B. 11B +
+   `adapters-cuda/bielik11b-kadry-lora-hedge` to teraz domyślna,
+   zalecana kombinacja dla wariantu CUDA.
 4. ~~Wersjonowanie w czasie -- prawo obowiązujące na dany dzień w
    przeszłości, nie tylko aktualne.~~ **Domknięte w Krokach 18-24**, wg
    planu w `/Users/szymon/.claude/plans/drifting-toasting-wozniak.md`
