@@ -58,6 +58,13 @@ def main():
     parser.add_argument("--learning-rate", type=float, default=1e-5)
     parser.add_argument("--lora-rank", type=int, default=8)
     parser.add_argument("--lora-alpha", type=int, default=16)
+    parser.add_argument(
+        "--lr-scheduler-type",
+        type=str,
+        default="linear",
+        help="'linear' (domyślny SFTConfig) maleje do ~0 przez cały trening -- bliżej "
+        "zachowania mlx_lm.lora (stały LR przez wszystkie iteracje) daje 'constant'",
+    )
     args = parser.parse_args()
 
     data_dir = Path(args.data_dir)
@@ -117,6 +124,7 @@ def main():
         per_device_train_batch_size=args.batch_size,
         max_steps=args.max_steps,
         learning_rate=args.learning_rate,
+        lr_scheduler_type=args.lr_scheduler_type,
         eval_strategy="steps",
         eval_steps=args.eval_steps,
         save_strategy="steps",
