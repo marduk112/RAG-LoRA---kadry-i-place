@@ -34,6 +34,19 @@ i przy pytaniach spoza wytrenowanego zakresu potrafi pewnie zmyślać
 fakty. Po dodaniu kontekstu RAG te same pytania wypadały poprawnie.
 Szczegóły i konkretne przykłady testów — patrz PROGRESS.md, kroki 4b–4c.
 
+**Zastrzeżenie:** zestaw `data/finetune/{train,valid}.jsonl` nie został
+zweryfikowany przez specjalistę kadrowo-płacowego — napisał go autor
+tego repo na podstawie wiedzy ogólnej i testów działania kodu (czy RAG
+trafia w dobry artykuł, czy model poprawnie cytuje i przyznaje się do
+niewiedzy), nie merytorycznej poprawności prawnej każdego szczegółu.
+Traktuj te przykłady jako materiał do nauki STYLU odpowiedzi, nie jako
+zweryfikowane źródło faktów kadrowo-płacowych. Fakty i tak mają
+pochodzić z kontekstu RAG (prawdziwy tekst ustawy z ELI API, `source_url`
+w każdym wyniku pozwala zweryfikować źródło) — ale zanim ktokolwiek
+oprze się na odpowiedziach tego asystenta w realnej sprawie kadrowej,
+powinien je zweryfikować ze specjalistą lub bezpośrednio z tekstem
+ustawy. To projekt edukacyjny/eksperymentalny, nie źródło porady prawnej.
+
 ## Wymagania
 
 Wspólne dla wszystkich wariantów:

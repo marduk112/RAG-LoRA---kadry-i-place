@@ -1,5 +1,8 @@
-# Środowisko Python (odtwarzalne przez requirements.txt)
-.venv/
+# Środowisko Python (odtwarzalne przez requirements.txt) -- bez końcowego
+# "/" celowo: u nas .venv bywa symlinkiem do współdzielonego katalogu
+# (bielik-venv-shared/), a wzorzec z "/" pasuje tylko do prawdziwych
+# katalogów, nie do symlinków.
+.venv
 __pycache__/
 *.pyc
 .pytest_cache/
