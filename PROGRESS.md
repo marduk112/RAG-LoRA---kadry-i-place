@@ -1796,7 +1796,13 @@ istniejących testów jednostkowych).
    nieprzewidziane pytania łączące fakty z kilku ustępów naraz -- patrz
    tam po pełny, uczciwy opis granic tej naprawy. 4.5B pozostaje
    wariantem opcjonalnym (`--model`/`--adapter-path`), 11B zostaje
-   domyślny w `chat.py`.
+   domyślny w `chat.py`. **Ta sama granica potwierdzona i rozszerzona w
+   Krokach 26-27**: nawet po dodaniu jawnych przykładów HEDGINGU (nie
+   tylko kontrastujących faktów) do danych, LoRA na żadnym z testowanych
+   wariantów (4.5B/11B, CUDA/MLX) nie osiągnęła 100% niezawodności w
+   przyznawaniu się do niewiedzy -- czysty model bazowy bez adaptera
+   pozostaje jedynym bezbłędnym wariantem na tym konkretnym wymiarze we
+   wszystkich dotychczasowych testach.
 3. ~~Wariant CUDA (krok 9) wymaga realnego testu na maszynie z kartą
    NVIDIA.~~ **Domknięte w Kroku 26** -- wynajęty pod RunPod (A40),
    znalezione i naprawione 2 bugi w API (`processing_class`,
