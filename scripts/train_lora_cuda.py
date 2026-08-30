@@ -72,6 +72,24 @@ def main():
         args.model, quantization_config=bnb_config, device_map="auto"
     )
     tokenizer = AutoTokenizer.from_pretrained(args.model)
+    # Bielik's stock chat template (ChatML: <|im_start|>role\n...<|im_end|>\n) ma
+    # role/content sklejone w jednym {{ }} bloku, więc trl nie potrafi go
+    # automatycznie załatać markerami {% generation %} wymaganymi przez
+    # assistant_only_loss (patrz ValueError "chat template is not
+    # training-compatible"). Wersja niżej jest funkcjonalnie identyczna --
+    # renderuje ten sam tekst -- tylko z turą asystenta owiniętą w
+    # {% generation %}, żeby loss liczył się wyłącznie na jej tokenach.
+    tokenizer.chat_template = (
+        "{{bos_token}}{% for message in messages %}"
+        "{% if message['role'] == 'assistant' %}"
+        "{{'<|im_start|>' + message['role'] + '\n'}}"
+        "{% generation %}{{message['content'] + '<|im_end|>' + '\n'}}{% endgeneration %}"
+        "{% else %}"
+        "{{'<|im_start|>' + message['role'] + '\n' + message['content'] + '<|im_end|>' + '\n'}}"
+        "{% endif %}"
+        "{% endfor %}"
+        "{% if add_generation_prompt %}{{ '<|im_start|>assistant\n' }}{% endif %}"
+    )
 
     model = prepare_model_for_kbit_training(model)
     peft_config = LoraConfig(
