@@ -1733,8 +1733,8 @@ samych danych):
 | 200 | 0.737 | 0.000 |
 
 **Test end-to-end iter25 vs iter50** na tych samych 4 pytaniach co na
-CUDA (Krok 26) -- wynik MIESZANY, żaden checkpoint nie jest w pełni
-czysty:
+CUDA (Krok 26), powtarzalny przez `scripts/test_hedge_probes_mlx.sh`
+-- wynik MIESZANY, żaden checkpoint nie jest w pełni czysty:
 
 - PPK -- oba poprawnie 1,5% (iter50 dodatkowo poprawnie odróżnia 2,5%
   dodatkową).

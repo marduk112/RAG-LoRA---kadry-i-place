@@ -41,7 +41,7 @@ Użycie:
     python scripts/chat.py --as-of 2019-06-01        # stan prawny na dany dzień
     python scripts/chat.py \\
         --model models/Bielik-4.5B-v3.0-Instruct-mlx \\
-        --adapter-path adapters/bielik-kadry-lora-iter50  # szybszy wariant 4.5B
+        --adapter-path adapters/bielik-kadry-lora-v3-iter25  # szybszy wariant 4.5B
 """
 
 import argparse
