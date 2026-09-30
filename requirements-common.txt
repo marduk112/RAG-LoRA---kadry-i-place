@@ -7,3 +7,4 @@ pdfplumber==0.11.10
 numpy==2.5.2
 huggingface_hub==1.27.0
 requests==2.34.2
+psutil==7.2.2  # opcjonalne: dobór liczby procesów parsujących do WOLNEJ pamięci (download_acts.default_parse_workers)

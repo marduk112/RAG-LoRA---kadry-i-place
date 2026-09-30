@@ -36,11 +36,15 @@ Uruchomienie:
     python scripts/download_acts.py
 """
 
+import argparse
 import io
 import json
+import multiprocessing
+import os
 import re
 import time
 from collections import Counter
+from concurrent.futures import Future, ProcessPoolExecutor
 from pathlib import Path
 
 import pdfplumber
@@ -223,11 +227,115 @@ def fetch_pdf_bytes(act: dict, kind: str, file_name: str) -> bytes:
     return r.content
 
 
+FOOTNOTE_MARKER_RE = re.compile(r"^(\d{1,3})\)$")
+FOOTNOTE_BODY_SIZE_RATIO = 0.9  # linia "treści" strony ma czcionkę >= 90% bazowej (przypisy: 10 pt przy 12 pt tekstu)
+
+
+FOOTNOTE_SNIPPET_CHARS = 15  # ile pierwszych znaków (bez spacji) treści przypisu służy do jego odnalezienia w tekście pypdf
+
+
+def find_footnote_markers_pdfplumber(pdf_bytes: bytes) -> list[tuple[str, str] | None]:
+    """(numer, początek treści) PIERWSZEGO przypisu dolnego na każdej stronie
+    (albo None). Początek treści (pierwsze `FOOTNOTE_SNIPPET_CHARS` znaków
+    bez spacji) jest potrzebny, bo przypis sam bywa wyliczeniem -- przypis
+    "1) Niniejsza ustawa wdraża: 1) dyrektywę...; 2) ..." na 1. stronie
+    ustawy zawiera własne linie "1) ...", więc samo "utnij od ostatniej
+    linii '1)'" zostawiało jego nagłówek w art. 1 (projekt "RAG-LoRA - prawo polskie", PROGRESS.md Krok 63).
+
+    Kancelaria Sejmu drukuje przypisy ("15) Zmiany tekstu jednolitego
+    wymienionej ustawy zostały ogłoszone w...") na dole strony, mniejszą
+    czcionką (10 pt przy 12 pt tekstu), z numerem jako indeksem górnym
+    (~6,5 pt). `pypdf` wypluwa je jako zwykłe linie na końcu tekstu strony,
+    więc trafiały do środka artykułu łamanego przez stronę -- potwierdzone w
+    co najmniej 129 artykułach 28 ustaw, a numer przypisu wyglądał jak
+    kolejny punkt wyliczenia (adapter zacytował nieistniejący "art. 389 pkt
+    15" Prawa wodnego, projekt "RAG-LoRA - prawo polskie", PROGRESS.md Krok 61/63).
+
+    Marker to wiersz złożony WYŁĄCZNIE z małych cyfr i ")" (numer przypisu
+    ma własną wysokość linii), pod którym nie ma już żadnej linii czcionką
+    treści -- to odróżnia go od odsyłacza w tekście ("z późn. zm.15)"),
+    który zawsze ma pod sobą dalszą treść strony albo leży w tej samej linii
+    co tekst 12 pt. Zwykłe wyliczenia "15) ..." w treści mają 12 pt i nigdy
+    nie spełniają warunku rozmiaru."""
+    markers: list[str | None] = []
+    with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
+        sizes = Counter(round(c["size"], 1) for page in pdf.pages for c in page.chars)
+        if not sizes:
+            return [None] * len(pdf.pages)
+        body_size = sizes.most_common(1)[0][0]
+        for page in pdf.pages:
+            rows: dict[int, list[dict]] = {}
+            for c in page.chars:
+                rows.setdefault(round(c["top"]), []).append(c)
+            ordered = sorted(rows.items())
+            found = None
+            for idx, (_, chars) in enumerate(ordered):
+                visible = [c for c in sorted(chars, key=lambda c: c["x0"]) if c["text"].strip()]
+                # Numer przypisu = wiodący ciąg małych znaków ("15)"); reszta
+                # wiersza (jeśli numer wypadł w tym samym wierszu co treść
+                # przypisu) musi być czcionką mniejszą niż treść strony.
+                n_lead = 0
+                while n_lead < len(visible) and visible[n_lead]["size"] < body_size * SUPERSCRIPT_SIZE_RATIO:
+                    n_lead += 1
+                lead = "".join(c["text"] for c in visible[:n_lead])
+                if not FOOTNOTE_MARKER_RE.match(lead):
+                    continue
+                if any(c["size"] >= body_size * FOOTNOTE_BODY_SIZE_RATIO for c in visible[n_lead:]):
+                    continue
+                text = lead
+                below_has_body = any(
+                    c["text"].strip() and c["size"] >= body_size * FOOTNOTE_BODY_SIZE_RATIO
+                    for _, cs in ordered[idx + 1:]
+                    for c in cs
+                )
+                if not below_has_body:
+                    rest = [c for c in visible[n_lead:]]
+                    for _, cs in ordered[idx + 1:]:
+                        if len("".join(c["text"] for c in rest if c["text"].strip())) >= FOOTNOTE_SNIPPET_CHARS:
+                            break
+                        rest.extend(c for c in sorted(cs, key=lambda c: c["x0"]) if c["text"].strip())
+                    snippet = "".join(c["text"] for c in rest if c["text"].strip())[:FOOTNOTE_SNIPPET_CHARS]
+                    found = (FOOTNOTE_MARKER_RE.match(text).group(1), snippet)
+                    break
+            markers.append(found)
+    return markers
+
+
+def strip_page_footnotes(page_lines: list[str], marker: tuple[str, str] | str | None) -> list[str]:
+    """Obcina linie strony od linii, od której zaczyna się blok przypisów:
+    "{numer})" + początek treści przypisu (z `find_footnote_markers_pdfplumber`;
+    porównanie bez spacji, bo pypdf i pdfplumber różnie je wstawiają).
+    Szukamy OD KOŃCA (przypisy są zawsze ostatnim blokiem tekstu strony w
+    pypdf, a zwykły punkt "15)" wyżej na stronie ma inną treść). Bez
+    dopasowania treści -- ostatnia linia z samym numerem (np. gdy numer i
+    treść przypisu leżą w pypdf w różnych liniach). `marker` jako sam numer
+    (str) -- tylko to drugie kryterium."""
+    if marker is None:
+        return page_lines
+    number, snippet = (marker, "") if isinstance(marker, str) else marker
+    prefix = f"{number})"
+
+    def squash(text: str) -> str:
+        return "".join(text.split())
+
+    if snippet:
+        joined_tail = ""
+        for i in range(len(page_lines) - 1, -1, -1):
+            joined_tail = squash(page_lines[i]) + joined_tail
+            if page_lines[i].strip().startswith(prefix) and joined_tail[len(prefix):].startswith(squash(snippet)):
+                return page_lines[:i]
+    for i in range(len(page_lines) - 1, -1, -1):
+        if page_lines[i].strip().startswith(prefix):
+            return page_lines[:i]
+    return page_lines
+
+
 def pdf_to_clean_text(pdf_bytes: bytes) -> str:
     reader = PdfReader(io.BytesIO(pdf_bytes))
+    footnote_markers = find_footnote_markers_pdfplumber(pdf_bytes)
     lines: list[str] = []
-    for page in reader.pages:
-        for line in page.extract_text().split("\n"):
+    for page, marker in zip(reader.pages, footnote_markers):
+        for line in strip_page_footnotes(page.extract_text().split("\n"), marker):
             stripped = line.strip()
             if not stripped:
                 continue
@@ -331,6 +439,23 @@ def parse_articles(clean_text: str) -> list[dict]:
     return articles
 
 
+def _fetch_source(source: dict, act_short: str) -> tuple[dict, str, str, bytes, str, str]:
+    """Sieciowa połowa `_extract_articles()`: metadane + PDF jednego aktu ELI
+    (akt bazowy albo obwieszczenie tekstu jednolitego). Wydzielona, żeby
+    pobieranie (sekwencyjne, łagodne dla publicznego API) dało się
+    oddzielić od parsowania (CPU, równolegle -- patrz `ParsePool`)."""
+    print(f"[{act_short}] pobieram metadane...", flush=True)
+    meta = fetch_meta(source)
+    title = meta.get("title", "")
+    eli = meta.get("ELI", f"{source['publisher']}/{source['year']}/{source['position']}")
+    print(f"[{act_short}] {title}  (status: {meta.get('status')})", flush=True)
+
+    kind, file_name = pick_text_file(meta)
+    print(f"[{act_short}] pobieram tekst typu '{kind}' ({file_name})...", flush=True)
+    pdf_bytes = fetch_pdf_bytes(source, kind, file_name)
+    return meta, title, eli, pdf_bytes, kind, file_name
+
+
 def _extract_articles(source: dict, act_short: str) -> tuple[dict, str, str, list[dict], bytes, str, str]:
     """Pobiera i parsuje DOWOLNY akt ELI (`{'publisher','year','position'}`)
     -- akt bazowy z ACTS ALBO obwieszczenie ogłaszające historyczny tekst
@@ -343,17 +468,17 @@ def _extract_articles(source: dict, act_short: str) -> tuple[dict, str, str, lis
     Czysta ekstrakcja+parsowanie -- żadnych zapisów na dysk (wołający
     decyduje, co i czy w ogóle zapisać). Zwraca też `meta`/`pdf_bytes`, żeby
     `process_act()` mógł zapisać `data/raw/{short}.pdf`/`_meta.json` bez
-    drugiego zapytania HTTP o te same metadane."""
-    print(f"[{act_short}] pobieram metadane...")
-    meta = fetch_meta(source)
-    title = meta.get("title", "")
-    eli = meta.get("ELI", f"{source['publisher']}/{source['year']}/{source['position']}")
-    print(f"[{act_short}] {title}  (status: {meta.get('status')})")
+    drugiego zapytania HTTP o te same metadane. Sekwencyjny odpowiednik
+    pary `_fetch_source()` + `parse_pdf_articles()`."""
+    meta, title, eli, pdf_bytes, kind, file_name = _fetch_source(source, act_short)
+    articles = parse_pdf_articles(pdf_bytes, act_short)
+    return meta, title, eli, articles, pdf_bytes, kind, file_name
 
-    kind, file_name = pick_text_file(meta)
-    print(f"[{act_short}] pobieram tekst typu '{kind}' ({file_name})...")
-    pdf_bytes = fetch_pdf_bytes(source, kind, file_name)
 
+def parse_pdf_articles(pdf_bytes: bytes, act_short: str) -> list[dict]:
+    """CPU-owa połowa `_extract_articles()`: PDF -> lista artykułów. Czysta
+    funkcja na poziomie modułu (bez sieci, bez zapisu), więc może działać w
+    osobnym procesie `ParsePool`."""
     print(f"[{act_short}] wyciągam i czyszczę tekst z PDF...")
     clean_text = pdf_to_clean_text(pdf_bytes)
     clean_text = strip_not_yet_in_force_text(clean_text)
@@ -382,18 +507,87 @@ def _extract_articles(source: dict, act_short: str) -> tuple[dict, str, str, lis
             "-- pomijam korektę indeksu górnego dla tego aktu, numeracja zostaje jak z pypdf"
         )
 
-    return meta, title, eli, articles, pdf_bytes, kind, file_name
+    return articles
 
 
-def process_act(act: dict) -> dict:
-    meta, title, eli, articles, pdf_bytes, kind, file_name = _extract_articles(act, act["short"])
+PARSE_WORKER_RAM_GB = 3  # zmierzony szczyt jednego procesu: 2,36 GB (Prawo lotnicze, 446 stron) + zapas
 
+
+def _available_ram_gb() -> float | None:
+    """WOLNA (nie całkowita) pamięć -- liczy się to, co zostało np. przy
+    załadowanym w LM Studio Qwenie (~30 GB); ta maszyna już się zawieszała
+    pod presją pamięci. `psutil` (wieloplatformowy); bez niego -- połowa
+    całkowitego RAM-u z sysconf (macOS/Linux), na Windowsie bez psutil None."""
+    try:
+        import psutil
+
+        return psutil.virtual_memory().available / 2**30
+    except ImportError:
+        pass
+    try:
+        return os.sysconf("SC_PAGE_SIZE") * os.sysconf("SC_PHYS_PAGES") / 2**30 / 2
+    except (AttributeError, ValueError, OSError):
+        return None
+
+
+def default_parse_workers(n_jobs: int | None = None) -> int:
+    """Liczba procesów do równoległego parsowania PDF-ów, dobierana do maszyny:
+    rdzenie dostępne dla procesu minus jeden (zostaje dla wątku pobierającego
+    i systemu), ograniczone WOLNĄ pamięcią (`PARSE_WORKER_RAM_GB` na proces)
+    i liczbą zadań. Działa na macOS/Linuksie/Windowsie."""
+    process_cpu_count = getattr(os, "process_cpu_count", None)  # Python 3.13+: respektuje affinity/cgroups
+    cpus = (process_cpu_count() if process_cpu_count else None) or os.cpu_count() or 1
+    workers = max(1, cpus - 1)
+    ram_gb = _available_ram_gb()
+    if ram_gb is not None:
+        workers = min(workers, max(1, int(ram_gb // PARSE_WORKER_RAM_GB)))
+    if n_jobs is not None:
+        workers = min(workers, max(1, n_jobs))
+    return workers
+
+
+class ParsePool:
+    """Parsowanie PDF-ów (`parse_pdf_articles`) w osobnych procesach -- czysta
+    praca CPU (pypdf + pdfplumber, jednowątkowe), bez modeli w pamięci, więc
+    bezpieczna do zrównoleglenia (w odróżnieniu od MLX/embeddingów). Pobieranie
+    zostaje sekwencyjne u wołającego; parsowanie już pobranych PDF-ów idzie w
+    tle, równolegle z pobieraniem kolejnych. `workers=1` -- bez puli, wszystko
+    w bieżącym procesie (identyczny wynik, łatwiejsze debugowanie).
+    Kontekst "spawn" jawnie: ten sam na każdym systemie (na Linuksie domyślny
+    "fork" bywa niebezpieczny z bibliotekami trzymającymi wątki)."""
+
+    def __init__(self, workers: int):
+        self.workers = workers
+        self._executor = (
+            ProcessPoolExecutor(max_workers=workers, mp_context=multiprocessing.get_context("spawn"))
+            if workers > 1
+            else None
+        )
+
+    def submit(self, pdf_bytes: bytes, label: str) -> Future:
+        if self._executor is not None:
+            return self._executor.submit(parse_pdf_articles, pdf_bytes, label)
+        future: Future = Future()
+        future.set_result(parse_pdf_articles(pdf_bytes, label))
+        return future
+
+    def __enter__(self) -> "ParsePool":
+        return self
+
+    def __exit__(self, *exc) -> None:
+        if self._executor is not None:
+            self._executor.shutdown(wait=True, cancel_futures=exc[0] is not None)
+
+
+def save_act_raw(act: dict, meta: dict, pdf_bytes: bytes) -> None:
     RAW_DIR.mkdir(parents=True, exist_ok=True)
     (RAW_DIR / f"{act['short']}.pdf").write_bytes(pdf_bytes)
     (RAW_DIR / f"{act['short']}_meta.json").write_text(
         json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8"
     )
 
+
+def write_act_chunks(act: dict, title: str, eli: str, kind: str, file_name: str, articles: list[dict]) -> dict:
     source_url = (
         f"{API_BASE}/acts/{act['publisher']}/{act['year']}/{act['position']}/text/{kind}/{file_name}"
     )
@@ -415,6 +609,14 @@ def process_act(act: dict) -> dict:
         json.dumps(chunks, ensure_ascii=False, indent=2), encoding="utf-8"
     )
     return {"short": act["short"], "title": title, "eli": eli, "chunks": chunks}
+
+
+def process_act(act: dict) -> dict:
+    """Sekwencyjna ścieżka dla jednego aktu (pobranie + parsowanie + zapis);
+    `main()` robi to samo z parsowaniem w `ParsePool`."""
+    meta, title, eli, articles, pdf_bytes, kind, file_name = _extract_articles(act, act["short"])
+    save_act_raw(act, meta, pdf_bytes)
+    return write_act_chunks(act, title, eli, kind, file_name, articles)
 
 
 def _parse_eli_ref(ref_id: str) -> dict:
@@ -559,7 +761,26 @@ def process_act_version(
     _meta, _announcement_title, _announcement_eli, articles, _pdf_bytes, kind, file_name = _extract_articles(
         source, label
     )
+    return build_version_articles(
+        source, act_short, base_eli, base_title, valid_from, valid_to, announcement_eli, articles, kind, file_name
+    )
 
+
+def build_version_articles(
+    source: dict,
+    act_short: str,
+    base_eli: str,
+    base_title: str,
+    valid_from,
+    valid_to,
+    announcement_eli,
+    articles: list[dict],
+    kind: str,
+    file_name: str,
+) -> list[dict]:
+    """Opakowuje sparsowane artykuły jednej historycznej wersji w rekordy
+    `_history.json` -- wydzielone z `process_act_version()`, żeby
+    `download_acts_history.py` mógł parsować wersje w `ParsePool`."""
     source_url = (
         f"{API_BASE}/acts/{source['publisher']}/{source['year']}/{source['position']}/text/{kind}/{file_name}"
     )
@@ -582,16 +803,32 @@ def process_act_version(
 
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument(
+        "--workers",
+        type=int,
+        default=None,
+        help="Liczba procesów parsujących PDF-y (domyślnie: dobrane do rdzeni i wolnej pamięci maszyny, "
+        "patrz default_parse_workers; 1 = bez równoległości).",
+    )
+    args = parser.parse_args()
+
+    workers = args.workers or default_parse_workers(len(ACTS))
+    print(f"[INFO] parsowanie PDF-ów: {workers} proces(ów) równolegle (pobieranie sekwencyjne)")
     all_chunks = []
-    for act in ACTS:
-        result = process_act(act)
-        all_chunks.extend(result["chunks"])
-        time.sleep(1)  # nie bombardujemy publicznego API bez potrzeby
+    with ParsePool(workers) as pool:
+        pending = []
+        for act in ACTS:
+            meta, title, eli, pdf_bytes, kind, file_name = _fetch_source(act, act["short"])
+            save_act_raw(act, meta, pdf_bytes)
+            pending.append((act, title, eli, kind, file_name, pool.submit(pdf_bytes, act["short"])))
+            time.sleep(1)  # nie bombardujemy publicznego API bez potrzeby
+        for act, title, eli, kind, file_name, future in pending:
+            all_chunks.extend(write_act_chunks(act, title, eli, kind, file_name, future.result())["chunks"])
 
     out_path = PROCESSED_DIR / "all_articles.json"
     out_path.write_text(json.dumps(all_chunks, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"\nRazem: {len(all_chunks)} fragmentów (artykułów) zapisanych w {out_path}")
-
 
 if __name__ == "__main__":
     main()
