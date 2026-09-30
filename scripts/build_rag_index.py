@@ -38,6 +38,8 @@ from pathlib import Path
 import numpy as np
 from sentence_transformers import SentenceTransformer
 
+from embedding_cache import EmbeddingCache, encode_with_cache, text_hash
+
 ROOT = Path(__file__).resolve().parent.parent
 RAW_DIR = ROOT / "data" / "raw"
 PROCESSED_DIR = ROOT / "data" / "processed"
@@ -46,6 +48,13 @@ INDEX_EMB_PATH = PROCESSED_DIR / "rag_index.npy"
 INDEX_META_PATH = PROCESSED_DIR / "rag_index_meta.json"
 
 EMBEDDING_MODEL = "sdadas/mmlw-retrieval-roberta-large"
+
+# Trwały cache embeddingów fragmentów (scripts/embedding_cache.py; źródło:
+# projekt "RAG-LoRA - prawo polskie", PROGRESS.md Krok 63): przebudowa indeksu
+# liczy tylko fragmenty nowe albo o zmienionej treści. Klucz obejmuje model i
+# tryb (dokument bez prefiksu, znormalizowany).
+EMBEDDING_CACHE_PATH = PROCESSED_DIR / "embedding_cache.sqlite"
+EMBEDDING_CACHE_KEY = f"{EMBEDDING_MODEL}|dokument-bez-prefiksu|znormalizowany"
 
 # Niektóre artykuły (np. w ustawie o systemie ubezpieczeń społecznych)
 # mają po kilka tysięcy znaków -- za dużo, żeby sensownie zmieścić się
@@ -207,6 +216,35 @@ def load_articles_with_history(include_history: bool) -> list[dict]:
     return articles
 
 
+def _release_accelerator_cache() -> None:
+    """Oddaje systemowi pamięć trzymaną przez PyTorch w cache'u GPU (MPS/CUDA)
+    po każdej porcji embeddingów -- bez tego proces rośnie skokowo."""
+    import gc
+
+    import torch
+
+    gc.collect()
+    if torch.backends.mps.is_available():
+        torch.mps.empty_cache()
+    elif torch.cuda.is_available():
+        torch.cuda.empty_cache()
+
+
+def seed_cache_from_index() -> None:
+    """Zasila cache wektorami już zbudowanego indeksu (ten sam model i tryb;
+    klucz = hash dokładnie tego tekstu fragmentu, z którego policzono wektor)."""
+    embeddings = np.load(INDEX_EMB_PATH)
+    meta = json.loads(INDEX_META_PATH.read_text(encoding="utf-8"))
+    if len(meta) != len(embeddings):
+        raise SystemExit(f"Niespójny indeks: {len(meta)} metadanych vs {len(embeddings)} wektorów")
+    cache = EmbeddingCache(EMBEDDING_CACHE_PATH, EMBEDDING_CACHE_KEY)
+    try:
+        cache.put_many([(text_hash(m["chunk_text"]), v) for m, v in zip(meta, embeddings)])
+    finally:
+        cache.close()
+    print(f"Cache zasilony {len(meta)} wektorami z {INDEX_EMB_PATH.name}")
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument(
@@ -216,7 +254,21 @@ def main():
         "produkowane przez download_acts_history.py) -- domyślnie wyłączone, "
         "bez zmiany w formacie/treści wynikowego indeksu.",
     )
+    parser.add_argument(
+        "--no-cache",
+        action="store_true",
+        help="Licz wszystkie embeddingi od nowa, bez odczytu/zapisu cache'u.",
+    )
+    parser.add_argument(
+        "--seed-cache-from-index",
+        action="store_true",
+        help="Nic nie przelicza -- wpisuje do cache'u wektory z ISTNIEJĄCEGO indeksu.",
+    )
     args = parser.parse_args()
+
+    if args.seed_cache_from_index:
+        seed_cache_from_index()
+        return
 
     print(f"Wczytuję fragmenty z {ARTICLES_PATH} ...")
     articles = load_articles_with_history(args.include_history)
@@ -230,12 +282,12 @@ def main():
 
     texts = [c["chunk_text"] for c in chunks]
     print("Liczę embeddingi (bez prefiksu -- to są 'dokumenty', nie zapytania)...")
-    embeddings = model.encode(
-        texts,
-        batch_size=32,
-        show_progress_bar=True,
-        normalize_embeddings=True,  # ułatwia potem liczenie podobieństwa kosinusowego
-    )
+    cache = None if args.no_cache else EmbeddingCache(EMBEDDING_CACHE_PATH, EMBEDDING_CACHE_KEY)
+    try:
+        embeddings = encode_with_cache(model, texts, cache, release_cache_fn=_release_accelerator_cache)
+    finally:
+        if cache is not None:
+            cache.close()
 
     np.save(INDEX_EMB_PATH, embeddings.astype(np.float32))
     INDEX_META_PATH.write_text(json.dumps(chunks, ensure_ascii=False, indent=2), encoding="utf-8")

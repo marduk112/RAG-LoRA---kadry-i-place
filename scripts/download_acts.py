@@ -229,6 +229,7 @@ def fetch_pdf_bytes(act: dict, kind: str, file_name: str) -> bytes:
 
 FOOTNOTE_MARKER_RE = re.compile(r"^(\d{1,3})\)$")
 FOOTNOTE_BODY_SIZE_RATIO = 0.9  # linia "treści" strony ma czcionkę >= 90% bazowej (przypisy: 10 pt przy 12 pt tekstu)
+FOOTNOTE_MARKER_SIZE_RATIO = 0.7  # numer przypisu to indeks górny ~6,5 pt (54% z 12 pt); treść przypisu 10 pt (83%) musi być POWYŻEJ progu
 
 
 FOOTNOTE_SNIPPET_CHARS = 15  # ile pierwszych znaków (bez spacji) treści przypisu służy do jego odnalezienia w tekście pypdf
@@ -275,7 +276,7 @@ def find_footnote_markers_pdfplumber(pdf_bytes: bytes) -> list[tuple[str, str] |
                 # wiersza (jeśli numer wypadł w tym samym wierszu co treść
                 # przypisu) musi być czcionką mniejszą niż treść strony.
                 n_lead = 0
-                while n_lead < len(visible) and visible[n_lead]["size"] < body_size * SUPERSCRIPT_SIZE_RATIO:
+                while n_lead < len(visible) and visible[n_lead]["size"] < body_size * FOOTNOTE_MARKER_SIZE_RATIO:
                     n_lead += 1
                 lead = "".join(c["text"] for c in visible[:n_lead])
                 if not FOOTNOTE_MARKER_RE.match(lead):
