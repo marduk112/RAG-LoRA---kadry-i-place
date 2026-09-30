@@ -37,6 +37,7 @@ Uruchomienie:
 """
 
 import argparse
+import difflib
 import io
 import json
 import multiprocessing
@@ -331,6 +332,30 @@ def strip_page_footnotes(page_lines: list[str], marker: tuple[str, str] | str | 
     return page_lines
 
 
+FROM_SUPERSCRIPT_DIGITS = str.maketrans("⁰¹²³⁴⁵⁶⁷⁸⁹", "0123456789")
+
+
+def align_superscript_corrections(pypdf_labels: list[str], detected: list[str]) -> dict[int, str]:
+    """Korekta indeksu górnego, gdy liczba nagłówków z pdfplumber różni się
+    od liczby artykułów z pypdf (np. jeden nagłówek wykryty tylko przez
+    jedno narzędzie). Dotąd korekta była wtedy pomijana W CAŁOŚCI -- każdy
+    art. 22¹ zostawał jako "221" i kolidował z prawdziwym art. 221 (13
+    historycznych okien, ~75 zdublowanych etykiet, np. KC 2013: 28 --
+    projekt "RAG-LoRA - prawo polskie", PROGRESS.md Krok 64). Teraz obie sekwencje dopasowujemy lokalnie
+    (`difflib`) po SPŁASZCZONEJ etykiecie z pdfplumber ("22¹" -> "221") i
+    poprawiamy tylko pary, które się zgadzają -- rozjazd w jednym miejscu
+    nie blokuje korekty w pozostałych. Zwraca {indeks artykułu pypdf:
+    poprawna etykieta} tylko dla etykiet, które faktycznie się zmieniają."""
+    flattened = [d.translate(FROM_SUPERSCRIPT_DIGITS) for d in detected]
+    matcher = difflib.SequenceMatcher(None, flattened, pypdf_labels, autojunk=False)
+    fixes: dict[int, str] = {}
+    for a, b, size in matcher.get_matching_blocks():
+        for k in range(size):
+            if detected[a + k] != pypdf_labels[b + k]:
+                fixes[b + k] = detected[a + k]
+    return fixes
+
+
 def pdf_to_clean_text(pdf_bytes: bytes) -> str:
     reader = PdfReader(io.BytesIO(pdf_bytes))
     footnote_markers = find_footnote_markers_pdfplumber(pdf_bytes)
@@ -493,20 +518,19 @@ def parse_pdf_articles(pdf_bytes: bytes, act_short: str) -> list[dict]:
     print(f"[{act_short}] sprawdzam numerację pod kątem indeksów górnych...")
     detected_numbers = find_article_numbers_pdfplumber(pdf_bytes)
     if len(detected_numbers) == len(articles):
-        fixed = 0
-        for article, detected in zip(articles, detected_numbers):
-            if detected != article["article"]:
-                article["text"] = article["text"].replace(f"Art. {article['article']}.", f"Art. {detected}.", 1)
-                article["article"] = detected
-                fixed += 1
-        if fixed:
-            print(f"[{act_short}] poprawiono numerację indeksu górnego w {fixed} artykułach")
+        fixes = {i: d for i, (a, d) in enumerate(zip(articles, detected_numbers)) if d != a["article"]}
     else:
+        fixes = align_superscript_corrections([a["article"] for a in articles], detected_numbers)
         print(
-            f"[{act_short}] UWAGA: liczba nagłówków wykrytych przez pdfplumber "
-            f"({len(detected_numbers)}) != liczba artykułów z pypdf ({len(articles)}) "
-            "-- pomijam korektę indeksu górnego dla tego aktu, numeracja zostaje jak z pypdf"
+            f"[{act_short}] liczba nagłówków pdfplumber ({len(detected_numbers)}) != artykułów z pypdf "
+            f"({len(articles)}) -- korekta indeksu górnego przez lokalne dopasowanie"
         )
+    for i, detected in fixes.items():
+        article = articles[i]
+        article["text"] = article["text"].replace(f"Art. {article['article']}.", f"Art. {detected}.", 1)
+        article["article"] = detected
+    if fixes:
+        print(f"[{act_short}] poprawiono numerację indeksu górnego w {len(fixes)} artykułach")
 
     return articles
 
