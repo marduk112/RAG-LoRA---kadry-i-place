@@ -15,6 +15,7 @@ import pytest
 from download_acts import (
     ARTICLE_SPLIT_RE,
     ParsePool,
+    align_superscript_corrections,
     compute_version_windows,
     default_parse_workers,
     fix_stray_space_before_period,
@@ -316,3 +317,23 @@ def test_parse_pool_single_worker_runs_inline():
     writer.write(buf)
     with ParsePool(1) as pool:
         assert pool.submit(buf.getvalue(), "pusty").result() == []
+
+
+def test_align_superscript_corrections_with_count_mismatch():
+    """Regresja Krok 64: przy niezgodnej liczbie nagłówków korekta była
+    pomijana w całości, więc 22¹ zostawał jako "221" obok prawdziwego art.
+    221. Dopasowanie lokalne poprawia zgodne pary mimo rozjazdu w innym
+    miejscu (tu: pypdf ma artykuł "30", którego pdfplumber nie wykrył)."""
+    pypdf = ["22", "221", "222", "23", "30", "221"]
+    detected = ["22", "22¹", "22²", "23", "221"]
+    assert align_superscript_corrections(pypdf, detected) == {1: "22¹", 2: "22²"}
+
+
+def test_align_superscript_corrections_no_superscripts_no_fixes():
+    assert align_superscript_corrections(["1", "2", "3"], ["1", "3"]) == {}
+
+
+def test_align_superscript_corrections_bracket_letter_suffix():
+    """Notacja nawiasowa z literą (KP "Art. 18[3d]." -> "18³d"), spłaszczona
+    przez pypdf do "183d"."""
+    assert align_superscript_corrections(["18", "183d", "19", "20"], ["18", "18³d", "20"]) == {1: "18³d"}
