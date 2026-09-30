@@ -36,7 +36,15 @@ import argparse
 import json
 import time
 
-from download_acts import ACTS, PROCESSED_DIR, fetch_version_windows, process_act_version
+from download_acts import (
+    ACTS,
+    PROCESSED_DIR,
+    ParsePool,
+    _fetch_source,
+    build_version_articles,
+    default_parse_workers,
+    fetch_version_windows,
+)
 
 
 def main():
@@ -46,6 +54,12 @@ def main():
         type=str,
         default=None,
         help="Lista skrótów ustaw po przecinku (domyślnie: wszystkie z ACTS)",
+    )
+    parser.add_argument(
+        "--workers",
+        type=int,
+        default=None,
+        help="Liczba procesów parsujących PDF-y (domyślnie: dobrane do rdzeni i wolnej pamięci maszyny; 1 = sekwencyjnie).",
     )
     args = parser.parse_args()
 
@@ -58,43 +72,67 @@ def main():
     else:
         acts = ACTS
 
-    for act in acts:
-        short = act["short"]
-        print(f"[{short}] pobieram listę obwieszczeń (teksty jednolite)...")
-        base_eli, base_title, windows = fetch_version_windows(act)
+    workers = args.workers or default_parse_workers()
+    print(f"[INFO] parsowanie PDF-ów: {workers} proces(ów) równolegle (pobieranie sekwencyjne)")
+    # Pobieranie sekwencyjne (łagodne dla publicznego API), parsowanie każdej
+    # pobranej wersji od razu w tle w ParsePool -- wyniki zbierane na końcu,
+    # w oryginalnej kolejności wersji (identyczny plik jak przy --workers 1).
+    with ParsePool(workers) as pool:
+        per_act = []
+        for act in acts:
+            short = act["short"]
+            print(f"[{short}] pobieram listę obwieszczeń (teksty jednolite)...", flush=True)
+            base_eli, base_title, windows = fetch_version_windows(act)
 
-        past_windows = [w for w in windows if not w.get("is_current")]
-        current_window = next(w for w in windows if w.get("is_current"))
+            past_windows = [w for w in windows if not w.get("is_current")]
+            current_window = next(w for w in windows if w.get("is_current"))
+            print(f"[{short}] {len(past_windows)} przeszłych wersji tekstu do pobrania", flush=True)
 
-        print(f"[{short}] {len(past_windows)} przeszłych wersji tekstu do pobrania")
+            jobs = []
+            for w in past_windows:
+                source = {"publisher": w["publisher"], "year": w["year"], "position": w["position"]}
+                print(
+                    f"[{short}] pobieram wersję {w['announcement_eli']} "
+                    f"(obowiązywała {w['valid_from']} -- {w['valid_to']})...",
+                    flush=True,
+                )
+                label = f"{short}@{w['valid_from'] or 'current'}"
+                _meta, _title, _eli, pdf_bytes, kind, file_name = _fetch_source(source, label)
+                jobs.append((w, source, kind, file_name, pool.submit(pdf_bytes, label)))
+                time.sleep(1)  # nie bombardujemy publicznego API bez potrzeby -- ten sam wzorzec co download_acts.py
+            per_act.append((act, base_eli, base_title, current_window, jobs))
+            time.sleep(1)
 
-        all_articles = []
-        for w in past_windows:
-            source = {"publisher": w["publisher"], "year": w["year"], "position": w["position"]}
-            print(
-                f"[{short}] pobieram wersję {w['announcement_eli']} "
-                f"(obowiązywała {w['valid_from']} -- {w['valid_to']})..."
+        for act, base_eli, base_title, current_window, jobs in per_act:
+            short = act["short"]
+            all_articles = []
+            for w, source, kind, file_name, future in jobs:
+                articles = build_version_articles(
+                    source,
+                    short,
+                    base_eli,
+                    base_title,
+                    w["valid_from"],
+                    w["valid_to"],
+                    w["announcement_eli"],
+                    future.result(),
+                    kind,
+                    file_name,
+                )
+                print(f"[{short}@{w['valid_from']}]   {len(articles)} artykułów")
+                all_articles.extend(articles)
+
+            PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
+            out_path = PROCESSED_DIR / f"{short}_history.json"
+            out_path.write_text(
+                json.dumps(
+                    {"current_valid_from": current_window["valid_from"], "articles": all_articles},
+                    ensure_ascii=False,
+                    indent=2,
+                ),
+                encoding="utf-8",
             )
-            articles = process_act_version(
-                source, short, base_eli, base_title, w["valid_from"], w["valid_to"], w["announcement_eli"]
-            )
-            print(f"[{short}]   {len(articles)} artykułów")
-            all_articles.extend(articles)
-            time.sleep(1)  # nie bombardujemy publicznego API bez potrzeby -- ten sam wzorzec co download_acts.py
-
-        PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
-        out_path = PROCESSED_DIR / f"{short}_history.json"
-        out_path.write_text(
-            json.dumps(
-                {"current_valid_from": current_window["valid_from"], "articles": all_articles},
-                ensure_ascii=False,
-                indent=2,
-            ),
-            encoding="utf-8",
-        )
-        print(f"[{short}] zapisano {len(all_articles)} artykułów historycznych -> {out_path}")
-        time.sleep(1)
-
+            print(f"[{short}] zapisano {len(all_articles)} artykułów historycznych -> {out_path}")
 
 if __name__ == "__main__":
     main()

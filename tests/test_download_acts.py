@@ -14,12 +14,15 @@ import pytest
 
 from download_acts import (
     ARTICLE_SPLIT_RE,
+    ParsePool,
     compute_version_windows,
+    default_parse_workers,
     fix_stray_space_before_period,
     parse_articles,
     process_act_version,
     recover_midtext_superscript_headers,
     strip_not_yet_in_force_text,
+    strip_page_footnotes,
 )
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -263,3 +266,53 @@ class TestProcessedArticles:
         data = self._load()
         pit = [a for a in data if a["act_title"].startswith("Ustawa z dnia 26 lipca 1991")]
         assert "52zb" in {a["article"] for a in pit}
+
+
+# --- przypisy dolne + ParsePool (przeniesione z projektu "RAG-LoRA - prawo
+# polskie", PROGRESS.md Krok 63) ---
+
+
+def test_strip_page_footnotes_cuts_from_last_marker_line():
+    lines = [
+        "Art. 389. Pozwolenie wodnoprawne jest wymagane na:",
+        "15) coś w treści, zwykły punkt;",
+        "5) wprowadzanie substancji;",
+        "15) Zmiany tekstu jednolitego wymienionej ustawy zostały ogłoszone w Dz. U. z 2024 r. poz. 731 i",
+        "1222 oraz z 2025 r. poz. 31.",
+    ]
+    assert strip_page_footnotes(lines, "15") == lines[:3]
+
+
+def test_strip_page_footnotes_footnote_with_own_enumeration():
+    lines = [
+        "Art. 1. Ustawa reguluje gospodarowanie wodami.",
+        "1) Niniejsza ustawa w zakresie swojej regulacji wdraża:",
+        "1) dyrektywę Rady 91/271/EWG;",
+        "2) dyrektywę Rady 91/676/EWG.",
+    ]
+    assert strip_page_footnotes(lines, ("1", "Niniejszaustawa")) == lines[:1]
+    assert strip_page_footnotes(lines, "1") == lines[:2]
+
+
+def test_strip_page_footnotes_without_marker_or_match_is_noop():
+    lines = ["Art. 1. Treść.", "2) punkt"]
+    assert strip_page_footnotes(lines, None) == lines
+    assert strip_page_footnotes(lines, "7") == lines
+
+
+def test_default_parse_workers_is_bounded():
+    assert default_parse_workers(1) == 1
+    assert 1 <= default_parse_workers() <= (__import__("os").cpu_count() or 1)
+
+
+def test_parse_pool_single_worker_runs_inline():
+    import io
+
+    from pypdf import PdfWriter
+
+    buf = io.BytesIO()
+    writer = PdfWriter()
+    writer.add_blank_page(width=200, height=200)
+    writer.write(buf)
+    with ParsePool(1) as pool:
+        assert pool.submit(buf.getvalue(), "pusty").result() == []
