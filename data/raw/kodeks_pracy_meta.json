@@ -1,7 +1,7 @@
 {
   "address": "WDU19740240141",
   "announcementDate": "1974-06-26",
-  "changeDate": "2026-08-18T14:42:16",
+  "changeDate": "2026-09-25T13:13:50",
   "displayAddress": "Dz.U. 1974 nr 24 poz. 141",
   "pos": 141,
   "promulgation": "1974-07-05",
@@ -1112,6 +1112,12 @@
       },
       {
         "id": "DU/2026/326"
+      },
+      {
+        "id": "DU/2026/1212"
+      },
+      {
+        "id": "DU/2026/1211"
       },
       {
         "id": "DU/2025/701"
@@ -4275,6 +4281,9 @@
       }
     ],
     "Inf. o tekście jednolitym": [
+      {
+        "id": "DU/2026/1245"
+      },
       {
         "id": "DU/2025/277"
       },

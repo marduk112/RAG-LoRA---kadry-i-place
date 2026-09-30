@@ -1,7 +1,7 @@
 {
   "address": "WDU20022001679",
   "announcementDate": "2002-10-10",
-  "changeDate": "2025-09-15T00:00:00",
+  "changeDate": "2026-09-15T00:00:00",
   "displayAddress": "Dz.U. 2002 nr 200 poz. 1679",
   "pos": 1679,
   "promulgation": "2002-11-30",
@@ -64,6 +64,9 @@
       },
       {
         "id": "MP/2008/499"
+      },
+      {
+        "id": "DU/2026/1213"
       },
       {
         "id": "DU/2025/1242"
