@@ -245,3 +245,10 @@ def test_build_user_message_warns_when_no_results():
 def test_build_user_message_no_warning_when_best_score_above_threshold():
     msg = build_user_message("pytanie", [make_result("1", 0.9)])
     assert "[Uwaga: żaden odnaleziony fragment" not in msg
+
+
+def test_article_ref_annex_label():
+    """Krok 70: załącznik nie jest "art. załącznik nr 2"."""
+    from prompt import article_ref
+    assert article_ref("12a") == "art. 12a"
+    assert article_ref("załącznik nr 2") == "załącznik nr 2"

@@ -684,7 +684,61 @@ def parse_pdf_articles(pdf_bytes: bytes, act_short: str) -> list[dict]:
     if fixes:
         print(f"[{act_short}] poprawiono numerację indeksu górnego w {len(fixes)} artykułach")
 
+    articles = split_annexes(articles)
     return articles
+
+
+ANNEXES_HEADER_RE = re.compile(r"Za\S{1,3}\s?\S{0,2}cznik(?:i)? do ustawy z dnia [^()]{0,60}\([^)]*\)\s*")
+ANNEX_NUMBER_RE = re.compile(r"(?=Za\S{1,3}cznik nr (\d+[a-z]?)(\))?)")
+
+
+def _annex_number(raw: str, has_paren: bool, previous: str | None) -> str:
+    """"617)" = załącznik nr 6 + sklejony odsyłacz "17)" (VAT): przy ")"
+    bierzemy kolejny numer po poprzednim, jeśli cyfry od niego się zaczynają."""
+    if not has_paren:
+        return raw
+    prev_num = int(re.match(r"\d+", previous).group()) if previous else 0
+    for candidate in (str(prev_num + 1), str(prev_num)):
+        if raw.startswith(candidate) and raw != candidate:
+            return candidate
+    return raw[:1]
+
+
+def split_annexes(articles: list[dict]) -> list[dict]:
+    """Załączniki ustawy (tabele stawek, wzory pouczeń, kategorie obiektów)
+    stoją w PDF-ie po ostatnim artykule bez nagłówka "Art.", więc doklejały
+    się do niego -- VAT art. 176 miał 49 tys. znaków, a w `konsumenckie` art.
+    55 (wejście w życie + wzór pouczenia o odstąpieniu) wygrywał rankingiem
+    pytań o zwrot pieniędzy (Krok 68/70). Odcinamy je od ostatniego artykułu
+    po nagłówku "Załącznik(i) do ustawy z dnia ... (Dz. U. ...)" i dzielimy
+    na osobne fragmenty z etykietą "załącznik nr N" (albo "załącznik", gdy
+    jest jeden, nienumerowany)."""
+    if not articles:
+        return articles
+    last = articles[-1]
+    match = ANNEXES_HEADER_RE.search(last["text"])
+    if not match:
+        return articles
+    annex_text = last["text"][match.end():].strip()
+    head = last["text"][: match.start()].rstrip()
+    result = articles[:-1] + [{**last, "text": head}]
+    starts = []
+    for m in ANNEX_NUMBER_RE.finditer(annex_text):
+        starts.append((m.start(), _annex_number(m.group(1), bool(m.group(2)), starts[-1][1] if starts else None)))
+    if not starts:
+        if annex_text:
+            result.append({"article": "załącznik", "text": f"Załącznik. {annex_text}"})
+        return result
+    seen: set[str] = set()
+    for i, (pos, number) in enumerate(starts):
+        end = starts[i + 1][0] if i + 1 < len(starts) else len(annex_text)
+        label = f"załącznik nr {number}"
+        if label in seen:  # odwołanie "Załącznik nr N" wewnątrz innego załącznika -- doklejamy do bieżącego
+            result[-1]["text"] += " " + annex_text[pos:end].strip()
+            continue
+        seen.add(label)
+        result.append({"article": label, "text": annex_text[pos:end].strip()})
+    return result
 
 
 PARSE_WORKER_RAM_GB = 3  # zmierzony szczyt jednego procesu: 2,36 GB (Prawo lotnicze, 446 stron) + zapas
