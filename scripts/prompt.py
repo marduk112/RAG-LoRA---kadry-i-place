@@ -37,6 +37,12 @@ MAX_ARTICLE_CHARS = 6000
 LOW_CONFIDENCE_SCORE_THRESHOLD = 0.75
 
 
+def article_ref(label: str) -> str:
+    """"art. 12" dla artykułu, sama etykieta dla załącznika ("załącznik nr 2",
+    `download_acts.split_annexes`, Krok 70)."""
+    return label if label.startswith("załącznik") else f"art. {label}"
+
+
 def build_context(results: list[dict]) -> str:
     parts = []
     for r in results:
@@ -47,7 +53,7 @@ def build_context(results: list[dict]) -> str:
             # kontekstu modelu -- patrz PROGRESS.md, krok 10. Ucinamy i
             # odsyłamy do source_url zamiast wstrzykiwać całość.
             text = text[:MAX_ARTICLE_CHARS] + f"\n[...treść artykułu skrócona, pełny tekst: {r['source_url']}...]"
-        header = f"### {r['act_title']} -- art. {r['article']}"
+        header = f"### {r['act_title']} -- {article_ref(r['article'])}"
         # Adnotacja "stan prawny" -- tylko gdy fragment faktycznie niesie
         # wymiar czasowy (indeks zbudowany z --include-history, patrz
         # PROGRESS.md Krok 19). Gdy oba pola None (dotychczasowy, domyślny

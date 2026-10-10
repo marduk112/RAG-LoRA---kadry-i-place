@@ -1857,6 +1857,11 @@ istniejących testów jednostkowych).
    KP do 2014 -- słaba ekstrakcja tych plików). Bieżące teksty: jedyna
    zmiana -- usunięty odsyłacz w KP art. 23¹. Indeks 31 128 fragmentów,
    testy 117/117.
+   **Aktualizacja 2026-10-10 (Krok 70 projektu prawo polskie):** załączniki
+   ustaw jako osobne fragmenty "załącznik nr N" zamiast doklejonych do
+   ostatniego artykułu -- tu tylko PIT: art. 58 26 000 -> 169 znaków + 4
+   załączniki (m.in. wykaz rocznych stawek amortyzacyjnych). Indeks 31 136
+   fragmentów, testy 120/120.
 5. ~~Rozporządzenia/obwieszczenia z konkretnymi kwotami, których nie ma w
    samych ustawach.~~ **Domknięte w Krokach 21-23** -- wszyscy trzej znani
    kandydaci zrobieni tym samym wzorcem (`search_acts_by_title` + stały

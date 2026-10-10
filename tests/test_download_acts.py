@@ -512,3 +512,28 @@ def test_drop_future_wording_duplicates_keeps_first_of_consecutive_pair():
     assert [a["text"] for a in da.drop_future_wording_duplicates(arts)] == [
         "a", "obowiązuje", "b", "nie-kolejny duplikat zostaje"
     ]
+
+
+def test_split_annexes_numbered_with_glued_footnote_ref():
+    """Krok 70: załączniki odcięte od ostatniego artykułu; "Załącznik nr 617)"
+    w VAT to załącznik nr 6 ze sklejonym odsyłaczem "17)"."""
+    arts = [
+        {"article": "1", "text": "Art. 1. Coś."},
+        {"article": "55", "text": "Art. 55. Ustawa wchodzi w życie po upływie 6 miesięcy. Załączniki do ustawy z dnia "
+                                  "30 maja 2014 r. (Dz. U. z 2026 r. poz. 1244) Załącznik nr 1 WZÓR POUCZENIA treść "
+                                  "Załącznik nr 2 FORMULARZ treść Załącznik nr 317) TABELA"},
+    ]
+    out = da.split_annexes(arts)
+    assert [a["article"] for a in out] == ["1", "55", "załącznik nr 1", "załącznik nr 2", "załącznik nr 3"]
+    assert out[1]["text"] == "Art. 55. Ustawa wchodzi w życie po upływie 6 miesięcy."
+    assert out[2]["text"].startswith("Załącznik nr 1 WZÓR POUCZENIA")
+
+
+def test_split_annexes_single_unnumbered_and_none():
+    arts = [{"article": "108", "text": "Art. 108. Ustawa wchodzi w życie. Załącznik do ustawy z dnia 7 lipca "
+                                       "1994 r. (Dz. U. z 2026 r. poz. 524) Kategorie obiektów budowlanych"}]
+    out = da.split_annexes(arts)
+    assert [a["article"] for a in out] == ["108", "załącznik"]
+    assert out[1]["text"] == "Załącznik. Kategorie obiektów budowlanych"
+    plain = [{"article": "5", "text": "Art. 5. zgodnie z załącznikiem do ustawy."}]
+    assert da.split_annexes(plain) == plain

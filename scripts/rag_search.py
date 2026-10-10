@@ -149,7 +149,8 @@ def main():
         version_label = ""
         if r.get("valid_from") or r.get("valid_to"):
             version_label = f" [stan: {r.get('valid_from') or '...'} -- {r.get('valid_to') or 'nadal'}]"
-        print(f"[{r['score']:.3f}] {r['act_title']} -- art. {r['article']} ({r['eli']}){version_label}")
+        ref = r["article"] if r["article"].startswith("załącznik") else f"art. {r['article']}"
+        print(f"[{r['score']:.3f}] {r['act_title']} -- {ref} ({r['eli']}){version_label}")
         preview = r["text"][:220].replace("\n", " ")
         print(f"          {preview}...\n")
 
