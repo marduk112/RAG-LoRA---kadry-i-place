@@ -14,14 +14,17 @@ import pytest
 
 from download_acts import (
     ARTICLE_SPLIT_RE,
+    HEADER_FOOTER_PATTERNS,
     ParsePool,
     align_superscript_corrections,
+    build_version_articles,
     compute_version_windows,
     default_parse_workers,
     fix_stray_space_before_period,
     parse_articles,
     process_act_version,
     recover_midtext_superscript_headers,
+    strip_announcement_preamble,
     strip_not_yet_in_force_text,
     strip_page_footnotes,
 )
@@ -74,6 +77,85 @@ def test_strip_not_yet_in_force_unmatched_bracket_left_untouched(capsys):
     result = strip_not_yet_in_force_text(text)
     assert "niesparowanym" in result
     assert "UWAGA" in capsys.readouterr().out
+
+
+# --- obwieszczenia, stemple dat, id okien (z projektu prawo polskie, Krok 65) ---
+
+
+def test_header_footer_patterns_drop_dotted_date_stamp_only_as_whole_line():
+    """Regresja Krok 65: stempel daty wygenerowania tekstu w formacie
+    "09.05.2019" (co stronę, teksty ~2017-2021) trafiał do treści
+    artykułów. Data wewnątrz zdania (np. dyrektywa UE) zostaje."""
+    def dropped(line):
+        return any(p.match(line) for p in HEADER_FOOTER_PATTERNS)
+
+    assert dropped("09.05.2019")
+    assert not dropped("(Dz. Urz. UE L 189 z 18.07.2002, str. 12)")
+    assert not dropped("31.12.2020 r.")
+
+
+def test_build_version_articles_id_suffix_for_window_without_start():
+    """Regresja Krok 65: okno bez znanego początku dostawało id "@current",
+    powtarzające się między kilkoma najstarszymi oknami tej samej ustawy."""
+    def ids(valid_from, valid_to):
+        recs = build_version_articles(
+            {"publisher": "DU", "year": 2000, "position": 1}, "pb", "DU/1994/414", "Prawo budowlane",
+            valid_from, valid_to, "DU/2000/1126", [{"article": "54", "text": "Art. 54. X"}],
+            "U", "f.pdf",
+        )
+        return recs[0]["id"]
+
+    assert ids(None, "2003-11-21") == "pb_art_54@do_2003-11-21"
+    assert ids("2003-11-21", "2006-08-18") == "pb_art_54@2003-11-21"
+    assert ids(None, None) == "pb_art_54@current"
+
+
+# --- strip_announcement_preamble ---
+
+
+ANNOUNCEMENT_TEXT = (
+    "OBWIESZCZENIE\n"
+    "2. Podany w załączniku tekst jednolity ustawy nie obejmuje: art. 10 ..., które stanowią:\n"
+    "„Art. 10. W ustawie ... wprowadza się zmiany.”\n"
+    "Marszałek Sejmu: M. Kidawa-Błońska\n"
+    "j) Zmiany wymienionej ustawy zostały ogłoszone w ...\n"
+    "Załącznik do obwieszczenia Marszałka Sejmu Rzeczypospolitej\n"
+    "Polskiej z dnia 10 listopada 2015 r. (poz. 2008)\n"
+    "USTAWA\n"
+    "z dnia 10 października 2002 r.\n"
+    "Art. 1. Pierwszy.\n"
+    "Art. 10. (pominięty)"
+)
+
+
+def test_strip_announcement_preamble_drops_quoted_provisions():
+    """Regresja Krok 65 (ustawa o min. wynagrodzeniu, okno 2015): przepisy
+    przytoczone w obwieszczeniu jako nieobjęte tekstem jednolitym były
+    brane za artykuły ustawy -- podwojone art. 10-24."""
+    articles = parse_articles(strip_announcement_preamble(ANNOUNCEMENT_TEXT))
+    assert [a["article"] for a in articles] == ["1", "10"]
+    assert articles[1]["text"] == "Art. 10. (pominięty)"
+
+
+def test_strip_announcement_preamble_keeps_article_emitted_before_annex_header():
+    """Prawo lotnicze 2006: na dwukolumnowej stronie pypdf wypisuje art. 1
+    PRZED nagłówkiem załącznika, a zepsute kodowanie daje "Za∏àcznik" /
+    "Marsza∏ek" -- tniemy za podpisem, nie na nagłówku."""
+    text = (
+        "Art. 3. Cytat z obwieszczenia.\n"
+        "Marsza∏ek Sejmu: M. Jurek\n"
+        "Art. 1. 1. Przepisy Prawa lotniczego.\n"
+        "Za∏àcznik do obwieszczenia Marsza∏ka Sejmu\n"
+        "(poz. 696)\n"
+        "USTAWA\n"
+        "Art. 2. Definicje."
+    )
+    assert [a["article"] for a in parse_articles(strip_announcement_preamble(text))] == ["1", "2"]
+
+
+def test_strip_announcement_preamble_noop_without_annex_header():
+    text = "Marszałek Sejmu: X\nArt. 1. Zwykły tekst ujednolicony."
+    assert strip_announcement_preamble(text) == text
 
 
 # --- recover_midtext_superscript_headers ---
