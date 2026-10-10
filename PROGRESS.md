@@ -1833,6 +1833,16 @@ istniejących testów jednostkowych).
    zmieniające" pozostaje niezbadana i nierozpoczęta -- osobne,
    znacznie trudniejsze zadanie, do rozważenia tylko jeśli pojawi się
    konkretna potrzeba.
+   **Aktualizacja 2026-10-10:** do tej pory indeks z `--include-history`
+   miał historię tylko PPK i ustawy o minimalnym wynagrodzeniu. Teraz
+   wszystkie ustawy z `ACTS`: doszły KP (4802 art., 10 okien), PIT (2426,
+   13), ustawa systemowa ZUS (2242, 13), zasiłkowa (958, 11); ustawa o
+   rynku pracy nie ma obwieszczeń (0). Indeks 5682 -> 32 259 fragmentów.
+   Kontrola: zero duplikatów etykiet w oknach, brak stempli dat, id
+   `do_{valid_to}` zamiast `@current`; wyniki bez `--as-of` bez zmian
+   (filtr dat), z `--as-of` właściwe okna (np. PIT art. 27 na 2018-06-01:
+   18% / próg 85 528 zł). Nakładanie się sąsiednich okien o dni-tygodnie
+   to znana cecha danych ELI (Krok 18), nie błąd.
 5. ~~Rozporządzenia/obwieszczenia z konkretnymi kwotami, których nie ma w
    samych ustawach.~~ **Domknięte w Krokach 21-23** -- wszyscy trzej znani
    kandydaci zrobieni tym samym wzorcem (`search_acts_by_title` + stały
