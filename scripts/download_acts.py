@@ -115,6 +115,10 @@ ACTS = [
 HEADER_FOOTER_PATTERNS = [
     re.compile(r"^©Kancelaria Sejmu"),
     re.compile(r"^\d{4}-\d{2}-\d{2}$"),
+    # Ten sam stempel daty wygenerowania w starszym formacie (teksty
+    # ujednolicone ~2017-2021, np. "24.04.2018" co stronę) -- trafiał do
+    # treści artykułów (projekt prawo polskie, PROGRESS.md Krok 65).
+    re.compile(r"^\d{2}\.\d{2}\.\d{4}$"),
     re.compile(r"^s\.\s*\d+/\d+$"),
 ]
 SECTION_HEADING_PATTERNS = [
@@ -382,6 +386,37 @@ NOT_YET_IN_FORCE_RE = re.compile(r"<.*?>", re.DOTALL)
 SUPERSEDED_STILL_VALID_RE = re.compile(r"\[(.*?)\]", re.DOTALL)
 
 
+# "\S{1,3}" zamiast "ł", bo najstarsze PDF-y (2006) mają zepsute kodowanie
+# polskich znaków ("Za∏àcznik", "Marsza∏ek").
+ANNOUNCEMENT_ANNEX_RE = re.compile(
+    r"^Za\S{1,3}cznik do obwieszczenia\b.*\n(?:.*\n){0,3}?USTAWA\s*$", re.MULTILINE
+)
+ANNOUNCEMENT_SIGNATURE_RE = re.compile(r"^Marsza\S{1,3}ek Sejmu: .*$", re.MULTILINE)
+
+
+def strip_announcement_preamble(text: str) -> str:
+    """PDF obwieszczenia (tekst typu "O") zawiera przed właściwym tekstem
+    jednolitym samo obwieszczenie, a w nim przytoczone przepisy NIEOBJĘTE
+    tekstem jednolitym ("tekst jednolity nie obejmuje art. 10-24 ...,
+    które stanowią: Art. 10. ..."). Parser brał je za artykuły ustawy --
+    stąd podwojone art. 10-24 ustawy o min. wynagrodzeniu (okno 2015) i
+    art. 3-6 Prawa lotniczego (okno 2006), projekt prawo polskie, PROGRESS.md Krok 65.
+
+    Obwieszczenie rozpoznajemy po nagłówku "Załącznik do obwieszczenia ..."
+    z "USTAWA" kilka linii niżej, ale tniemy za OSTATNIM podpisem
+    "Marszałek Sejmu: ..." przed nim, nie na samym nagłówku: na
+    dwukolumnowej stronie z 2006 r. pypdf wypisuje nagłówek załącznika PO
+    art. 1 ustawy, więc cięcie na nagłówku gubiłoby art. 1. Brak nagłówka
+    (zwykły tekst ujednolicony "U") albo podpisu -> tekst bez zmian."""
+    annex = ANNOUNCEMENT_ANNEX_RE.search(text)
+    if not annex:
+        return text
+    signatures = list(ANNOUNCEMENT_SIGNATURE_RE.finditer(text, 0, annex.start()))
+    if not signatures:
+        return text
+    return text[signatures[-1].end():]
+
+
 def strip_not_yet_in_force_text(text: str) -> str:
     """Kancelaria Sejmu oznacza w tekście ujednoliconym fragmenty prawa
     uchwalonego, ale jeszcze nieobowiązującego (przyszła data wejścia w
@@ -507,6 +542,7 @@ def parse_pdf_articles(pdf_bytes: bytes, act_short: str) -> list[dict]:
     osobnym procesie `ParsePool`."""
     print(f"[{act_short}] wyciągam i czyszczę tekst z PDF...")
     clean_text = pdf_to_clean_text(pdf_bytes)
+    clean_text = strip_announcement_preamble(clean_text)
     clean_text = strip_not_yet_in_force_text(clean_text)
     clean_text = recover_midtext_superscript_headers(clean_text)
     clean_text = fix_stray_space_before_period(clean_text)
@@ -809,7 +845,15 @@ def build_version_articles(
     source_url = (
         f"{API_BASE}/acts/{source['publisher']}/{source['year']}/{source['position']}/text/{kind}/{file_name}"
     )
-    version_suffix = valid_from or "current"
+    # Najstarsze okna nie mają znanego początku (valid_from=None) -- dawniej
+    # dostawały sufiks "@current" (mylący, a dla kilku takich okien jednej
+    # ustawy, np. 4 w Prawie budowlanym, powtarzający się); projekt prawo polskie, PROGRESS.md Krok 65.
+    if valid_from:
+        version_suffix = valid_from
+    elif valid_to:
+        version_suffix = f"do_{valid_to}"
+    else:
+        version_suffix = "current"
     return [
         {
             "id": f"{act_short}_art_{a['article']}@{version_suffix}",
