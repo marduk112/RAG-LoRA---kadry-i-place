@@ -12,6 +12,8 @@ from pathlib import Path
 
 import pytest
 
+import download_acts as da
+
 from download_acts import (
     ARTICLE_SPLIT_RE,
     HEADER_FOOTER_PATTERNS,
@@ -419,3 +421,94 @@ def test_align_superscript_corrections_bracket_letter_suffix():
     """Notacja nawiasowa z literą (KP "Art. 18[3d]." -> "18³d"), spłaszczona
     przez pypdf do "183d"."""
     assert align_superscript_corrections(["18", "183d", "19", "20"], ["18", "18³d", "20"]) == {1: "18³d"}
+
+
+def test_pick_text_file_history_prefers_snapshot_over_updated_unified_text():
+    """Krok 69: dla obwieszczenia plik 'U' jest aktualizowany o nowelizacje
+    aż do wygaśnięcia okna (stan z KOŃCA okna) -- historia ma brać migawkę
+    z dnia ogłoszenia: 'T', potem 'O', a 'U' tylko w ostateczności.
+    Bieżący tekst ustawy nadal woli 'U'."""
+    meta = {"texts": [
+        {"type": "O", "fileName": "D20200287.pdf"},
+        {"type": "T", "fileName": "D20200287L.pdf"},
+        {"type": "U", "fileName": "D20200287Lj.pdf"},
+    ]}
+    assert da.pick_text_file(meta, da.HISTORY_TEXT_KINDS) == ("T", "D20200287L.pdf")
+    assert da.pick_text_file(meta) == ("U", "D20200287Lj.pdf")
+    no_t = {"texts": [{"type": "O", "fileName": "a.pdf"}, {"type": "U", "fileName": "b.pdf"}]}
+    assert da.pick_text_file(no_t, da.HISTORY_TEXT_KINDS) == ("O", "a.pdf")
+    only_u = {"texts": [{"type": "U", "fileName": "b.pdf"}]}
+    assert da.pick_text_file(only_u, da.HISTORY_TEXT_KINDS) == ("U", "b.pdf")
+
+
+class _FakeResponse:
+    def __init__(self, status_code):
+        self.status_code = status_code
+
+    def raise_for_status(self):
+        if self.status_code >= 400:
+            raise da.requests.HTTPError(str(self.status_code), response=self)
+
+
+def test_get_with_retry_retries_5xx_then_succeeds(monkeypatch):
+    """Krok 69: chwilowy 502 z API Sejmu nie może zabić całego przebiegu historii."""
+    responses = iter([_FakeResponse(502), _FakeResponse(503), _FakeResponse(200)])
+    monkeypatch.setattr(da.requests, "get", lambda *a, **k: next(responses))
+    monkeypatch.setattr(da.time, "sleep", lambda s: None)
+    assert da._get_with_retry("http://x", timeout=1).status_code == 200
+
+
+def test_get_with_retry_does_not_retry_4xx(monkeypatch):
+    calls = []
+    monkeypatch.setattr(da.requests, "get", lambda *a, **k: calls.append(1) or _FakeResponse(404))
+    monkeypatch.setattr(da.time, "sleep", lambda s: None)
+    with pytest.raises(da.requests.HTTPError):
+        da._get_with_retry("http://x", timeout=1)
+    assert len(calls) == 1
+
+
+def test_get_with_retry_gives_up_after_all_attempts(monkeypatch):
+    calls = []
+    monkeypatch.setattr(da.requests, "get", lambda *a, **k: calls.append(1) or _FakeResponse(502))
+    monkeypatch.setattr(da.time, "sleep", lambda s: None)
+    with pytest.raises(da.requests.HTTPError):
+        da._get_with_retry("http://x", timeout=1)
+    assert len(calls) == len(da.RETRY_DELAYS) + 1
+
+
+@pytest.mark.parametrize(
+    "raw,expected",
+    [
+        ("§ 2.2) Kto", "§ 2. Kto"),
+        ("Art. 75a.46) (uchylony)", "Art. 75a. (uchylony)"),
+        ("(uchylony)46) dalej", "(uchylony) dalej"),
+        ("pojazdów. 3. (uchylony)14) 4.13) Minister", "pojazdów. 3. (uchylony) 4. Minister"),
+        # fałszywe alarmy, które NIE mogą się zmienić
+        ("(PKWiU ex 22.11) – z wyłączeniem", "(PKWiU ex 22.11) – z wyłączeniem"),
+        ("1) pierwszy; 2) drugi", "1) pierwszy; 2) drugi"),
+        ("zgodnie z art. 5 ust. 2.", "zgodnie z art. 5 ust. 2."),
+    ],
+)
+def test_strip_inline_footnote_refs(raw, expected):
+    """Krok 69: odsyłacze do przypisów sklejone z numerem jednostki redakcyjnej."""
+    assert da.strip_inline_footnote_refs(raw) == expected
+
+
+def test_dziennik_ustaw_page_header_is_header_footer():
+    """Krok 69: nagłówek strony w układzie Dz.U. (pliki "T" obwieszczeń)."""
+    assert any(p.match("Dziennik Ustaw – 23 – Poz. 17") for p in da.HEADER_FOOTER_PATTERNS)
+    assert not any(p.match("Dziennik Ustaw – 23 – Poz. 17 i inne") for p in da.HEADER_FOOTER_PATTERNS)
+
+
+def test_drop_future_wording_duplicates_keeps_first_of_consecutive_pair():
+    """Krok 69: plik "T" podaje brzmienie obowiązujące, a zaraz po nim przyszłe."""
+    arts = [
+        {"article": "41", "text": "a"},
+        {"article": "42", "text": "obowiązuje"},
+        {"article": "42", "text": "przyszłe"},
+        {"article": "43", "text": "b"},
+        {"article": "42", "text": "nie-kolejny duplikat zostaje"},
+    ]
+    assert [a["text"] for a in da.drop_future_wording_duplicates(arts)] == [
+        "a", "obowiązuje", "b", "nie-kolejny duplikat zostaje"
+    ]
