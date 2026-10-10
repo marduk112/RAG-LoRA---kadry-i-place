@@ -120,6 +120,9 @@ HEADER_FOOTER_PATTERNS = [
     # treści artykułów (projekt prawo polskie, PROGRESS.md Krok 65).
     re.compile(r"^\d{2}\.\d{2}\.\d{4}$"),
     re.compile(r"^s\.\s*\d+/\d+$"),
+    # Nagłówek strony tekstu jednolitego w układzie Dziennika Ustaw (pliki
+    # "T" obwieszczeń, używane w historii od Kroku 69): "Dziennik Ustaw – 23 – Poz. 17".
+    re.compile(r"^Dziennik Ustaw(?: Nr \d+)?\s*[–—-]\s*\d+\s*[–—-]\s*Poz\.\s*\d+$"),
 ]
 SECTION_HEADING_PATTERNS = [
     re.compile(r"^DZIA[ŁL]\b", re.IGNORECASE),
@@ -209,17 +212,53 @@ def find_article_numbers_pdfplumber(pdf_bytes: bytes) -> list[str]:
     return numbers
 
 
+RETRY_DELAYS = (5, 15, 45)  # sekundy między próbami przy chwilowych błędach serwera
+
+
+def _get_with_retry(url: str, timeout: int) -> requests.Response:
+    """GET z ponawianiem przy chwilowych błędach (5xx, zerwane połączenie,
+    timeout). Pełne przetworzenie historii to ~150 pobrań z publicznego API
+    i jeden "502 Proxy Error" zabijał cały przebieg (Krok 69) -- wyniki
+    zapisywane są dopiero na końcu, więc nic nie trafiało na dysk. Błędy 4xx
+    (np. 404) nie są ponawiane."""
+    for attempt, delay in enumerate((*RETRY_DELAYS, None)):
+        try:
+            r = requests.get(url, headers=HEADERS, timeout=timeout)
+            if r.status_code < 500:
+                r.raise_for_status()
+                return r
+            err: Exception = requests.HTTPError(f"{r.status_code} dla {url}", response=r)
+        except (requests.ConnectionError, requests.Timeout) as e:
+            err = e
+        if delay is None:
+            raise err
+        print(f"  [UWAGA] {err} -- ponawiam za {delay} s (próba {attempt + 2})", flush=True)
+        time.sleep(delay)
+    raise AssertionError("nieosiągalne")
+
+
 def fetch_meta(act: dict) -> dict:
     url = f"{API_BASE}/acts/{act['publisher']}/{act['year']}/{act['position']}"
-    r = requests.get(url, headers=HEADERS, timeout=30)
-    r.raise_for_status()
-    return r.json()
+    return _get_with_retry(url, timeout=30).json()
 
 
-def pick_text_file(meta: dict) -> tuple[str, str]:
-    """Wybiera plik z tekstem: wolimy 'U' (ujednolicony), potem 'O' (oryginał)."""
+CURRENT_TEXT_KINDS = ("U", "O")
+# Wersje historyczne (obwieszczenia tekstu jednolitego): "T" (tekst
+# obwieszczenia w formacie Kancelarii Sejmu -- migawka z dnia ogłoszenia),
+# potem "O" (oryginał z Dz.U., ta sama migawka). NIE "U": dla obwieszczenia
+# to tekst ujednolicony AKTUALIZOWANY o kolejne nowelizacje aż do
+# wygaśnięcia okna, więc okno "2020-01-21 -- 2023-12-22" zawierało stan z
+# końca 2023 r. (Krok 68/69: ustawa o prawach konsumenta, rozdział 5a z
+# 2023 r. w oknie od 2020 r.). "U" zostaje tylko jako ostateczność.
+HISTORY_TEXT_KINDS = ("T", "O", "U")
+
+
+def pick_text_file(meta: dict, preferred: tuple[str, ...] = CURRENT_TEXT_KINDS) -> tuple[str, str]:
+    """Wybiera plik z tekstem w kolejności `preferred`. Domyślnie (bieżący
+    tekst ustawy) wolimy 'U' (ujednolicony), potem 'O' (oryginał); dla
+    wersji historycznych -- `HISTORY_TEXT_KINDS`."""
     texts = {t["type"]: t["fileName"] for t in meta.get("texts", [])}
-    for kind in ("U", "O"):
+    for kind in preferred:
         if kind in texts:
             return kind, texts[kind]
     raise RuntimeError(f"Brak znanego typu tekstu w metadanych: {texts}")
@@ -227,17 +266,20 @@ def pick_text_file(meta: dict) -> tuple[str, str]:
 
 def fetch_pdf_bytes(act: dict, kind: str, file_name: str) -> bytes:
     url = f"{API_BASE}/acts/{act['publisher']}/{act['year']}/{act['position']}/text/{kind}/{file_name}"
-    r = requests.get(url, headers=HEADERS, timeout=60)
-    r.raise_for_status()
-    return r.content
+    return _get_with_retry(url, timeout=60).content
 
 
 FOOTNOTE_MARKER_RE = re.compile(r"^(\d{1,3})\)$")
-FOOTNOTE_BODY_SIZE_RATIO = 0.9  # linia "treści" strony ma czcionkę >= 90% bazowej (przypisy: 10 pt przy 12 pt tekstu)
+FOOTNOTE_BODY_SIZE_RATIO = 0.95  # linia "treści" strony ma czcionkę >= 95% bazowej (przypisy: 10 pt przy 12 pt tekstu w "U", 9 pt przy 10 pt w plikach "T" obwieszczeń -- przy 0.9 te drugie były dokładnie na progu, Krok 69)
 FOOTNOTE_MARKER_SIZE_RATIO = 0.7  # numer przypisu to indeks górny ~6,5 pt (54% z 12 pt); treść przypisu 10 pt (83%) musi być POWYŻEJ progu
 
 
 FOOTNOTE_SNIPPET_CHARS = 15  # ile pierwszych znaków (bez spacji) treści przypisu służy do jego odnalezienia w tekście pypdf
+
+
+def _is_header_footer_row(chars: list[dict]) -> bool:
+    text = "".join(c["text"] for c in sorted(chars, key=lambda c: c["x0"])).strip()
+    return bool(text) and any(p.match(text) for p in HEADER_FOOTER_PATTERNS)
 
 
 def find_footnote_markers_pdfplumber(pdf_bytes: bytes) -> list[tuple[str, str] | None]:
@@ -284,14 +326,27 @@ def find_footnote_markers_pdfplumber(pdf_bytes: bytes) -> list[tuple[str, str] |
                 while n_lead < len(visible) and visible[n_lead]["size"] < body_size * FOOTNOTE_MARKER_SIZE_RATIO:
                     n_lead += 1
                 lead = "".join(c["text"] for c in visible[:n_lead])
+                if lead.isdigit() and n_lead == len(visible) and idx + 1 < len(ordered):
+                    # Starszy układ Dz.U. (teksty jednolite ~2006-2014): sam numer
+                    # "2" małą czcionką w osobnym wierszu, a ")" już w wierszu z
+                    # treścią przypisu (Krok 69: 0/141 stron Prawa
+                    # telekomunikacyjnego DU/2014/243).
+                    next_visible = [c for c in sorted(ordered[idx + 1][1], key=lambda c: c["x0"]) if c["text"].strip()]
+                    if next_visible and next_visible[0]["text"] == ")":
+                        lead += ")"
                 if not FOOTNOTE_MARKER_RE.match(lead):
                     continue
                 if any(c["size"] >= body_size * FOOTNOTE_BODY_SIZE_RATIO for c in visible[n_lead:]):
                     continue
                 text = lead
+                # Wiersze nagłówka/stopki (np. stempel daty "2024-01-05", który w
+                # plikach "T" obwieszczeń stoi POD przypisami, pełną czcionką)
+                # nie są treścią -- inaczej żaden przypis na takiej stronie nie
+                # zostałby wykryty (Krok 69: 0/84 stron KK DU/2024/17).
                 below_has_body = any(
                     c["text"].strip() and c["size"] >= body_size * FOOTNOTE_BODY_SIZE_RATIO
                     for _, cs in ordered[idx + 1:]
+                    if not _is_header_footer_row(cs)
                     for c in cs
                 )
                 if not below_has_body:
@@ -300,7 +355,8 @@ def find_footnote_markers_pdfplumber(pdf_bytes: bytes) -> list[tuple[str, str] |
                         if len("".join(c["text"] for c in rest if c["text"].strip())) >= FOOTNOTE_SNIPPET_CHARS:
                             break
                         rest.extend(c for c in sorted(cs, key=lambda c: c["x0"]) if c["text"].strip())
-                    snippet = "".join(c["text"] for c in rest if c["text"].strip())[:FOOTNOTE_SNIPPET_CHARS]
+                    snippet = "".join(c["text"] for c in rest if c["text"].strip())
+                    snippet = snippet.removeprefix(")")[:FOOTNOTE_SNIPPET_CHARS]  # ")" z następnego wiersza (układ z osobnym numerem)
                     found = (FOOTNOTE_MARKER_RE.match(text).group(1), snippet)
                     break
             markers.append(found)
@@ -360,16 +416,64 @@ def align_superscript_corrections(pypdf_labels: list[str], detected: list[str]) 
     return fixes
 
 
+_UPPER = "A-ZĄĆĘŁŃÓŚŹŻ"
+INLINE_FOOTNOTE_REF_PATTERNS = [
+    # "§ 1.145) Kto..." / "Art. 75a.46) ..." -- odsyłacz do przypisu tuż po numerze
+    re.compile(r"((?:§|Art\.)\s*\d+[a-ząćęłńóśźż]{0,3}[⁰¹²³⁴⁵⁶⁷⁸⁹]{0,3}[a-z]?\.)\d{1,3}\)(?=\s)"),
+    # "(uchylony)46)" / "(pominięte)9)"
+    re.compile(r"(\((?:uchylon[yae]|pominięt[yae])\))\d{1,3}\)"),
+    # ustęp "1c.9) W okresie..." -- tylko przed wielką literą, inaczej łapało
+    # np. "(PKWiU ex 22.11) – z wyłączeniem" w VAT
+    re.compile(rf"((?:^|(?<=\s))\d+[a-z]?\.)\d{{1,3}}\)(?=\s+[{_UPPER}])", re.M),
+]
+
+
+def strip_inline_footnote_refs(text: str) -> str:
+    """Usuwa odsyłacze do przypisów wklejone przez pypdf bez spacji za
+    numerem jednostki redakcyjnej ("§ 1.145)", "(uchylony)46)", "2.46)").
+    W plikach "T" obwieszczeń (historia od Kroku 69) ok. 200 na kodeks; w
+    bieżących tekstach "U" pojedyncze resztki (np. Prawo o ruchu drogowym
+    art. 75e "4.13)"). Numer przypisu wyglądał jak kolejny punkt wyliczenia
+    -- ten sam problem co z treścią przypisów (Krok 61/63)."""
+    for pattern in INLINE_FOOTNOTE_REF_PATTERNS:
+        text = pattern.sub(r"\1", text)
+    return text
+
+
+_EDITORIAL_FOOTNOTE_PHRASES = (
+    r"(?:[Ww] brzmieniu ustalonym przez|[Nn]adan\w* przez|[Dd]odan\w* przez|[Uu]chylon\w* przez"
+    r"|[Zz]mienion\w* przez|[Ww]prowadzon\w* przez|Przez art\. \d|Utracił[ay]? moc"
+    r"|Zmiany (?:tekstu jednolitego )?wymienionej ustawy zostały ogłoszone)"
+)
+EDITORIAL_FOOTNOTE_START_RE = re.compile(
+    # "12) Zdanie pierwsze w brzmieniu ustalonym przez..." albo, w najstarszych
+    # tekstach (Prawo lotnicze 2006), literowy numer "d) Dodany przez..." --
+    # przy literze formuła musi stać od razu po nawiasie (zwykłe "a) ..." wyliczeń).
+    rf"^(?:\d{{1,3}}\)\s*(?:\S+\s+){{0,4}}?|[a-z]{{1,2}}\)\s*){_EDITORIAL_FOOTNOTE_PHRASES}"
+)
+EDITORIAL_FOOTNOTE_MAX_LINES = 6
+
+
 def pdf_to_clean_text(pdf_bytes: bytes) -> str:
     reader = PdfReader(io.BytesIO(pdf_bytes))
     footnote_markers = find_footnote_markers_pdfplumber(pdf_bytes)
     lines: list[str] = []
     for page, marker in zip(reader.pages, footnote_markers):
+        footnote_lines_left = 0
         for line in strip_page_footnotes(page.extract_text().split("\n"), marker):
             stripped = line.strip()
             if not stripped:
                 continue
             if any(p.match(stripped) for p in HEADER_FOOTER_PATTERNS):
+                continue
+            # Przypis redakcyjny, którego nie wycięła geometria (dwukolumnowe
+            # oryginały Dz.U. ~2006-2012, pliki "O" w historii, Krok 69):
+            # "12) W brzmieniu ustalonym przez art. 3 ustawy z dnia ..." -- wiersz
+            # i jego kontynuacje aż do kropki kończącej przypis.
+            if EDITORIAL_FOOTNOTE_START_RE.match(stripped):
+                footnote_lines_left = EDITORIAL_FOOTNOTE_MAX_LINES
+            if footnote_lines_left:
+                footnote_lines_left = 0 if stripped.endswith(".") else footnote_lines_left - 1
                 continue
             if any(p.match(stripped) for p in SECTION_HEADING_PATTERNS):
                 continue
@@ -379,7 +483,7 @@ def pdf_to_clean_text(pdf_bytes: bytes) -> str:
                 lines[-1] = lines[-1][:-1] + stripped
             else:
                 lines.append(stripped)
-    return "\n".join(lines)
+    return strip_inline_footnote_refs("\n".join(lines))
 
 
 NOT_YET_IN_FORCE_RE = re.compile(r"<.*?>", re.DOTALL)
@@ -389,9 +493,11 @@ SUPERSEDED_STILL_VALID_RE = re.compile(r"\[(.*?)\]", re.DOTALL)
 # "\S{1,3}" zamiast "ł", bo najstarsze PDF-y (2006) mają zepsute kodowanie
 # polskich znaków ("Za∏àcznik", "Marsza∏ek").
 ANNOUNCEMENT_ANNEX_RE = re.compile(
-    r"^Za\S{1,3}cznik do obwieszczenia\b.*\n(?:.*\n){0,3}?USTAWA\s*$", re.MULTILINE
+    r"^Za[^\n]{1,5}cznik do obwieszczenia\b.*\n(?:.*\n){0,3}?USTAWA\s*$", re.MULTILINE  # "Zał ącznik" -- fałszywa spacja pypdf (Krok 69)
 )
-ANNOUNCEMENT_SIGNATURE_RE = re.compile(r"^Marsza\S{1,3}ek Sejmu: .*$", re.MULTILINE)
+# "Marszałek Sejmu: S. Hołownia" albo (starsze pliki "T", Krok 69) samo
+# "MARSZAŁEK SEJMU" wielkimi literami z nazwiskiem w następnej linii.
+ANNOUNCEMENT_SIGNATURE_RE = re.compile(r"^(?:Marsza\S{1,3}ek Sejmu: .*|MARSZA\S{1,3}EK SEJMU\s*)$", re.MULTILINE)
 
 
 def strip_announcement_preamble(text: str) -> str:
@@ -407,13 +513,17 @@ def strip_announcement_preamble(text: str) -> str:
     "Marszałek Sejmu: ..." przed nim, nie na samym nagłówku: na
     dwukolumnowej stronie z 2006 r. pypdf wypisuje nagłówek załącznika PO
     art. 1 ustawy, więc cięcie na nagłówku gubiłoby art. 1. Brak nagłówka
-    (zwykły tekst ujednolicony "U") albo podpisu -> tekst bez zmian."""
+    (zwykły tekst ujednolicony "U") -> tekst bez zmian; brak podpisu -> cięcie
+    na nagłówku załącznika (Krok 69)."""
     annex = ANNOUNCEMENT_ANNEX_RE.search(text)
     if not annex:
         return text
     signatures = list(ANNOUNCEMENT_SIGNATURE_RE.finditer(text, 0, annex.start()))
     if not signatures:
-        return text
+        # Bez rozpoznanego podpisu tniemy na samym nagłówku załącznika --
+        # zostawienie preambuły dawało przytoczone przepisy innych ustaw jako
+        # artykuły tej ustawy (Krok 69: 467 zdublowanych etykiet w historii).
+        return text[annex.start():]
     return text[signatures[-1].end():]
 
 
@@ -500,7 +610,9 @@ def parse_articles(clean_text: str) -> list[dict]:
     return articles
 
 
-def _fetch_source(source: dict, act_short: str) -> tuple[dict, str, str, bytes, str, str]:
+def _fetch_source(
+    source: dict, act_short: str, preferred: tuple[str, ...] = CURRENT_TEXT_KINDS
+) -> tuple[dict, str, str, bytes, str, str]:
     """Sieciowa połowa `_extract_articles()`: metadane + PDF jednego aktu ELI
     (akt bazowy albo obwieszczenie tekstu jednolitego). Wydzielona, żeby
     pobieranie (sekwencyjne, łagodne dla publicznego API) dało się
@@ -511,13 +623,17 @@ def _fetch_source(source: dict, act_short: str) -> tuple[dict, str, str, bytes, 
     eli = meta.get("ELI", f"{source['publisher']}/{source['year']}/{source['position']}")
     print(f"[{act_short}] {title}  (status: {meta.get('status')})", flush=True)
 
-    kind, file_name = pick_text_file(meta)
+    kind, file_name = pick_text_file(meta, preferred)
     print(f"[{act_short}] pobieram tekst typu '{kind}' ({file_name})...", flush=True)
+    if preferred == HISTORY_TEXT_KINDS and kind == "U":
+        print(f"  [UWAGA] {act_short}: brak tekstu 'T'/'O' -- 'U' może zawierać późniejsze nowelizacje", flush=True)
     pdf_bytes = fetch_pdf_bytes(source, kind, file_name)
     return meta, title, eli, pdf_bytes, kind, file_name
 
 
-def _extract_articles(source: dict, act_short: str) -> tuple[dict, str, str, list[dict], bytes, str, str]:
+def _extract_articles(
+    source: dict, act_short: str, preferred: tuple[str, ...] = CURRENT_TEXT_KINDS
+) -> tuple[dict, str, str, list[dict], bytes, str, str]:
     """Pobiera i parsuje DOWOLNY akt ELI (`{'publisher','year','position'}`)
     -- akt bazowy z ACTS ALBO obwieszczenie ogłaszające historyczny tekst
     jednolity, oba mają identyczny kształt -- do listy artykułów. Wydzielone
@@ -531,7 +647,7 @@ def _extract_articles(source: dict, act_short: str) -> tuple[dict, str, str, lis
     `process_act()` mógł zapisać `data/raw/{short}.pdf`/`_meta.json` bez
     drugiego zapytania HTTP o te same metadane. Sekwencyjny odpowiednik
     pary `_fetch_source()` + `parse_pdf_articles()`."""
-    meta, title, eli, pdf_bytes, kind, file_name = _fetch_source(source, act_short)
+    meta, title, eli, pdf_bytes, kind, file_name = _fetch_source(source, act_short, preferred)
     articles = parse_pdf_articles(pdf_bytes, act_short)
     return meta, title, eli, articles, pdf_bytes, kind, file_name
 
@@ -820,11 +936,27 @@ def process_act_version(
     osobno do pola `announcement_eli`)."""
     label = f"{act_short}@{valid_from or 'current'}"
     _meta, _announcement_title, _announcement_eli, articles, _pdf_bytes, kind, file_name = _extract_articles(
-        source, label
+        source, label, HISTORY_TEXT_KINDS
     )
     return build_version_articles(
         source, act_short, base_eli, base_title, valid_from, valid_to, announcement_eli, articles, kind, file_name
     )
+
+
+def drop_future_wording_duplicates(articles: list[dict]) -> list[dict]:
+    """Tekst jednolity w wersji z dnia ogłoszenia (plik "T", historia od
+    przeniesienia z projektu prawo polskie, Krok 69) podaje artykuł zmieniony
+    przepisem, który jeszcze nie wszedł w życie, DWA razy pod rząd: najpierw
+    brzmienie obowiązujące (przypis "W tym brzmieniu obowiązuje do wejścia w
+    życie zmiany..."), zaraz potem nowe ("W brzmieniu ustalonym przez...").
+    Zostawiamy pierwsze -- obowiązujące w oknie (w plikach "U" tę rolę
+    pełniło wycinanie "< >"). Tylko KOLEJNE duplikaty."""
+    kept: list[dict] = []
+    for a in articles:
+        if kept and kept[-1]["article"] == a["article"]:
+            continue
+        kept.append(a)
+    return kept
 
 
 def build_version_articles(
@@ -854,6 +986,7 @@ def build_version_articles(
         version_suffix = f"do_{valid_to}"
     else:
         version_suffix = "current"
+    articles = drop_future_wording_duplicates(articles)
     return [
         {
             "id": f"{act_short}_art_{a['article']}@{version_suffix}",

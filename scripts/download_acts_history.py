@@ -38,6 +38,7 @@ import time
 
 from download_acts import (
     ACTS,
+    HISTORY_TEXT_KINDS,
     PROCESSED_DIR,
     ParsePool,
     _fetch_source,
@@ -97,7 +98,7 @@ def main():
                     flush=True,
                 )
                 label = f"{short}@{w['valid_from'] or 'current'}"
-                _meta, _title, _eli, pdf_bytes, kind, file_name = _fetch_source(source, label)
+                _meta, _title, _eli, pdf_bytes, kind, file_name = _fetch_source(source, label, HISTORY_TEXT_KINDS)
                 jobs.append((w, source, kind, file_name, pool.submit(pdf_bytes, label)))
                 time.sleep(1)  # nie bombardujemy publicznego API bez potrzeby -- ten sam wzorzec co download_acts.py
             per_act.append((act, base_eli, base_title, current_window, jobs))

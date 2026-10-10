@@ -1843,6 +1843,20 @@ istniejących testów jednostkowych).
    (filtr dat), z `--as-of` właściwe okna (np. PIT art. 27 na 2018-06-01:
    18% / próg 85 528 zł). Nakładanie się sąsiednich okien o dni-tygodnie
    to znana cecha danych ELI (Krok 18), nie błąd.
+   **Aktualizacja 2026-10-10 (z projektu prawo polskie, Krok 69):** okna
+   historyczne zawierały stan z KOŃCA okna, nie z początku --
+   `download_acts_history.py` brał plik "U" obwieszczenia, który Kancelaria
+   aktualizuje o nowelizacje aż do wygaśnięcia okna. Teraz plik "T"
+   (migawka z dnia ogłoszenia; 49 wersji z "T", 5 z "O") + czyszczenie
+   układu Dziennika Ustaw (przypisy pod stemplem daty, nagłówek strony
+   Dz.U., odsyłacze "§ 1.145)", przypisy redakcyjne w oryginałach,
+   preambuła obwieszczenia, podwójne brzmienie obowiązujące + przyszłe) i
+   ponawianie zapytań przy 5xx. Historia: adnotacje "wejdzie w życie z dn."
+   282 -> 0, stopki 9 -> 0, "W brzmieniu ustalonym" 39 -> 1; 10
+   zdublowanych etykiet w najstarszych oknach (PIT z obwieszczeń z 1993/2000,
+   KP do 2014 -- słaba ekstrakcja tych plików). Bieżące teksty: jedyna
+   zmiana -- usunięty odsyłacz w KP art. 23¹. Indeks 31 128 fragmentów,
+   testy 117/117.
 5. ~~Rozporządzenia/obwieszczenia z konkretnymi kwotami, których nie ma w
    samych ustawach.~~ **Domknięte w Krokach 21-23** -- wszyscy trzej znani
    kandydaci zrobieni tym samym wzorcem (`search_acts_by_title` + stały
