@@ -1,5 +1,10 @@
 # Asystent kadrowo-płacowy (Bielik + RAG + LoRA)
 
+> **English summary.** A local, offline-capable question-answering assistant for Polish labour and social-insurance law
+> (7 statutes: Labour Code, ZUS, PIT, PPK, benefits...). Retrieval-augmented generation over the official statute texts
+> from the Sejm's ELI API, plus a LoRA-tuned Polish LLM (Bielik) on Apple Silicon (MLX), NVIDIA/CUDA or LM Studio.
+> Documentation and the development log (`PROGRESS.md`) are in Polish. **Not legal advice.** Code: Apache-2.0.
+
 Lokalny (offline po pierwszym pobraniu) asystent odpowiadający na pytania
 z zakresu polskiego prawa pracy i ubezpieczeń społecznych, bez wysyłania
 niczego do chmury. Natywnie na Apple Silicon (MLX) — plus alternatywne

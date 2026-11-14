@@ -40,15 +40,22 @@ def load_local_meta(short: str) -> dict | None:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def check_act(act: dict) -> list[str]:
-    """Zwraca listę problemów (pusta lista = wszystko w porządku)."""
-    problems = []
+def check_act(act: dict) -> tuple[list[str], list[str]]:
+    """Zwraca (problemy, informacje); pusta lista problemów = wszystko w porządku.
+
+    Problem (psuje wynik, kod wyjścia 1): akt uchylony/nieobowiązujący, nowszy tekst
+    ujednolicony, brak lokalnych metadanych. Informacja (NIE psuje wyniku): zmieniła się
+    tylko data `changeDate` w metadanych -- bywa tak przy poprawkach metadanych i przy
+    nowelizacjach jeszcze bez tekstu ujednoliconego; sprawdź ręcznie, jeśli zależy Ci
+    na najświeższym stanie."""
+    problems: list[str] = []
+    infos: list[str] = []
     short = act["short"]
 
     local = load_local_meta(short)
     if local is None:
         problems.append("brak lokalnych metadanych -- uruchom najpierw download_acts.py")
-        return problems
+        return problems, infos
 
     url = f"{API_BASE}/acts/{act['publisher']}/{act['year']}/{act['position']}"
     resp = requests.get(url, timeout=30)
@@ -81,12 +88,13 @@ def check_act(act: dict) -> list[str]:
     remote_change = remote.get("changeDate", "")
     local_change = local.get("changeDate", "")
     if remote_change and local_change and remote_change > local_change:
-        problems.append(
+        infos.append(
             f"metadane aktu zmieniły się od ostatniego pobrania "
-            f"({local_change} -> {remote_change}) -- warto zweryfikować ręcznie"
+            f"({local_change} -> {remote_change}) -- bez nowego tekstu ujednoliconego; "
+            "sprawdź ręcznie, jeśli zależy Ci na najświeższym stanie"
         )
 
-    return problems
+    return problems, infos
 
 
 def main():
@@ -94,23 +102,24 @@ def main():
     for act in ACTS:
         print(f"[{act['short']}] sprawdzam...")
         try:
-            problems = check_act(act)
+            problems, infos = check_act(act)
         except requests.RequestException as e:
-            problems = [f"błąd zapytania do ELI API: {e}"]
+            problems, infos = [f"błąd zapytania do ELI API: {e}"], []
 
-        if not problems:
-            print(f"  OK -- aktualne")
-        else:
+        if not problems and not infos:
+            print("  OK -- aktualne")
+        for p in problems:
             any_problems = True
-            for p in problems:
-                print(f"  UWAGA: {p}")
+            print(f"  UWAGA: {p}")
+        for i in infos:
+            print(f"  INFO: {i}")
         print()
 
     if any_problems:
         print("Znaleziono akty wymagające uwagi -- patrz UWAGA wyżej.")
         sys.exit(1)
     else:
-        print("Wszystkie ustawy w bazie są aktualne.")
+        print("Brak problemów (wpisy INFO nie psują wyniku).")
 
 
 if __name__ == "__main__":

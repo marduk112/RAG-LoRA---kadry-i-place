@@ -6,7 +6,7 @@ tests/test_prompt.py obchodzi prawdziwy RagIndex, tylko tutaj testujemy
 PRAWDZIWĄ logikę rankingu/filtrowania, nie atrapę.
 
 Kontekst: PROGRESS.md, "Co dalej" pkt 4 / Krok 18, oraz plan implementacji
-w /Users/szymon/.claude/plans/drifting-toasting-wozniak.md, faza 2.
+w <lokalny plik planu>, faza 2.
 """
 
 import numpy as np

@@ -998,7 +998,7 @@ potwierdzona jeszcze nowelizacja.
 
 Cel: przed pisaniem docelowego kodu dla funkcji "prawo obowiązujące na dany
 dzień w przeszłości" (patrz "Co dalej" pkt 4 niżej -- pełny plan
-zaakceptowany, zapisany w `/Users/szymon/.claude/plans/drifting-toasting-wozniak.md`)
+zaakceptowany, zapisany w `<lokalny plik planu>`)
 zweryfikować na żywym ELI API dla WSZYSTKICH 7 ustaw (nie tylko ustawy o
 minimalnym wynagrodzeniu, jedynej sprawdzonej ręcznie wcześniej), czy
 podejście oparte o `references["Inf. o tekście jednolitym"]` (lista
@@ -1070,7 +1070,7 @@ kodzie produkcyjnym na tym etapie, zgodnie z fazą 0 planu.
 ## Krok 19: warstwa danych i indeksu dla wersjonowania czasowego ("as-of")
 
 Cel: Faza 1 (dane) i Faza 2 (indeks) planu z Kroku 18 --
-`/Users/szymon/.claude/plans/drifting-toasting-wozniak.md`. Zaimplementowane
+`<lokalny plik planu>`. Zaimplementowane
 przez dwa kolejne uruchomienia w tle (forki), z ręczną weryfikacją i jedną
 dodatkową poprawką na wierzchu.
 
@@ -1815,7 +1815,7 @@ istniejących testów jednostkowych).
    zalecana kombinacja dla wariantu CUDA.
 4. ~~Wersjonowanie w czasie -- prawo obowiązujące na dany dzień w
    przeszłości, nie tylko aktualne.~~ **Domknięte w Krokach 18-24**, wg
-   planu w `/Users/szymon/.claude/plans/drifting-toasting-wozniak.md`
+   planu w `<lokalny plik planu>`
    (spike -> warstwa danych/indeksu -> warstwa prompt/czat -> integracja z
    rozporządzeniami o kwotach -> top-k). `download_acts_history.py`
    pobiera i wersjonuje historyczne obwieszczenia (`{short}_history.json`),

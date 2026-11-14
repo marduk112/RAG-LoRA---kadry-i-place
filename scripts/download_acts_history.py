@@ -3,7 +3,7 @@ Pobiera historyczne (przeszłe) wersje tekstu ujednoliconego ustaw z ELI API
 Sejmu -- rozszerzenie `download_acts.py` o wymiar czasowy ("prawo
 obowiązujące na dany dzień w przeszłości"), patrz PROGRESS.md, "Co dalej"
 pkt 4 i Krok 18, oraz plan implementacji w
-`/Users/szymon/.claude/plans/drifting-toasting-wozniak.md`.
+`<lokalny plik planu>`.
 
 Dla każdej ustawy z `ACTS` (`download_acts.py`) pobiera listę obwieszczeń
 ogłaszających kolejne teksty ujednolicone (`references['Inf. o tekście
