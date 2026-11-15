@@ -96,6 +96,19 @@ def test_build_context_truncates_long_articles():
     assert "http://example.test" in context
 
 
+def test_build_context_long_article_keeps_the_matched_passage():
+    """Trafiony fragment leży daleko za MAX_ARTICLE_CHARS -- wycinek musi go zawierać (PROGRESS.md, Krok 31)."""
+    focus = "2. Koszty uzyskania przychodów wynoszą 250 zł miesięcznie, a za rok podatkowy łącznie niewięcej niż 3000 zł."
+    text = "Art. 22. 1. " + ("Zdanie wstępne. " * 800) + focus + (" Zdanie końcowe." * 800)
+    assert text.index(focus) > MAX_ARTICLE_CHARS
+    result = make_result("22", 0.9, text=text)
+    result["chunk_text"] = focus
+    context = build_context([result])
+    assert "3000 zł" in context
+    assert "skrócona do ustępów" in context
+    assert len(context) < MAX_ARTICLE_CHARS + 600
+
+
 def test_build_context_leaves_short_articles_untouched():
     short_text = "krótki tekst artykułu"
     context = build_context([make_result("1", 0.9, text=short_text)])
