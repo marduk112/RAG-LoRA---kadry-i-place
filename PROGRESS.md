@@ -1784,6 +1784,8 @@ Dotąd wyszukiwanie było czystym podobieństwem kosinusowym. Repozytorium wielo
 Poprawione 7 pytań (np. okres wypowiedzenia 2 -> 1, urlop wychowawczy 7 -> 2, norma czasu pracy 10 -> 4, zasiłek chorobowy 8 -> 3), pogorszone 1 (zasiłek dla bezrobotnych 1 -> 2).
 **Zastrzeżenia:** próba 26 pytań, pytania ułożone przez autora znającego artykuły, baza już wysoka (mało miejsca na poprawę) -- wskazówka, nie dowód. `prompt.search_with_history` nadal porównuje `results[0]["score"]` (kosinus pierwszego wyniku PO fuzji) z progiem pytań eliptycznych; po fuzji pierwszy wynik nie musi mieć najwyższego kosinusa (tak samo jest w repo wielodziedzinowym) -- nie mierzono wpływu na pytania uzupełniające. Pełnych odpowiedzi modelu nie sprawdzano, tylko pozycje artykułów.
 
+**Rozszerzanie zapytań (sprawdzone, NIE przeniesione):** na tych samych 26 pytaniach, Qwen3.8-27B (LM Studio, `reasoning_effort=low`) przeformułowuje pytanie, a wyszukiwanie łączy oba warianty (`fuse_rankings_multi_query`): top-1 18 -> 20, top-3 25 -> 24, top-8 26 -> 26. Naprawione 2 pytania (niedziele 2 -> 1, zasiłek dla bezrobotnych 2 -> 1), pogorszone 2 (norma czasu pracy 4 -> 5, zasiłek chorobowy 3 -> 4). Zysk w granicach szumu, a koszt to dodatkowe wywołanie dużego modelu na każde pytanie (ok. minuty) i zmiana wszystkich skryptów czatu -- nie warto przy tak wysokiej bazie (top-8 już 26/26). Wycinki długich artykułów (`article_excerpt.py`) zmieniają treść promptu, nie pozycje w wynikach -- ich zysk wymagałby oceny pełnych odpowiedzi; nie mierzono.
+
 ## Co dalej
 
 1. ~~Zweryfikować ręcznie 3 rozbieżności `changeDate` znalezione przy
