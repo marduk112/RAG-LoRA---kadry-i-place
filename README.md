@@ -4,6 +4,9 @@
 > (7 statutes: Labour Code, ZUS, PIT, PPK, benefits...). Retrieval-augmented generation over the official statute texts
 > from the Sejm's ELI API, plus a LoRA-tuned Polish LLM (Bielik) on Apple Silicon (MLX), NVIDIA/CUDA or LM Studio.
 > Documentation and the development log (`PROGRESS.md`) are in Polish. **Not legal advice.** Code: Apache-2.0.
+>
+> **Multi-domain successor:** [prawo-polskie-rag](https://github.com/marduk112/prawo-polskie-rag) -- 35 domains of Polish law,
+> a domain router, reranking and query expansion (this repo stays single-domain: labour and payroll law).
 
 Lokalny (offline po pierwszym pobraniu) asystent odpowiadający na pytania
 z zakresu polskiego prawa pracy i ubezpieczeń społecznych, bez wysyłania
