@@ -1786,6 +1786,19 @@ Poprawione 7 pytań (np. okres wypowiedzenia 2 -> 1, urlop wychowawczy 7 -> 2, n
 
 **Rozszerzanie zapytań (sprawdzone, NIE przeniesione):** na tych samych 26 pytaniach, Qwen3.8-27B (LM Studio, `reasoning_effort=low`) przeformułowuje pytanie, a wyszukiwanie łączy oba warianty (`fuse_rankings_multi_query`): top-1 18 -> 20, top-3 25 -> 24, top-8 26 -> 26. Naprawione 2 pytania (niedziele 2 -> 1, zasiłek dla bezrobotnych 2 -> 1), pogorszone 2 (norma czasu pracy 4 -> 5, zasiłek chorobowy 3 -> 4). Zysk w granicach szumu, a koszt to dodatkowe wywołanie dużego modelu na każde pytanie (ok. minuty) i zmiana wszystkich skryptów czatu -- nie warto przy tak wysokiej bazie (top-8 już 26/26). Wycinki długich artykułów (`article_excerpt.py`) zmieniają treść promptu, nie pozycje w wynikach -- ich zysk wymagałby oceny pełnych odpowiedzi; nie mierzono.
 
+## Krok 29: przepisywanie pytań uzupełniających na samodzielne (`chat_lmstudio.py`)
+
+Problem (badanie w repo wielodziedzinowym, Krok 138): fallback historii włącza się tylko przy kosinusie pierwszego wyniku < 0,75, a krótkie pytania uzupełniające ("A po 15 latach?") dają ok. 0,76-0,83, więc właściwy artykuł nie trafia do wyników. Reguły oparte na progu kosinusa albo doklejaniu historii wymieniały naprawione pytania na pogorszone samodzielne.
+**Wdrożone:** `prompt.search_with_history(..., rewrite=...)` -- jedno krótkie wywołanie modelu (temperatura 0, max 120 tokenów) zamienia pytanie na samodzielne albo zwraca je bez zmian; model widzi do 3 ostatnich pytań użytkownika (temat bywa kilka tur wstecz). Przy błędzie wywołania, pustym albo zbyt długim wyniku wraca dotychczasowe zachowanie. `chat_lmstudio.py`: domyślnie włączone, `--no-rewrite-followups` wyłącza. 11 nowych testów (151 przechodzi).
+**Pomiar (wdrożony kod, Bielik v3.1 8-bit w LM Studio, tylko wyszukiwanie, 14 + 6 + 26 pytań ułożonych przez autora):**
+| | stary fallback | przepisywanie |
+|---|---|---|
+| uzupełnienia po jednej turze, top-1 / top-3 / top-8 (z 14) | 4 / 4 / 5 | 10 / 13 / 14 |
+| uzupełnienia po obcym wątku w środku, top-8 (z 6) | 3 | 6 |
+| pytania samodzielne po obcej historii pogorszone (z 26) | 0 | 0 |
+**NIE włączone w `chat.py` (MLX):** test na Bieliku v3.0 11B (z adapterem `hedge-iter50` i bez) pokazał, że model zamiast przepisać pytanie odpowiada na nie ("20 dni…", "26 dni urlopu…") albo dopisuje prefiks "Ostatnie pytanie:" -- takie zapytanie psułoby wyszukiwanie. `chat_cuda.py`: bez zmian (brak możliwości testu). Z Qwenem w LM Studio wynik może być pusty (długie "myślenie" przy 120 tokenach) -- wtedy zostaje oryginalne pytanie, bez zysku i bez szkody.
+**Zastrzeżenia:** małe, ręcznie ułożone zbiory; jeden model przepisujący; sprawdzano tylko pozycje artykułów, nie pełne odpowiedzi; koszt to dodatkowe wywołanie modelu (kilka sekund) na każdą turę z niepustą historią.
+
 ## Co dalej
 
 1. ~~Zweryfikować ręcznie 3 rozbieżności `changeDate` znalezione przy
