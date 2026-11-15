@@ -50,7 +50,14 @@ from datetime import date
 import requests
 
 from file_index import SessionFileIndex
-from prompt import SYSTEM_PROMPT, build_user_message, looks_like_meta_question, search_with_history, trim_history
+from prompt import (
+    SYSTEM_PROMPT,
+    build_followup_rewrite_messages,
+    build_user_message,
+    looks_like_meta_question,
+    search_with_history,
+    trim_history,
+)
 from rag_search import RagIndex
 
 DEFAULT_URL = "http://localhost:1234/v1"
@@ -74,6 +81,19 @@ def detect_model(base_url: str) -> str:
     return ids[0]
 
 
+def rewrite_followup(base_url: str, model_id: str, history: list[dict], question: str) -> str:
+    """Krótkie wywołanie modelu: pytanie uzupełniające -> samodzielne (patrz prompt.build_followup_rewrite_messages).
+    Modele z długim "myśleniem" (np. Qwen) mogą zwrócić pusty wynik -- wtedy zostaje oryginalne pytanie."""
+    messages = build_followup_rewrite_messages(history, question)
+    resp = requests.post(
+        f"{base_url}/chat/completions",
+        json={"model": model_id, "messages": messages, "max_tokens": 120, "temperature": 0.0},
+        timeout=120,
+    )
+    resp.raise_for_status()
+    return resp.json()["choices"][0]["message"]["content"]
+
+
 def answer(
     base_url: str,
     model_id: str,
@@ -83,6 +103,7 @@ def answer(
     question: str,
     top_k: int,
     as_of: str | None = None,
+    rewrite_followups: bool = True,
 ) -> str:
     if history and looks_like_meta_question(question):
         # Pytanie o przebieg rozmowy -- pomijamy fragmenty RAG (wyszukane
@@ -91,7 +112,8 @@ def answer(
         # prompt.looks_like_meta_question i PROGRESS.md, krok 10).
         current_turn = {"role": "user", "content": question}
     else:
-        results = search_with_history(rag, history, question, top_k, as_of=as_of)
+        rewrite = (lambda h, q: rewrite_followup(base_url, model_id, h, q)) if rewrite_followups else None
+        results = search_with_history(rag, history, question, top_k, as_of=as_of, rewrite=rewrite)
         file_results = file_index.search(question, top_k=3)
         current_turn = {
             "role": "user",
@@ -127,6 +149,12 @@ def main():
         help="Liczba fragmentów RAG dołączanych do kontekstu (domyślnie 8 -- podniesione z 5, patrz "
         "PROGRESS.md, Krok 21/22/24: przy 5 fragment z nowo dodanych rozporządzeń o konkretnych kwotach "
         "czasem przegrywał rankingiem z kilkoma tematycznie bliskimi artykułami tej samej ustawy bazowej)",
+    )
+    parser.add_argument(
+        "--no-rewrite-followups",
+        action="store_true",
+        help="Nie przepisuj pytań uzupełniających (\"a po 15 latach?\") na samodzielne dodatkowym wywołaniem modelu "
+        "(PROGRESS.md, Krok 29) -- wraca stary fallback oparty na progu kosinusa",
     )
     parser.add_argument("--max-turns", type=int, default=6, help="Ile ostatnich par pytanie/odpowiedź zachować w kontekście rozmowy")
     parser.add_argument("--file", type=str, default=None, help="Ścieżka do pliku PDF (tekstowego) wgrywanego jako dodatkowy kontekst")
@@ -198,7 +226,10 @@ def main():
                 as_of = arg
                 print(f"[INFO] Stan prawny na dzień: {as_of}\n")
             continue
-        text = answer(args.url, model_id, rag, file_index, history, question, args.top_k, as_of=as_of)
+        text = answer(
+            args.url, model_id, rag, file_index, history, question, args.top_k, as_of=as_of,
+            rewrite_followups=not args.no_rewrite_followups,
+        )
         print("Asystent:", text, "\n")
         history = trim_history(history, args.max_turns)
 

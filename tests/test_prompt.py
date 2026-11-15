@@ -10,6 +10,8 @@ import pytest
 from prompt import (
     MAX_ARTICLE_CHARS,
     build_context,
+    build_followup_rewrite_messages,
+    clean_rewritten_question,
     build_user_message,
     looks_like_meta_question,
     search_with_history,
@@ -195,6 +197,91 @@ def test_search_with_history_threads_as_of_through_every_call():
         ("A po 15 latach?", "2015-11-09"),
         ("Ile dni urlopu przysługuje po 10 latach pracy? A po 15 latach?", "2015-11-09"),
     ]
+
+
+# --- przepisywanie pytań uzupełniających (PROGRESS.md, Krok 29) ---
+
+URLOP_HISTORY = [
+    {"role": "user", "content": "Ile dni urlopu przysługuje po 10 latach pracy?"},
+    {"role": "assistant", "content": "26 dni"},
+]
+
+
+def test_build_followup_rewrite_messages_lists_last_user_questions():
+    history = URLOP_HISTORY + [
+        {"role": "user", "content": "A ojcowski?"},
+        {"role": "assistant", "content": "2 tygodnie"},
+        {"role": "user", "content": "A ile wynosi minimalne wynagrodzenie?"},
+        {"role": "assistant", "content": "..."},
+        {"role": "user", "content": "A okres próbny?"},
+        {"role": "assistant", "content": "..."},
+    ]
+    content = build_followup_rewrite_messages(history, "A po 15 latach?")[1]["content"]
+    assert build_followup_rewrite_messages(history, "x")[0]["role"] == "system"
+    assert "Ostatnie pytanie: A po 15 latach?" in content
+    assert "- A ojcowski?" in content and "- A okres próbny?" in content
+    assert "10 latach" not in content  # tylko MAX_LOOKBACK_QUESTIONS (3) ostatnich pytań użytkownika
+
+
+@pytest.mark.parametrize(
+    "text, expected",
+    [
+        ('"Ile dni urlopu przysługuje po 15 latach pracy?"', "Ile dni urlopu przysługuje po 15 latach pracy?"),
+        ("\n  Pytanie jedna linia\nKomentarz modelu", "Pytanie jedna linia"),
+        ("", "oryginał"),
+        (None, "oryginał"),
+        ("x" * 400, "oryginał"),  # model zaczął odpowiadać zamiast przepisywać
+    ],
+)
+def test_clean_rewritten_question(text, expected):
+    assert clean_rewritten_question(text, "oryginał") == expected
+
+
+def test_search_with_history_rewrite_replaces_query_for_followup():
+    rag = FakeRag({"Ile dni urlopu przysługuje po 15 latach pracy?": [make_result("154", 0.9)]})
+    results = search_with_history(
+        rag, URLOP_HISTORY, "A po 15 latach?", top_k=5, rewrite=lambda h, q: "Ile dni urlopu przysługuje po 15 latach pracy?"
+    )
+    assert results[0]["article"] == "154"
+    assert rag.calls == [("Ile dni urlopu przysługuje po 15 latach pracy?", None)]
+
+
+def test_search_with_history_rewrite_unchanged_question_is_plain_search_without_fallback():
+    """Model zwrócił pytanie bez zmian (jest samodzielne) -- jedno zwykłe wyszukanie, bez starego fallbacku
+    nawet przy niskim kosinusie."""
+    rag = FakeRag({"Ile wynosi minimalne wynagrodzenie?": [make_result("5", 0.3)]})
+    results = search_with_history(
+        rag, URLOP_HISTORY, "Ile wynosi minimalne wynagrodzenie?", top_k=5, rewrite=lambda h, q: q
+    )
+    assert results[0]["article"] == "5"
+    assert rag.calls == [("Ile wynosi minimalne wynagrodzenie?", None)]
+
+
+def test_search_with_history_rewrite_not_called_without_history():
+    called = []
+    rag = FakeRag({"pytanie": [make_result("1", 0.5)]})
+    search_with_history(rag, [], "pytanie", top_k=5, rewrite=lambda h, q: called.append(q) or q)
+    assert called == []
+
+
+def test_search_with_history_rewrite_failure_falls_back_to_old_behaviour():
+    def boom(history, question):
+        raise RuntimeError("LM Studio nie odpowiada")
+
+    rag = FakeRag(
+        {
+            "A po 15 latach?": [make_result("15", 0.5)],
+            "Ile dni urlopu przysługuje po 10 latach pracy? A po 15 latach?": [make_result("154", 0.9)],
+        }
+    )
+    results = search_with_history(rag, URLOP_HISTORY, "A po 15 latach?", top_k=5, rewrite=boom)
+    assert results[0]["article"] == "154"  # stary fallback oparty na progu kosinusa
+
+
+def test_search_with_history_rewrite_threads_as_of():
+    rag = FakeRag({"pełne pytanie": [make_result("154", 0.9)]})
+    search_with_history(rag, URLOP_HISTORY, "A po 15 latach?", top_k=5, as_of="2015-11-09", rewrite=lambda h, q: "pełne pytanie")
+    assert rag.calls == [("pełne pytanie", "2015-11-09")]
 
 
 # --- build_user_message (patrz też scripts/file_index.py -- upload plików) ---

@@ -142,6 +142,39 @@ def looks_like_meta_question(question: str) -> bool:
     return bool(_META_QUESTION_RE.search(question))
 
 
+FOLLOWUP_REWRITE_SYSTEM_PROMPT = (
+    "Dostajesz kilka poprzednich pytań użytkownika z rozmowy o polskim prawie pracy i jego ostatnie pytanie. "
+    "Jeśli ostatnie pytanie jest zrozumiałe samo w sobie, zwróć je DOKŁADNIE bez zmian. "
+    'Jeśli odwołuje się do wcześniejszej rozmowy (np. "a po 15 latach?", "a ojcowski?"), przepisz je na pełne, '
+    "samodzielne pytanie, dopisując temat z właściwego poprzedniego pytania (niekoniecznie ostatniego). "
+    "Zwróć wyłącznie pytanie, bez komentarza."
+)
+MAX_REWRITTEN_QUESTION_CHARS = 300
+
+
+def build_followup_rewrite_messages(history: list[dict], question: str) -> list[dict]:
+    """Wiadomości do krótkiego wywołania modelu, które zamienia pytanie uzupełniające
+    ("A po 15 latach?") na samodzielne -- albo zwraca je bez zmian, jeśli już jest samodzielne.
+    Model widzi do MAX_LOOKBACK_QUESTIONS ostatnich pytań użytkownika (od najstarszego), bo właściwy
+    temat bywa kilka tur wstecz (jak w dotychczasowym fallbacku, patrz search_with_history)."""
+    prior = [m["content"] for m in history if m["role"] == "user"][-MAX_LOOKBACK_QUESTIONS:]
+    listing = "\n".join(f"- {q}" for q in prior)
+    return [
+        {"role": "system", "content": FOLLOWUP_REWRITE_SYSTEM_PROMPT},
+        {"role": "user", "content": f"Poprzednie pytania:\n{listing}\nOstatnie pytanie: {question}"},
+    ]
+
+
+def clean_rewritten_question(text: str | None, original: str) -> str:
+    """Pierwsza niepusta linia odpowiedzi modelu bez cudzysłowów; przy pustym wyniku albo zbyt długim
+    (model zaczął odpowiadać zamiast przepisywać) wraca do oryginalnego pytania."""
+    for line in (text or "").splitlines():
+        line = line.strip().strip('"\u201e\u201d\u201c').strip()
+        if line:
+            return line if len(line) <= MAX_REWRITTEN_QUESTION_CHARS else original
+    return original
+
+
 ELLIPTICAL_SCORE_THRESHOLD = 0.75
 
 
@@ -149,7 +182,7 @@ MAX_LOOKBACK_QUESTIONS = 3
 
 
 def search_with_history(
-    rag, history: list[dict], question: str, top_k: int, as_of: str | None = None
+    rag, history: list[dict], question: str, top_k: int, as_of: str | None = None, rewrite=None
 ) -> list[dict]:
     """RAG search z fallbackiem dla pytań eliptycznych typu "a po 15
     latach?", które same w sobie nie mają wystarczających słów
@@ -171,6 +204,16 @@ def search_with_history(
     niezwiązanego pytania do zapytania psuje trafność (sprawdzone
     empirycznie), dlatego każde poprzednie pytanie jest próbowane
     osobno."""
+    if rewrite is not None and history:
+        # Przepisanie pytania uzupełniającego na samodzielne przez model (PROGRESS.md, Krok 29): w pomiarze 14/14
+        # pytań uzupełniających w top-8 (fallback poniżej: 5/14), bez zmian dla pytań samodzielnych. Przy
+        # błędzie wywołania modelu spadamy do dotychczasowego fallbacku opartego na progu kosinusa.
+        try:
+            rewritten = clean_rewritten_question(rewrite(history, question), question)
+        except Exception:  # noqa: BLE001 -- przepisanie jest tylko ulepszeniem, nie może zablokować odpowiedzi
+            rewritten = None
+        if rewritten is not None:
+            return rag.search(rewritten, top_k=top_k, as_of=as_of)
     results = rag.search(question, top_k=top_k, as_of=as_of)
     if not history or not results or results[0]["score"] >= ELLIPTICAL_SCORE_THRESHOLD:
         return results
