@@ -51,12 +51,25 @@ from pathlib import Path
 from mlx_lm import generate, load
 
 from file_index import SessionFileIndex
-from prompt import SYSTEM_PROMPT, build_user_message, looks_like_meta_question, search_with_history, trim_history
+from prompt import (
+    SYSTEM_PROMPT,
+    build_followup_rewrite_messages,
+    build_user_message,
+    looks_like_meta_question,
+    search_with_history,
+    trim_history,
+)
 from rag_search import RagIndex
 
 ROOT = Path(__file__).resolve().parent.parent
 MODEL_PATH = ROOT / "models" / "Bielik-11B-v3.0-Instruct-mlx"
 DEFAULT_ADAPTER_PATH = ROOT / "adapters" / "bielik11b-kadry-lora-hedge-iter50"
+
+
+def rewrite_followup(model, tokenizer, history: list[dict], question: str) -> str:
+    """Krótkie wywołanie modelu: pytanie uzupełniające -> samodzielne (patrz prompt.build_followup_rewrite_messages)."""
+    prompt = tokenizer.apply_chat_template(build_followup_rewrite_messages(history, question), add_generation_prompt=True)
+    return generate(model, tokenizer, prompt=prompt, max_tokens=120, verbose=False)
 
 
 def answer(
@@ -69,6 +82,7 @@ def answer(
     top_k: int,
     verbose: bool,
     as_of: str | None = None,
+    rewrite_followups: bool = False,
 ) -> str:
     if history and looks_like_meta_question(question):
         # Pytanie o przebieg rozmowy -- pomijamy fragmenty RAG (wyszukane
@@ -77,7 +91,8 @@ def answer(
         # prompt.looks_like_meta_question i PROGRESS.md, krok 10).
         current_turn = {"role": "user", "content": question}
     else:
-        results = search_with_history(rag, history, question, top_k, as_of=as_of)
+        rewrite = (lambda h, q: rewrite_followup(model, tokenizer, h, q)) if rewrite_followups else None
+        results = search_with_history(rag, history, question, top_k, as_of=as_of, rewrite=rewrite)
         file_results = file_index.search(question, top_k=3)
         current_turn = {
             "role": "user",
@@ -108,6 +123,13 @@ def main():
         help="Liczba fragmentów RAG dołączanych do kontekstu (domyślnie 8 -- podniesione z 5, patrz "
         "PROGRESS.md, Krok 21/22/24: przy 5 fragment z nowo dodanych rozporządzeń o konkretnych kwotach "
         "czasem przegrywał rankingiem z kilkoma tematycznie bliskimi artykułami tej samej ustawy bazowej)",
+    )
+    parser.add_argument(
+        "--rewrite-followups",
+        action="store_true",
+        help="Przepisuj pytania uzupełniające (\"a po 15 latach?\") na samodzielne dodatkowym wywołaniem modelu "
+        "(PROGRESS.md, Krok 29/30). Domyślnie WYŁĄCZONE: Bielik v3.0 odpowiadał na pytanie zamiast je przepisać; "
+        "zmierzono tylko z Bielikiem v3.1 8-bit (--model models/Bielik-11B-v3.1-Instruct-mlx-8bit --no-adapter)",
     )
     parser.add_argument("--max-turns", type=int, default=6, help="Ile ostatnich par pytanie/odpowiedź zachować w kontekście rozmowy")
     parser.add_argument("--file", type=str, default=None, help="Ścieżka do pliku PDF (tekstowego) wgrywanego jako dodatkowy kontekst")
@@ -181,7 +203,10 @@ def main():
                 print(f"[INFO] Stan prawny na dzień: {as_of}\n")
             continue
         print("Asystent: ", end="", flush=True)
-        text = answer(model, tokenizer, rag, file_index, history, question, args.top_k, verbose=False, as_of=as_of)
+        text = answer(
+            model, tokenizer, rag, file_index, history, question, args.top_k, verbose=False, as_of=as_of,
+            rewrite_followups=args.rewrite_followups,
+        )
         print(text, "\n")
         history = trim_history(history, args.max_turns)
 

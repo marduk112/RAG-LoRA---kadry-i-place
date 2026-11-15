@@ -540,9 +540,10 @@ Krótkie pytanie uzupełniające nie zawiera słów kluczowych, więc samo wyszu
 `chat_lmstudio.py` (tryb rozmowy) model przed wyszukaniem przepisuje takie pytanie na samodzielne -- albo zwraca je bez
 zmian, jeśli już jest samodzielne. Na 14 pytaniach uzupełniających właściwy artykuł jest w top-8 w 14/14 przypadków
 (poprzednio 5/14), po obcym wątku w środku rozmowy w 6/6 (poprzednio 3/6), a 26 pytań samodzielnych nie pogorszyło się.
-Przetestowane z Bielikiem v3.1 8-bit w LM Studio; wyłączane flagą `--no-rewrite-followups`. W `chat.py` (MLX, Bielik v3.0)
-funkcji **nie włączono**: ten model zamiast przepisywać pytanie odpowiadał na nie. `chat_cuda.py` bez zmian
-(nieprzetestowane). Szczegóły: PROGRESS.md, Krok 29.
+Przetestowane z Bielikiem v3.1 8-bit w LM Studio; wyłączane flagą `--no-rewrite-followups`. W `chat.py` (MLX) funkcja jest
+**opcjonalna** (`--rewrite-followups`, domyślnie wyłączona): domyślny Bielik v3.0 zamiast przepisywać pytanie odpowiadał na nie,
+a z Bielikiem v3.1 8-bit działa poprawnie (`--model models/Bielik-11B-v3.1-Instruct-mlx-8bit --no-adapter --rewrite-followups`).
+`chat_cuda.py` bez zmian (nieprzetestowane). Szczegóły: PROGRESS.md, Krok 29 i 30.
 
 ## Licencja
 
