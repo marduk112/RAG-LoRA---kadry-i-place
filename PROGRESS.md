@@ -1799,6 +1799,12 @@ Problem (badanie w repo wielodziedzinowym, Krok 138): fallback historii włącza
 **NIE włączone w `chat.py` (MLX):** test na Bieliku v3.0 11B (z adapterem `hedge-iter50` i bez) pokazał, że model zamiast przepisać pytanie odpowiada na nie ("20 dni…", "26 dni urlopu…") albo dopisuje prefiks "Ostatnie pytanie:" -- takie zapytanie psułoby wyszukiwanie. `chat_cuda.py`: bez zmian (brak możliwości testu). Z Qwenem w LM Studio wynik może być pusty (długie "myślenie" przy 120 tokenach) -- wtedy zostaje oryginalne pytanie, bez zysku i bez szkody.
 **Zastrzeżenia:** małe, ręcznie ułożone zbiory; jeden model przepisujący; sprawdzano tylko pozycje artykułów, nie pełne odpowiedzi; koszt to dodatkowe wywołanie modelu (kilka sekund) na każdą turę z niepustą historią.
 
+## Krok 30: przepisywanie pytań uzupełniających w `chat.py` (MLX) -- opcjonalne
+
+Krok 29 włączył przepisywanie tylko w `chat_lmstudio.py`, bo Bielik v3.0 11B w `chat.py` odpowiadał na pytanie zamiast je przepisać. Sprawdzono Bielika v3.1 8-bit (`models/Bielik-11B-v3.1-Instruct-mlx-8bit`, bez adaptera) przez `chat.rewrite_followup` na 5 przypadkach (3 uzupełnienia, 2 pytania samodzielne): wszystkie przepisane poprawnie, samodzielne zwrócone bez zmian (model dopisuje wiodący znak nowej linii, który `clean_rewritten_question` usuwa).
+**Wdrożone:** w `chat.py` flaga `--rewrite-followups` (domyślnie WYŁĄCZONA -- domyślny model to nadal v3.0 z adapterem, który tego nie potrafi). Domyślnego modelu `chat.py` nie zmieniono: adaptery LoRA tego repo są dla v3.0 i nie przenoszą się na v3.1, a zmiana domyślnego modelu wymagałaby osobnego porównania jakości odpowiedzi.
+**Zastrzeżenia:** 5 przypadków przepisania w MLX (retrieval na pełnym zestawie 14 + 6 + 26 zmierzono w Kroku 29 na tym samym modelu v3.1 przez LM Studio); odpowiedzi `chat.py` z v3.1 8-bit bez adaptera nie porównywano z v3.0 + adapter.
+
 ## Co dalej
 
 1. ~~Zweryfikować ręcznie 3 rozbieżności `changeDate` znalezione przy
