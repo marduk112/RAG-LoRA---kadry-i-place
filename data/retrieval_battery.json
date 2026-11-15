@@ -1,0 +1,210 @@
+[
+ {
+  "id": "k_urlop_10lat",
+  "question": "Ile dni urlopu wypoczynkowego przysługuje pracownikowi po 10 latach pracy?",
+  "act_short": "kodeks_pracy",
+  "article": "154",
+  "max_acceptable_rank": 8,
+  "note": "Krok 136 (repo wielodziedzinowe) -- etykieta sprawdzona po treści artykułu w indeksie (słowo kluczowe: 26 dni)."
+ },
+ {
+  "id": "k_wypowiedzenie_3lata",
+  "question": "Jaki jest okres wypowiedzenia umowy o pracę na czas nieokreślony po trzech latach u pracodawcy?",
+  "act_short": "kodeks_pracy",
+  "article": "36",
+  "max_acceptable_rank": 8,
+  "note": "Krok 136 (repo wielodziedzinowe) -- etykieta sprawdzona po treści artykułu w indeksie (słowo kluczowe: 3 miesi)."
+ },
+ {
+  "id": "k_nadgodziny_dodatek",
+  "question": "Jaki dodatek należy się za pracę w godzinach nadliczbowych w dni powszednie?",
+  "act_short": "kodeks_pracy",
+  "article": "151¹",
+  "max_acceptable_rank": 8,
+  "note": "Krok 136 (repo wielodziedzinowe) -- etykieta sprawdzona po treści artykułu w indeksie (słowo kluczowe: 100 %)."
+ },
+ {
+  "id": "k_dyscyplinarka",
+  "question": "Kiedy pracodawca może zwolnić pracownika dyscyplinarnie, bez wypowiedzenia?",
+  "act_short": "kodeks_pracy",
+  "article": "52",
+  "max_acceptable_rank": 8,
+  "note": "Krok 136 (repo wielodziedzinowe) -- etykieta sprawdzona po treści artykułu w indeksie (słowo kluczowe: ciężkiego naruszenia)."
+ },
+ {
+  "id": "k_chorobowe_pracodawca",
+  "question": "Za jak długi okres choroby pracodawca płaci wynagrodzenie chorobowe?",
+  "act_short": "kodeks_pracy",
+  "article": "92",
+  "max_acceptable_rank": 8,
+  "note": "Krok 136 (repo wielodziedzinowe) -- etykieta sprawdzona po treści artykułu w indeksie (słowo kluczowe: 33 dni)."
+ },
+ {
+  "id": "k_macierzynski",
+  "question": "Ile tygodni trwa urlop macierzyński po urodzeniu jednego dziecka?",
+  "act_short": "kodeks_pracy",
+  "article": "180",
+  "max_acceptable_rank": 8,
+  "note": "Krok 136 (repo wielodziedzinowe) -- etykieta sprawdzona po treści artykułu w indeksie (słowo kluczowe: 20 tygodni)."
+ },
+ {
+  "id": "k_okres_probny",
+  "question": "Jak długo może trwać umowa na okres próbny?",
+  "act_short": "kodeks_pracy",
+  "article": "25",
+  "max_acceptable_rank": 8,
+  "note": "Krok 136 (repo wielodziedzinowe) -- etykieta sprawdzona po treści artykułu w indeksie (słowo kluczowe: 3 miesi)."
+ },
+ {
+  "id": "k_niedziela",
+  "question": "Kiedy pracownik może pracować w niedzielę?",
+  "act_short": "kodeks_pracy",
+  "article": "151¹⁰",
+  "max_acceptable_rank": 8,
+  "note": "Krok 136 (repo wielodziedzinowe) -- etykieta sprawdzona po treści artykułu w indeksie (słowo kluczowe: niedziel)."
+ },
+ {
+  "id": "k_zakaz_konkurencji",
+  "question": "Czy pracodawca może zakazać pracownikowi podjęcia pracy u konkurencji?",
+  "act_short": "kodeks_pracy",
+  "article": "101¹",
+  "max_acceptable_rank": 8,
+  "note": "Krok 136 (repo wielodziedzinowe) -- etykieta sprawdzona po treści artykułu w indeksie (słowo kluczowe: konkurencyjn)."
+ },
+ {
+  "id": "k_ochrona_emerytalna",
+  "question": "Czy można wypowiedzieć umowę pracownikowi, któremu brakuje mniej niż 4 lata do emerytury?",
+  "act_short": "kodeks_pracy",
+  "article": "39",
+  "max_acceptable_rank": 8,
+  "note": "Krok 136 (repo wielodziedzinowe) -- etykieta sprawdzona po treści artykułu w indeksie (słowo kluczowe: 4 lat)."
+ },
+ {
+  "id": "k_swiadectwo",
+  "question": "W jakim terminie pracodawca musi wydać świadectwo pracy?",
+  "act_short": "kodeks_pracy",
+  "article": "97",
+  "max_acceptable_rank": 8,
+  "note": "Krok 136 (repo wielodziedzinowe) -- etykieta sprawdzona po treści artykułu w indeksie (słowo kluczowe: świadectw)."
+ },
+ {
+  "id": "k_dodatek_nocny",
+  "question": "Ile wynosi dodatek za pracę w porze nocnej?",
+  "act_short": "kodeks_pracy",
+  "article": "151⁸",
+  "max_acceptable_rank": 8,
+  "note": "Krok 136 (repo wielodziedzinowe) -- etykieta sprawdzona po treści artykułu w indeksie (słowo kluczowe: pora nocna/porze nocnej)."
+ },
+ {
+  "id": "k_odpowiedzialnosc_mat",
+  "question": "Za jakie szkody pracownik odpowiada materialnie wobec pracodawcy?",
+  "act_short": "kodeks_pracy",
+  "article": "114",
+  "max_acceptable_rank": 8,
+  "note": "Krok 136 (repo wielodziedzinowe) -- etykieta sprawdzona po treści artykułu w indeksie (słowo kluczowe: szkod)."
+ },
+ {
+  "id": "k_wychowawczy",
+  "question": "Ile maksymalnie trwa urlop wychowawczy i kto może z niego skorzystać?",
+  "act_short": "kodeks_pracy",
+  "article": "186",
+  "max_acceptable_rank": 8,
+  "note": "Krok 136 (repo wielodziedzinowe) -- etykieta sprawdzona po treści artykułu w indeksie (słowo kluczowe: 36 miesi)."
+ },
+ {
+  "id": "k_czas_pracy_norma",
+  "question": "Jaka jest podstawowa norma dobowa i tygodniowa czasu pracy?",
+  "act_short": "kodeks_pracy",
+  "article": "129",
+  "max_acceptable_rank": 8,
+  "note": "Krok 136 (repo wielodziedzinowe) -- etykieta sprawdzona po treści artykułu w indeksie (słowo kluczowe: 8 godzin)."
+ },
+ {
+  "id": "k_odpoczynek_dobowy",
+  "question": "Ile godzin nieprzerwanego odpoczynku dobowego musi mieć pracownik?",
+  "act_short": "kodeks_pracy",
+  "article": "132",
+  "max_acceptable_rank": 8,
+  "note": "Krok 136 (repo wielodziedzinowe) -- etykieta sprawdzona po treści artykułu w indeksie (słowo kluczowe: 11 godzin)."
+ },
+ {
+  "id": "k_urlop_na_zadanie",
+  "question": "Ile dni urlopu na żądanie przysługuje w roku?",
+  "act_short": "kodeks_pracy",
+  "article": "167²",
+  "max_acceptable_rank": 8,
+  "note": "Krok 136 (repo wielodziedzinowe) -- etykieta sprawdzona po treści artykułu w indeksie (słowo kluczowe: 4 dni)."
+ },
+ {
+  "id": "k_mobbing",
+  "question": "Co to jest mobbing według prawa pracy?",
+  "act_short": "kodeks_pracy",
+  "article": "94³",
+  "max_acceptable_rank": 8,
+  "note": "Krok 136 (repo wielodziedzinowe) -- etykieta sprawdzona po treści artykułu w indeksie (słowo kluczowe: mobbing)."
+ },
+ {
+  "id": "k_umowa_terminowa_limit",
+  "question": "Ile umów na czas określony można zawrzeć z tym samym pracownikiem?",
+  "act_short": "kodeks_pracy",
+  "article": "25¹",
+  "max_acceptable_rank": 8,
+  "note": "Krok 136 (repo wielodziedzinowe) -- etykieta sprawdzona po treści artykułu w indeksie (słowo kluczowe: 33 miesi)."
+ },
+ {
+  "id": "k_wynagrodzenie_za_urlop",
+  "question": "Jak oblicza się wynagrodzenie za czas urlopu wypoczynkowego?",
+  "act_short": "kodeks_pracy",
+  "article": "172",
+  "max_acceptable_rank": 8,
+  "note": "Krok 136 (repo wielodziedzinowe) -- etykieta sprawdzona po treści artykułu w indeksie (słowo kluczowe: urlop)."
+ },
+ {
+  "id": "k_ppk_pracodawca",
+  "question": "Jaką wpłatę podstawową do PPK finansuje pracodawca?",
+  "act_short": "ustawa_o_ppk",
+  "article": "26",
+  "max_acceptable_rank": 8,
+  "note": "Krok 136 (repo wielodziedzinowe) -- etykieta sprawdzona po treści artykułu w indeksie (słowo kluczowe: 1,5 %)."
+ },
+ {
+  "id": "k_zasilek_wysokosc",
+  "question": "Ile wynosi zasiłek chorobowy w procentach podstawy wymiaru?",
+  "act_short": "ustawa_zasilkowa",
+  "article": "11",
+  "max_acceptable_rank": 8,
+  "note": "Krok 136 (repo wielodziedzinowe) -- etykieta sprawdzona po treści artykułu w indeksie (słowo kluczowe: 80 %)."
+ },
+ {
+  "id": "k_koszty_uzyskania",
+  "question": "Jakie są roczne koszty uzyskania przychodu pracownika zatrudnionego na etacie w jednej miejscowości?",
+  "act_short": "ustawa_o_pit",
+  "article": "22",
+  "max_acceptable_rank": 8,
+  "note": "Krok 136 (repo wielodziedzinowe) -- etykieta sprawdzona po treści artykułu w indeksie (słowo kluczowe: koszty uzyskania)."
+ },
+ {
+  "id": "k_zasilek_bezrobotny",
+  "question": "Ile przysługuje zasiłek dla bezrobotnych i jak długo?",
+  "act_short": "ustawa_o_rynku_pracy",
+  "article": "224",
+  "max_acceptable_rank": 8,
+  "note": "Krok 136 (repo wielodziedzinowe) -- etykieta sprawdzona po treści artykułu w indeksie (słowo kluczowe: Wysokość zasiłku)."
+ },
+ {
+  "id": "k_limit_zus",
+  "question": "Do jakiej kwoty rocznie opłaca się składki emerytalne i rentowe (limit 30-krotności)?",
+  "act_short": "ustawa_o_systemie_ubezpieczen_spolecznych",
+  "article": "19",
+  "max_acceptable_rank": 8,
+  "note": "Krok 136 (repo wielodziedzinowe) -- etykieta sprawdzona po treści artykułu w indeksie (słowo kluczowe: trzydziestokrotno)."
+ },
+ {
+  "id": "k_minimalne",
+  "question": "Jak ustala się minimalne wynagrodzenie za pracę w danym roku?",
+  "act_short": "ustawa_o_minimalnym_wynagrodzeniu",
+  "article": "2",
+  "max_acceptable_rank": 8,
+  "note": "Krok 136 (repo wielodziedzinowe) -- etykieta sprawdzona po treści artykułu w indeksie (słowo kluczowe: minimaln)."
+ }
+]

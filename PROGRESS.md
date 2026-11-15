@@ -1773,6 +1773,17 @@ nie styl odpowiedzi.
 `DEFAULT_ADAPTER_PATH` i docstringu w `chat.py`, poza zakresem
 istniejących testów jednostkowych).
 
+## Krok 28: reranker + fuzja RRF (przeniesione z repozytorium wielodziedzinowego)
+
+Dotąd wyszukiwanie było czystym podobieństwem kosinusowym. Repozytorium wielodziedzinowe [prawo-polskie-rag](https://github.com/marduk112/prawo-polskie-rag) ma drugi etap: cross-encoder `sdadas/polish-reranker-base-ranknet` ocenia 30 kandydatów, a RRF łączy kolejność kosinusową i rerankera. Przeniesione bez zmian logiki (`apply_rerank`, `fuse_rankings`, `fuse_rankings_multi_query`, `merge_candidates`, parametry `rerank`/`fuse`/`extra_queries`/`candidate_pool` w `RagIndex`), z testami (25 w `tests/test_rag_search.py`). Odwołania do Kroków i przykładów (KC, VAT) w docstringach dotyczą tamtego repo. Domyślnie reranker jest WŁĄCZONY; `--no-rerank` (`rag_search.py`, `check_retrieval_regressions.py`) przywraca dotychczasowe zachowanie.
+**Pomiar (przed/po, ten sam indeks i te same pytania):** nowy zestaw 26 pytań kadrowych (`data/retrieval_battery.json`, po jednym oczekiwanym artykule: 20x KP, ustawa o PPK, zasiłkowa, PIT, o rynku pracy, ZUS, o minimalnym wynagrodzeniu), etykiety sprawdzone po treści artykułów (sześć pierwszych etykiet okazało się błędnych i zostało poprawionych PRZED liczeniem, np. zasiłek chorobowy = art. 11 ustawy zasiłkowej).
+| wariant | top-1 | top-3 | top-8 | poza top-30 |
+|---|---|---|---|---|
+| tylko kosinus | 17 | 22 | 25 | 0 |
+| reranker + RRF | 18 | 25 | 26 | 0 |
+Poprawione 7 pytań (np. okres wypowiedzenia 2 -> 1, urlop wychowawczy 7 -> 2, norma czasu pracy 10 -> 4, zasiłek chorobowy 8 -> 3), pogorszone 1 (zasiłek dla bezrobotnych 1 -> 2).
+**Zastrzeżenia:** próba 26 pytań, pytania ułożone przez autora znającego artykuły, baza już wysoka (mało miejsca na poprawę) -- wskazówka, nie dowód. `prompt.search_with_history` nadal porównuje `results[0]["score"]` (kosinus pierwszego wyniku PO fuzji) z progiem pytań eliptycznych; po fuzji pierwszy wynik nie musi mieć najwyższego kosinusa (tak samo jest w repo wielodziedzinowym) -- nie mierzono wpływu na pytania uzupełniające. Pełnych odpowiedzi modelu nie sprawdzano, tylko pozycje artykułów.
+
 ## Co dalej
 
 1. ~~Zweryfikować ręcznie 3 rozbieżności `changeDate` znalezione przy

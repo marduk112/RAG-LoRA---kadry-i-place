@@ -519,6 +519,21 @@ wykonywane i sprawdzane na bieżąco, ale duża część implementacji i
 research'u (np. weryfikacja identyfikatorów ELI, testy fine-tuningu)
 została wykonana przez model.
 
+## Wyszukiwanie: reranker i fuzja RRF
+
+Od Kroku 28 wyszukiwanie ma dwa etapy: podobieństwo kosinusowe (embeddingi `sdadas/mmlw-retrieval-roberta-large`) wybiera
+30 kandydatów, a cross-encoder `sdadas/polish-reranker-base-ranknet` ocenia je jeszcze raz; oba rankingi łączy fuzja RRF
+(`scripts/rag_search.py`). Model rerankera (Apache-2.0 wg karty na HF) pobiera się sam przy pierwszym uruchomieniu --
+konto HF nie jest potrzebne. Na 26 pytaniach kadrowych z `data/retrieval_battery.json` (`scripts/check_retrieval_regressions.py`):
+
+| wariant | top-1 | top-3 | top-8 |
+|---|---|---|---|
+| tylko kosinus (`--no-rerank`) | 17 | 22 | 25 |
+| kosinus + reranker + RRF (domyślnie) | 18 | 25 | 26 |
+
+Próba jest mała, a pytania ułożył autor, więc to wskazówka, nie dowód (szczegóły w PROGRESS.md, Krok 28). Pomysł i
+implementacja pochodzą z repozytorium wielodziedzinowym [prawo-polskie-rag](https://github.com/marduk112/prawo-polskie-rag).
+
 ## Licencja
 
 Kod tego repozytorium jest dostępny na licencji [Apache 2.0](LICENSE).
