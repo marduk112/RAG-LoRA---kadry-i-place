@@ -189,6 +189,14 @@ def answer(
     # limitu kontekstu LM Studio).
     history.append({"role": "user", "content": question})
     history.append({"role": "assistant", "content": text})
+    if choice.get("finish_reason") == "length":
+        # Model "thinking" (Qwen) potrafi zużyć większość budżetu na rozumowanie i oddać urwaną odpowiedź
+        # (bateria Kroku 35: pytanie spoza zakresu bazy dało 11 słów po 3000 tokenach). Dopisujemy ostrzeżenie
+        # tylko do tego, co widzi użytkownik; historia zostaje czysta.
+        text += (
+            f"\n\n[UWAGA: odpowiedź ucięta limitem --max-tokens ({max_tokens}); może być niepełna. "
+            "Podnieś --max-tokens (np. 6000) lub zadaj pytanie ponownie.]"
+        )
     return text
 
 

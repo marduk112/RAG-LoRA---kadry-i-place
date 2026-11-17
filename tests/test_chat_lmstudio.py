@@ -18,13 +18,13 @@ class FakeResponse:
         return self._data
 
 
-def patch_post(monkeypatch, contents):
+def patch_post(monkeypatch, contents, finish_reason="stop"):
     calls = []
     queue = list(contents)
 
     def fake_post(url, json=None, timeout=None, **kwargs):
         calls.append(copy.deepcopy(json))  # kod zmienia słownik przy ponowieniu -- zapisujemy kopię
-        return FakeResponse(queue.pop(0))
+        return FakeResponse(queue.pop(0), finish_reason)
 
     monkeypatch.setattr(cl.requests, "post", fake_post)
     return calls
@@ -97,3 +97,21 @@ def test_answer_sends_thinking_params_and_updates_history(monkeypatch):
     assert text == "Odpowiedź."
     assert calls[0]["max_tokens"] == 3000 and calls[0]["reasoning_effort"] == "low"
     assert [m["role"] for m in history] == ["user", "assistant"]
+
+
+def test_answer_warns_when_truncated_by_token_limit(monkeypatch):
+    patch_post(monkeypatch, ["Urwana odpowiedź"], finish_reason="length")
+    monkeypatch.setattr(cl, "search_with_history", lambda *a, **k: [])
+    history = []
+    text = cl.answer("http://x/v1", "qwen", DummyRag(), DummyFiles(), history, "pytanie", 8,
+                     rewrite_followups=False, max_tokens=3000, reasoning_effort="low")
+    assert text.startswith("Urwana odpowiedź") and "UWAGA" in text and "3000" in text
+    assert history[-1]["content"] == "Urwana odpowiedź"  # ostrzeżenie nie trafia do historii
+
+
+def test_answer_has_no_warning_when_finished_normally(monkeypatch):
+    patch_post(monkeypatch, ["Pełna odpowiedź"], finish_reason="stop")
+    monkeypatch.setattr(cl, "search_with_history", lambda *a, **k: [])
+    text = cl.answer("http://x/v1", "qwen", DummyRag(), DummyFiles(), [], "pytanie", 8,
+                     rewrite_followups=False, max_tokens=3000, reasoning_effort="low")
+    assert text == "Pełna odpowiedź"
