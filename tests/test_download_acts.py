@@ -102,7 +102,7 @@ def test_build_version_articles_id_suffix_for_window_without_start():
     def ids(valid_from, valid_to):
         recs = build_version_articles(
             {"publisher": "DU", "year": 2000, "position": 1}, "pb", "DU/1994/414", "Prawo budowlane",
-            valid_from, valid_to, "DU/2000/1126", [{"article": "54", "text": "Art. 54. X"}],
+            valid_from, valid_to, "DU/2000/1126", ["budowlane"], [{"article": "54", "text": "Art. 54. X"}],
             "U", "f.pdf",
         )
         return recs[0]["id"]
