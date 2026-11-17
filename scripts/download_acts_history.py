@@ -28,7 +28,8 @@ Wyjście: `data/processed/{skrot}_history.json` na ustawę:
     {"current_valid_from": "RRRR-MM-DD" | null, "articles": [...]}
 
 Uruchomienie:
-    python scripts/download_acts_history.py                     # wszystkie ustawy z ACTS
+    python scripts/download_acts_history.py                     # wszystkie akty z konfiguracji
+    python scripts/download_acts_history.py --domain podatkowe   # tylko jedna dziedzina
     python scripts/download_acts_history.py --acts ustawa_o_ppk  # tylko wybrane (po przecinku)
 """
 
@@ -37,47 +38,56 @@ import json
 import time
 
 from download_acts import (
-    ACTS,
     HISTORY_TEXT_KINDS,
     PROCESSED_DIR,
+    SCAN_QUALITY_MAX_ODD_PER_1000,
     ParsePool,
     _fetch_source,
     build_version_articles,
     default_parse_workers,
     fetch_version_windows,
+    load_acts_config,
+    odd_char_rate_per_1000,
 )
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument(
+        "--domain",
+        type=str,
+        default=None,
+        help="Ogranicz do jednej dziedziny (pole 'domains' w data/acts_config.json).",
+    )
+    parser.add_argument(
         "--acts",
         type=str,
         default=None,
-        help="Lista skrótów ustaw po przecinku (domyślnie: wszystkie z ACTS)",
+        help="Lista skrótów ustaw po przecinku (domyślnie: wszystkie pasujące do --domain).",
     )
     parser.add_argument(
         "--workers",
         type=int,
         default=None,
-        help="Liczba procesów parsujących PDF-y (domyślnie: dobrane do rdzeni i wolnej pamięci maszyny; 1 = sekwencyjnie).",
+        help="Liczba procesów parsujących PDF-y (domyślnie: dobrane do rdzeni i RAM-u maszyny; 1 = sekwencyjnie).",
     )
     args = parser.parse_args()
 
+    shorts = {s.strip() for s in args.acts.split(",") if s.strip()} if args.acts else None
+    acts = load_acts_config(domain=args.domain, shorts=shorts)
     if args.acts:
-        wanted = {s.strip() for s in args.acts.split(",") if s.strip()}
-        acts = [a for a in ACTS if a["short"] in wanted]
-        missing = wanted - {a["short"] for a in acts}
+        missing = shorts - {a["short"] for a in acts}
         if missing:
-            raise SystemExit(f"Nieznane skróty ustaw: {', '.join(sorted(missing))}")
-    else:
-        acts = ACTS
+            raise SystemExit(f"Nieznane (lub spoza --domain) skróty ustaw: {', '.join(sorted(missing))}")
+    if not acts:
+        raise SystemExit("Brak aktów pasujących do podanych filtrów (--domain/--acts).")
 
     workers = args.workers or default_parse_workers()
     print(f"[INFO] parsowanie PDF-ów: {workers} proces(ów) równolegle (pobieranie sekwencyjne)")
     # Pobieranie sekwencyjne (łagodne dla publicznego API), parsowanie każdej
     # pobranej wersji od razu w tle w ParsePool -- wyniki zbierane na końcu,
-    # w oryginalnej kolejności wersji (identyczny plik jak przy --workers 1).
+    # w oryginalnej kolejności wersji, więc plik wynikowy jest identyczny jak
+    # przy przebiegu sekwencyjnym (--workers 1).
     with ParsePool(workers) as pool:
         per_act = []
         for act in acts:
@@ -116,10 +126,18 @@ def main():
                     w["valid_from"],
                     w["valid_to"],
                     w["announcement_eli"],
+                    act.get("domains", []),
                     future.result(),
                     kind,
                     file_name,
                 )
+                odd = odd_char_rate_per_1000([a["text"] for a in articles])
+                if odd > SCAN_QUALITY_MAX_ODD_PER_1000:
+                    print(
+                        f"[{short}@{w['valid_from']}]   [UWAGA] okno pominięte: zepsuty skan "
+                        f"({odd:.1f} dziwnych znaków/1000 > {SCAN_QUALITY_MAX_ODD_PER_1000}) -- Krok 86"
+                    )
+                    continue
                 print(f"[{short}@{w['valid_from']}]   {len(articles)} artykułów")
                 all_articles.extend(articles)
 

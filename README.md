@@ -1,9 +1,12 @@
-# Asystent kadrowo-płacowy (Bielik + RAG + LoRA)
+# Asystent kadrowo-płacowy (RAG + lokalny model Bielik)
 
 > **English summary.** A local, offline-capable question-answering assistant for Polish labour and social-insurance law
-> (7 statutes: Labour Code, ZUS, PIT, PPK, benefits...). Retrieval-augmented generation over the official statute texts
-> from the Sejm's ELI API, plus a LoRA-tuned Polish LLM (Bielik) on Apple Silicon (MLX), NVIDIA/CUDA or LM Studio.
-> Documentation and the development log (`PROGRESS.md`) are in Polish. **Not legal advice.** Code: Apache-2.0.
+> (7 statutes: Labour Code, ZUS, PIT, PPK, benefits...). Retrieval-augmented generation (embeddings + reranker) over the
+> official statute texts from the Sejm's ELI API, answered by a local LLM (Bielik) on Apple Silicon (MLX), NVIDIA/CUDA or
+> LM Studio. The project started as a LoRA fine-tuning experiment; later measurements in the successor repo found no
+> measurable gain from the adapters over the base model with RAG, so the adapter is now optional (see "Co zmierzono, a
+> czego nie"). Documentation and the development log (`PROGRESS.md`) are in Polish. **Not legal advice**, not validated
+> by a lawyer. Code: Apache-2.0.
 >
 > **Multi-domain successor:** [prawo-polskie-rag](https://github.com/marduk112/prawo-polskie-rag) -- many domains of Polish law,
 > a domain router, reranking and query expansion (this repo stays single-domain: labour and payroll law).
@@ -20,27 +23,48 @@ skrócona instrukcja "jak tego używać".
 
 ## Jak to działa
 
-Dwa niezależne mechanizmy działają razem, celowo:
+Dwa mechanizmy; tylko pierwszy jest niezbędny:
 
 1. **RAG (retrieval-augmented generation)** — pytanie użytkownika jest
    embedowane i porównywane z bazą artykułów pobranych ustaw
-   (`data/processed/all_articles.json`). Najtrafniejsze fragmenty
+   (`data/processed/all_articles.json`); wyniki poprawia reranker i fuzja
+   RRF (sekcja "Wyszukiwanie" niżej). Najtrafniejsze fragmenty
    trafiają jako kontekst do modelu. To źródło **faktów** — aktualnych,
    źródłowych tekstów przepisów.
-2. **LoRA fine-tuning** — model **Bielik** (polski LLM od SpeakLeash;
-   domyślnie wariant **11B-v3.0-Instruct**, dostępny też szybszy
-   **4.5B-v3.0-Instruct**) jest doduczony na przykładach pytanie/
-   odpowiedź z tej dziedziny. To źródło **stylu**: zwięzłe odpowiedzi z
-   cytowaniem artykułu, oraz — co ważne — nawyk przyznawania się do
-   niewiedzy zamiast zgadywania, gdy kontekst nie wystarcza.
+2. **LoRA fine-tuning (opcjonalny — pierwotny pomysł projektu)** — model
+   **Bielik** (polski LLM od SpeakLeash; wariant **11B-v3.0-Instruct**,
+   dostępny też szybszy **4.5B-v3.0-Instruct**) doduczony na przykładach
+   pytanie/odpowiedź z tej dziedziny, żeby nauczyć go **stylu**: zwięzłe
+   odpowiedzi z cytowaniem artykułu i przyznawanie się do niewiedzy
+   zamiast zgadywania. **Późniejsze pomiary nie potwierdziły, że to
+   daje zysk:** w projekcie następcy adapter dla Bielika v3.1 nie
+   poprawił jakości względem samego modelu z RAG (22 wygrane adaptera,
+   18 bazy, 29 remisów na 76 pytaniach kadrowych, różnica nieistotna
+   statystycznie), a w trzech innych dziedzinach adaptery nie różniły się od
+   Bielika v3.1 bez adaptera (patrz "Co zmierzono, a czego nie"). Przepis na
+   trening zostaje w repo (kroki 3–4 niżej), ale nie jest potrzebny:
+   wystarczy `chat.py --no-adapter` albo `chat_lmstudio.py`.
 
-**Dlaczego oba naraz, a nie tylko fine-tuning?** Testy pokazały, że
+**Dlaczego RAG, a nie samo dostrajanie?** Testy pokazały, że
 sam doduczony model (bez kontekstu RAG) nie jest wystarczająco
 niezawodny w precyzyjnych progach liczbowych (np. dokładnie która
 granica stażu pracy daje 1 miesiąc, a która 3 miesiące wypowiedzenia)
 i przy pytaniach spoza wytrenowanego zakresu potrafi pewnie zmyślać
 fakty. Po dodaniu kontekstu RAG te same pytania wypadały poprawnie.
 Szczegóły i konkretne przykłady testów — patrz PROGRESS.md, kroki 4b–4c.
+Jak działa cały pipeline w prostych słowach opisuje
+[JAK_TO_DZIALA.md](https://github.com/marduk112/prawo-polskie-rag/blob/main/JAK_TO_DZIALA.md)
+w projekcie następcy.
+
+**Który model odpowiada najlepiej?** W projekcie następcy (te same
+konteksty RAG, 76 pytań kadrowych) **Qwen3.8-27B** wypadł wyraźnie lepiej niż
+Bielik v3.0: 65 wygranych, 7 remisów, 0 wygranych Bielika; Bielik miał
+poważne błędy w 40 z 76 odpowiedzi, Qwen w 0. To pomiar okiem modelu-sędziego
+(sędzią był sam Qwen), z ręcznym sprawdzeniem próbki, bez prawnika, a Qwen
+pisze ponad dwa razy dłużej — traktuj go jako wskazówkę, nie dowód. **W tym
+repo `chat_lmstudio.py` z Qwenem nie był testowany** (modele z "myśleniem"
+wymagają obsługi, którą ma wersja wielodziedzinowa). Szczegóły: Kroki 106 i 113
+w [PROGRESS.md następcy](https://github.com/marduk112/prawo-polskie-rag/blob/main/PROGRESS.md).
 
 **Zastrzeżenie:** zestaw `data/finetune/{train,valid}.jsonl` nie został
 zweryfikowany przez specjalistę kadrowo-płacowego — napisał go autor
@@ -143,8 +167,8 @@ je i użyj `scripts/train_lora_cuda.py` zamiast `mlx_lm.convert`/
 # 2c. [opcjonalnie] Coroczne rozporządzenia/obwieszczenia z konkretnymi
 # kwotami, których same ustawy nie zawierają -- patrz PROGRESS.md, Krok
 # 21-23. Niezależne od kroku 2b, ale też wymagają --include-history niżej.
-.venv/bin/python scripts/download_wage_regulations.py        # min. wynagrodzenie, 2004-2026
-.venv/bin/python scripts/download_zus_limit_regulations.py   # limit 30-krotności składek ZUS, 1999-2026
+.venv/bin/python scripts/download_wage_regulations.py        # min. wynagrodzenie, 2004-2027
+.venv/bin/python scripts/download_zus_limit_regulations.py   # limit 30-krotności składek ZUS, 1999-2027
 .venv/bin/python scripts/download_avg_wage_regulations.py    # przeciętne wynagrodzenie GUS, 2003-2025
 
 .venv/bin/python scripts/build_rag_index.py --include-history
@@ -333,7 +357,8 @@ się ich doczepić do modelu GGUF załadowanego w LM Studio. Dostajesz
 sam RAG (7 ustaw) + Twój model z LM Studio, bez wyuczonego stylu/
 kalibracji z kroku 4b–4c. W testach samo grounding przez RAG
 wystarczyło jednak do trafnych, precyzyjnie cytowanych odpowiedzi
-(patrz PROGRESS.md, krok 7).
+(patrz PROGRESS.md, krok 7), a późniejsze pomiary nie wykazały, żeby
+adapter coś dodawał (patrz "Jak to działa" i "Co zmierzono, a czego nie").
 
 ### Linux/Windows + karta NVIDIA (CUDA)
 
@@ -382,7 +407,7 @@ przetestować szybciej przez:
 
 ## Zakres wiedzy i ograniczenia
 
-Baza wiedzy obejmuje obecnie siedem ustaw (1641 artykułów):
+Baza wiedzy obejmuje obecnie siedem ustaw (1661 artykułów, stan pobrania z 2026-11-17):
 - Kodeks pracy
 - Ustawa o systemie ubezpieczeń społecznych
 - Ustawa o minimalnym wynagrodzeniu za pracę
@@ -404,9 +429,9 @@ dla pytań mieszających kilka tematów naraz.
 ustawami.** Część aktualnych, "twardych" liczb nie jest zapisana wprost w
 ustawach z listy wyżej — ustala je osobne, coroczne rozporządzenie/
 obwieszczenie/komunikat. **Wysokość minimalnego wynagrodzenia i minimalnej
-stawki godzinowej** (2004-2026, `download_wage_regulations.py`), **roczny
+stawki godzinowej** (2004-2027, `download_wage_regulations.py`), **roczny
 limit 30-krotności** podstawy wymiaru składek emerytalno-rentowych
-(1999-2026, `download_zus_limit_regulations.py`) i **przeciętne
+(1999-2027, `download_zus_limit_regulations.py`) i **przeciętne
 wynagrodzenie w gospodarce narodowej** (2003-2025,
 `download_avg_wage_regulations.py`) są już dodane osobno (krok 2c wyżej) i
 działają razem z `--as-of`/`/data` — dla przeciętnego wynagrodzenia zwróć
@@ -421,6 +446,22 @@ w dawnym domyślnym `--top-k 5` (konkurował z tematycznie bliskimi
 artykułami tej samej ustawy bazowej, sprawdzone dwukrotnie — Krok 21 i 22,
 domknięte w Kroku 24) — jeśli mimo to odpowiedź na pytanie o konkretną
 kwotę wygląda na nietrafną, spróbuj jeszcze wyższego `--top-k`.
+
+**Przepisy na 2027 rok.** Rozporządzenie o płacy minimalnej na 2027 r. (z 14 września
+2026, DU/2026/1213) i obwieszczenie o limicie 30-krotności składek na 2027 r. (z 3 listopada
+2026, MP/2026/1098) są w bazie, ale obowiązują od 2027-01-01, więc zwykłe pytanie widzi
+stan na dziś, czyli stawki z 2026 roku. Żeby zapytać o 2027, użyj `--as-of 2027-01-02`
+(albo `/data 2027-01-02`). Tak samo zachowują się inne przepisy, które wejdą w życie
+później — wtedy ustawa ma w tekście ujednoliconym osobne, jeszcze nieobowiązujące brzmienie.
+
+**Brakujący znak w PDF-ie ustawy o systemie ubezpieczeń społecznych (obsłużony).** W PDF-ie tekstu
+ujednoliconego (stan 2026-11-09) jest 16 znaków `<` i tylko 15 `>`: brakuje zamknięcia przyszłego
+brzmienia art. 68 ust. 2 (od 1.01.2027). Kod usuwa przyszłe fragmenty zapisane w nawiasach `< >`,
+więc bez zamknięcia ten ustęp trafiał do bazy w obu wersjach. Od Kroku 33 działa wąska reguła
+(niesparowany `<` na początku ustępu, tuż po `]` zamykającym stare brzmienie, wycinany do następnego
+ustępu) i dotyka w tej ustawie tylko tego jednego miejsca. Skrypt nadal wypisuje wtedy
+ostrzeżenie o niesparowanych nawiasach, bo liczy same znaki; w innych ustawach nowe, podobne braki
+mogą się pojawić i wymagają ręcznego sprawdzenia.
 
 **Poprawna numeracja artykułów z indeksem górnym (np. Art. 11¹).**
 Kodeks pracy od lat jest nowelizowany przez wstawianie nowych artykułów
@@ -450,10 +491,10 @@ ustawy, nawet poprawna historycznie, może wskazywać na akt już
 uchylony i zastąpiony nowszym (tak było z ustawą o promocji
 zatrudnienia, patrz PROGRESS.md krok 5).
 
-Aby dodać kolejny akt prawny, dopisz wpis do listy `ACTS` w
-`scripts/download_acts.py`, uruchom go ponownie, a następnie przebuduj
-indeks RAG (krok 2 wyżej) — fine-tuning LoRA nie wymaga wtedy zmian,
-bo to RAG dostarcza faktów.
+Aby dodać kolejny akt prawny, dopisz wpis (`short`, `publisher`, `year`,
+`position`, `domains`) do `data/acts_config.json`, uruchom
+`scripts/download_acts.py` ponownie, a następnie przebuduj indeks RAG
+(krok 2 wyżej) — model nie wymaga wtedy zmian, bo to RAG dostarcza faktów.
 
 ### Sprawdzanie aktualności bazy (`scripts/check_acts_freshness.py`)
 
@@ -499,6 +540,24 @@ Art. 22³ Kodeksu pracy nie jest wciąż wtopiony w Art. 22²") — te
 wymagają lokalnie pobranej bazy (`data/raw/`, `data/processed/`) i są
 automatycznie pomijane (`skipped`), jeśli jej nie ma.
 
+## Co zmierzono, a czego nie
+
+Dla uczciwego obrazu jakości. Wszystkie zbiory pytań ułożył autor (z pomocą AI), są małe, a odpowiedzi
+modelu oceniał głównie inny model, nie prawnik ani kadrowa.
+
+| Co | Wynik | Zastrzeżenie |
+|---|---|---|
+| Wyszukiwanie (reranker + RRF), 26 pytań kadrowych | top-1/3/8 = 20/26/26 po odświeżeniu bazy 2026-11-17 (Krok 32); w Kroku 28: 18/25/26, sam kosinus 17/22/25 | etykiety sprawdzone po treści artykułów, ale to wynik retrievalu, nie jakości odpowiedzi |
+| Pytania uzupełniające ("A po 15 latach?"), `chat_lmstudio.py` | właściwy artykuł w top-8: 14/14 (wcześniej 5/14) | 14 + 26 pytań, jeden model przepisujący |
+| Adapter LoRA a sam model z RAG (Bielik v3.1, 76 pytań kadrowych, sędzia Qwen w obu kolejnościach) | 22 : 18 na korzyść adaptera, 29 remisów, różnica nieistotna (p = 0,32) | sędzia = model, jedna dziedzina |
+| Adaptery produkcyjne a Bielik v3.1 bez adaptera (3 inne dziedziny, 70 pytań) | 18 : 20, bez różnicy | j.w. |
+| Qwen3.8-27B a Bielik v3.0 (76 pytań kadrowych) | 65 : 0 przy 7 remisach | sędzią był Qwen, odpowiedzi Qwena są 2,4 razy dłuższe; w tym repo Qwen nietestowany |
+| Poprawność merytoryczna odpowiedzi przez prawnika / kadrową | **nie wykonano** | to największa luka |
+
+Pełne opisy: Kroki 106, 113, 118, 121 i 122 w
+[PROGRESS.md projektu następcy](https://github.com/marduk112/prawo-polskie-rag/blob/main/PROGRESS.md) oraz
+Kroki 28–32 w [PROGRESS.md](PROGRESS.md) tego repo.
+
 ## Zastrzeżenie prawne
 
 To narzędzie ma charakter pomocniczy i edukacyjny. Odpowiedzi opierają
@@ -531,7 +590,7 @@ konto HF nie jest potrzebne. Na 26 pytaniach kadrowych z `data/retrieval_battery
 | tylko kosinus (`--no-rerank`) | 17 | 22 | 25 |
 | kosinus + reranker + RRF (domyślnie) | 18 | 25 | 26 |
 
-Próba jest mała, a pytania ułożył autor, więc to wskazówka, nie dowód (szczegóły w PROGRESS.md, Krok 28). Pomysł i
+Próba jest mała, a pytania ułożył autor, więc to wskazówka, nie dowód (szczegóły w PROGRESS.md, Krok 28; po odświeżeniu bazy i przeniesieniu aktualnego ekstraktora ustaw, Krok 32, ta sama bateria dała 20/26/26). Pomysł i
 implementacja pochodzą z repozytorium wielodziedzinowym [prawo-polskie-rag](https://github.com/marduk112/prawo-polskie-rag).
 
 ## Pytania uzupełniające w rozmowie ("A po 15 latach?")

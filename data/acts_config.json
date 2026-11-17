@@ -1,0 +1,66 @@
+[
+  {
+    "short": "kodeks_pracy",
+    "publisher": "DU",
+    "year": 1974,
+    "position": 141,
+    "domains": [
+      "kadry_i_place"
+    ]
+  },
+  {
+    "short": "ustawa_o_systemie_ubezpieczen_spolecznych",
+    "publisher": "DU",
+    "year": 1998,
+    "position": 887,
+    "domains": [
+      "kadry_i_place"
+    ]
+  },
+  {
+    "short": "ustawa_o_minimalnym_wynagrodzeniu",
+    "publisher": "DU",
+    "year": 2002,
+    "position": 1679,
+    "domains": [
+      "kadry_i_place"
+    ]
+  },
+  {
+    "short": "ustawa_zasilkowa",
+    "publisher": "DU",
+    "year": 1999,
+    "position": 636,
+    "domains": [
+      "kadry_i_place"
+    ]
+  },
+  {
+    "short": "ustawa_o_pit",
+    "publisher": "DU",
+    "year": 1991,
+    "position": 350,
+    "domains": [
+      "kadry_i_place"
+    ]
+  },
+  {
+    "short": "ustawa_o_ppk",
+    "publisher": "DU",
+    "year": 2018,
+    "position": 2215,
+    "domains": [
+      "kadry_i_place"
+    ]
+  },
+  {
+    "_comment": "Następczyni uchylonej z dniem 2025-06-01 ustawy o promocji zatrudnienia i instytucjach rynku pracy (DU/2004/1001) -- zweryfikowane przez pole 'references'.'Akty uchylające' w ELI API.",
+    "short": "ustawa_o_rynku_pracy",
+    "publisher": "DU",
+    "year": 2025,
+    "position": 620,
+    "domains": [
+      "kadry_i_place"
+    ]
+  }
+]

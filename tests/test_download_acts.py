@@ -84,6 +84,42 @@ def test_strip_not_yet_in_force_unmatched_bracket_left_untouched(capsys):
 # --- obwieszczenia, stemple dat, id okien (z projektu prawo polskie, Krok 65) ---
 
 
+def test_strip_not_yet_in_force_closes_unclosed_future_paragraph_at_next_paragraph(capsys):
+    """Regresja Krok 33 (ustawa o systemie ubezpieczeń społecznych, art. 68
+    ust. 2): "[2. stare]" + "<2. nowe" bez zamykającego '>'. Przyszłe
+    brzmienie ust. 2 ma zniknąć, obowiązujące ust. 2 i ust. 3 zostają."""
+    text = (
+        "Art. 68. 1. Zadania.\n"
+        "[2. Obowiązujące brzmienie ustępu drugiego.]  \n"
+        "<2. Przyszłe brzmienie: \n"
+        "1) pierwszy punkt, \n"
+        "2) drugi punkt.\n"
+        "3. Ustęp trzeci obowiązuje.\n"
+        "Art. 68a. Sąsiad."
+    )
+    result = strip_not_yet_in_force_text(text)
+    assert "Przyszłe brzmienie" not in result and "pierwszy punkt" not in result
+    assert "Obowiązujące brzmienie ustępu drugiego." in result
+    assert "3. Ustęp trzeci obowiązuje." in result
+    assert [a["article"] for a in parse_articles(result)] == ["68", "68a"]
+
+
+def test_strip_not_yet_in_force_unclosed_paragraph_without_preceding_square_bracket_untouched(capsys):
+    """Bezpiecznik: niesparowany "<N. " bez zamykającego "]" tuż przed nim
+    nie wycina niczego (tylko sam znak znika), jak w Kroku 45."""
+    text = "Art. 5. 1. Pierwszy.\n<2. Drugi ustęp bez znaków wokół.\n3. Trzeci."
+    result = strip_not_yet_in_force_text(text)
+    assert "Drugi ustęp bez znaków wokół." in result and "3. Trzeci." in result
+
+
+def test_strip_not_yet_in_force_unclosed_paragraph_without_end_marker_untouched(capsys):
+    """Gdy nie ma ani ustępu N+1, ani następnego nagłówka artykułu, nie
+    zgadujemy, gdzie kończy się przyszłe brzmienie."""
+    text = "Art. 5. [2. Stare.]\n<2. Nowe bez końca i bez następnika."
+    result = strip_not_yet_in_force_text(text)
+    assert "Nowe bez końca i bez następnika." in result
+
+
 def test_header_footer_patterns_drop_dotted_date_stamp_only_as_whole_line():
     """Regresja Krok 65: stempel daty wygenerowania tekstu w formacie
     "09.05.2019" (co stronę, teksty ~2017-2021) trafiał do treści
@@ -102,7 +138,7 @@ def test_build_version_articles_id_suffix_for_window_without_start():
     def ids(valid_from, valid_to):
         recs = build_version_articles(
             {"publisher": "DU", "year": 2000, "position": 1}, "pb", "DU/1994/414", "Prawo budowlane",
-            valid_from, valid_to, "DU/2000/1126", [{"article": "54", "text": "Art. 54. X"}],
+            valid_from, valid_to, "DU/2000/1126", ["budowlane"], [{"article": "54", "text": "Art. 54. X"}],
             "U", "f.pdf",
         )
         return recs[0]["id"]

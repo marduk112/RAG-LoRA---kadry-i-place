@@ -32,8 +32,13 @@ Kroki dla każdej ustawy:
    - data/processed/{skrot}.json  -- lista fragmentów (artykułów)
    - data/processed/all_articles.json -- wszystkie fragmenty razem
 
+Lista aktów do pobrania (z podziałem na dziedziny prawa) jest w
+data/acts_config.json -- nie w tym pliku.
+
 Uruchomienie:
-    python scripts/download_acts.py
+    python scripts/download_acts.py                    # wszystkie akty z konfiguracji
+    python scripts/download_acts.py --domain podatkowe  # tylko jedna dziedzina
+    python scripts/download_acts.py --acts kodeks_pracy,ustawa_o_vat
 """
 
 import argparse
@@ -50,7 +55,22 @@ from pathlib import Path
 
 import pdfplumber
 import requests
+import pypdf._encryption as _pypdf_encryption
 from pypdf import PdfReader
+from pypdf._crypt_providers._fallback import CryptRC4 as _FallbackCryptRC4
+
+# Niektóre historyczne PDF-y Kancelarii Sejmu (np. prawo_budowlane,
+# obwieszczenie DU/2000/1126) mają szyfrowanie RC4 z kluczem o długości,
+# której backend `cryptography` używany domyślnie przez pypdf nie
+# akceptuje (`ValueError: Invalid key size (104) for RC4`), mimo że sam
+# algorytm RC4 działa z dowolną długością klucza -- to nadgorliwa
+# walidacja tego konkretnego backendu, nie realne ograniczenie formatu
+# PDF. Podmieniamy WYŁĄCZNIE implementację RC4 na czysto pythonową z
+# `pypdf._crypt_providers._fallback` (bez tej walidacji, identyczny
+# algorytm) -- szyfrowanie AES nadal korzysta z `cryptography`,
+# nienaruszone. Nie wymaga instalowania/odinstalowywania żadnych
+# pakietów we współdzielonym `.venv` (patrz PROGRESS.md, Krok 19).
+_pypdf_encryption.CryptRC4 = _FallbackCryptRC4
 
 API_BASE = "https://api.sejm.gov.pl/eli"
 HEADERS = {"User-Agent": "kadry-plyace-asystent/0.1 (lokalny projekt edukacyjny)"}
@@ -58,66 +78,42 @@ HEADERS = {"User-Agent": "kadry-plyace-asystent/0.1 (lokalny projekt edukacyjny)
 ROOT = Path(__file__).resolve().parent.parent
 RAW_DIR = ROOT / "data" / "raw"
 PROCESSED_DIR = ROOT / "data" / "processed"
+ACTS_CONFIG_PATH = ROOT / "data" / "acts_config.json"
 
-# Trzy ustawy na start -- publisher/year/position zweryfikowane ręcznie przez API.
-# Żeby dodać kolejny akt: znajdź jego identyfikator (np. przez
-# /eli/acts/search?title=...) i dopisz wpis do tej listy.
-ACTS = [
-    {
-        "short": "kodeks_pracy",
-        "publisher": "DU",
-        "year": 1974,
-        "position": 141,
-    },
-    {
-        "short": "ustawa_o_systemie_ubezpieczen_spolecznych",
-        "publisher": "DU",
-        "year": 1998,
-        "position": 887,
-    },
-    {
-        "short": "ustawa_o_minimalnym_wynagrodzeniu",
-        "publisher": "DU",
-        "year": 2002,
-        "position": 1679,
-    },
-    {
-        "short": "ustawa_zasilkowa",
-        "publisher": "DU",
-        "year": 1999,
-        "position": 636,
-    },
-    {
-        "short": "ustawa_o_pit",
-        "publisher": "DU",
-        "year": 1991,
-        "position": 350,
-    },
-    {
-        "short": "ustawa_o_ppk",
-        "publisher": "DU",
-        "year": 2018,
-        "position": 2215,
-    },
-    {
-        # Uwaga: dawna "ustawa o promocji zatrudnienia i instytucjach rynku
-        # pracy" (DU/2004/1001) została UCHYLONA z dniem 2025-06-01 przez
-        # tę ustawę (zweryfikowane przez pole "references"."Akty uchylające"
-        # w API ELI) -- to jej następczyni, obecnie obowiązujące źródło
-        # przepisów o zasiłku dla bezrobotnych.
-        "short": "ustawa_o_rynku_pracy",
-        "publisher": "DU",
-        "year": 2025,
-        "position": 620,
-    },
-]
+
+def load_acts_config(domain: str | None = None, shorts: set[str] | None = None) -> list[dict]:
+    """Wczytuje listę aktów z data/acts_config.json -- płaska lista wpisów
+    `{short, publisher, year, position, domains}`, gdzie `domains` to lista
+    dziedzin prawa, do których dany akt należy (akt może należeć do więcej
+    niż jednej, np. ustawa o PIT jest jednocześnie w 'kadry_i_place' i
+    'podatkowe' -- stąd lista, a nie zagnieżdżanie wpisów per dziedzina,
+    żeby taki akt nie był duplikowany w konfiguracji).
+
+    Żeby dodać kolejny akt: znajdź jego identyfikator (np. przez
+    /eli/acts/search?title=...) i dopisz wpis do tego pliku.
+
+    `domain` (opcjonalnie) filtruje do aktów, których `domains` zawiera tę
+    wartość. `shorts` (opcjonalnie) filtruje do podanego zbioru skrótów.
+    Oba filtry można łączyć (logiczne AND)."""
+    acts = json.loads(ACTS_CONFIG_PATH.read_text(encoding="utf-8"))
+    if domain is not None:
+        acts = [a for a in acts if domain in a.get("domains", [])]
+    if shorts is not None:
+        acts = [a for a in acts if a["short"] in shorts]
+    return acts
+
+
+# Kompatybilność wsteczna dla modułów importujących `ACTS` bezpośrednio
+# (download_acts_history.py, check_acts_freshness.py) -- pełna,
+# niefiltrowana lista.
+ACTS = load_acts_config()
 
 HEADER_FOOTER_PATTERNS = [
     re.compile(r"^©Kancelaria Sejmu"),
     re.compile(r"^\d{4}-\d{2}-\d{2}$"),
     # Ten sam stempel daty wygenerowania w starszym formacie (teksty
-    # ujednolicone ~2017-2021, np. "24.04.2018" co stronę) -- trafiał do
-    # treści artykułów (projekt prawo polskie, PROGRESS.md Krok 65).
+    # ujednolicone ~2017-2021, np. "09.05.2019" co stronę) -- trafiał do
+    # treści artykułów, kilkanaście tys. wystąpień w historii (PROGRESS.md Krok 65).
     re.compile(r"^\d{2}\.\d{2}\.\d{4}$"),
     re.compile(r"^s\.\s*\d+/\d+$"),
     # Nagłówek strony tekstu jednolitego w układzie Dziennika Ustaw (pliki
@@ -130,7 +126,7 @@ SECTION_HEADING_PATTERNS = [
     re.compile(r"^Tytu[łl]\b", re.IGNORECASE),
 ]
 
-ARTICLE_SPLIT_RE = re.compile(r"(?m)^Art\.\s*(\d+[a-ząćęłńóśźż]{0,3})\.\s*")
+ARTICLE_SPLIT_RE = re.compile(r"(?m)^Art\.\s*(\d+[a-ząćęłńóśźż]{0,3}[⁰¹²³⁴⁵⁶⁷⁸⁹]{0,2})\.\s*")
 
 SUPERSCRIPT_DIGITS = str.maketrans("0123456789", "⁰¹²³⁴⁵⁶⁷⁸⁹")
 SUPERSCRIPT_SIZE_RATIO = 0.85  # znak uznajemy za indeks górny, gdy jego czcionka jest mniejsza niż ten ułamek rozmiaru bazowego strony
@@ -195,21 +191,549 @@ def find_article_numbers_pdfplumber(pdf_bytes: bytes) -> list[str]:
         while j < n and chars[j]["text"].isdigit():
             digit_chars.append(chars[j])
             j += 1
+        # Alternatywna notacja indeksu górnego -- niektóre tekst-jednolite
+        # PDF-y kodują go zwykłymi nawiasami kwadratowymi w warstwie
+        # tekstowej zamiast mniejszym rozmiarem czcionki (np. "Art. 5[1]."
+        # = "Art. 5¹."), potwierdzone bezpośrednio w PDF-ach: Kodeks
+        # cywilny (~230 wystąpień, np. "Art. 22[1]." = art. 22¹
+        # "konsument"), Kodeks pracy (6, np. "Art. 18[3d]."), Prawo
+        # budowlane (2: "Art. 5[1]."/"Art. 5[2]."). Bez tego rozpoznania
+        # `strip_not_yet_in_force_text` (który normalnie zdejmuje "[ ]" z
+        # zupełnie innego powodu -- stary, wciąż ważny tekst) spłaszcza je
+        # do zwykłych cyfr, które potrafią kolidować z zupełnie innym,
+        # prawdziwym artykułem o tym samym spłaszczonym numerze
+        # (potwierdzony przypadek: Prawo budowlane art. 5[1]/5[2] kolidowały
+        # z późniejszymi, osobnymi art. 51/52 -- patrz PROGRESS.md).
+        bracket_super = ""
+        if j < n and chars[j]["text"] == "[":
+            k = j + 1
+            inner = []
+            while k < n and chars[k]["text"] != "]":
+                inner.append(chars[k]["text"])
+                k += 1
+            if k < n and chars[k]["text"] == "]":
+                bracket_digits = "".join(c for c in inner if c.isdigit())
+                bracket_letters = "".join(c for c in inner if c.isalpha())
+                if bracket_digits:
+                    bracket_super = bracket_digits.translate(SUPERSCRIPT_DIGITS) + bracket_letters
+                    j = k + 1
         # opcjonalny sufiks literowy (np. "30a", "18c") -- bez indeksu górnego,
         # ale MUSI trafić do wyniku, inaczej "183a"/"183b"/"183c" zlewają się w jedno
         letter_suffix = ""
         while j < n and chars[j]["text"].isalpha() and chars[j]["text"].islower():
             letter_suffix += chars[j]["text"]
             j += 1
+        # Indeks górny PO sufiksie literowym (np. "Art. 5b¹." -- Prawo
+        # energetyczne ma 17 takich nagłówków: 4e¹, 5a¹, 5b¹-5b⁴, 9d¹-9d³,
+        # 9h¹-9h³, 43f¹...). Bez tego nagłówek nie kończy się tu kropką i
+        # byłby pominięty -- zgodnie z pypdf, więc liczby się zgadzały, a
+        # cały artykuł znikał wchłonięty przez poprzedni (PROGRESS.md, Krok 60).
+        letter_super = ""
+        if letter_suffix:
+            while (
+                j < n and chars[j]["text"].isdigit()
+                and chars[j]["size"] < body_size * SUPERSCRIPT_SIZE_RATIO
+            ):
+                letter_super += chars[j]["text"]
+                j += 1
         if digit_chars and j < n and chars[j]["text"] == ".":
             normal = "".join(c["text"] for c in digit_chars if c["size"] >= body_size * SUPERSCRIPT_SIZE_RATIO)
             super_ = "".join(c["text"] for c in digit_chars if c["size"] < body_size * SUPERSCRIPT_SIZE_RATIO)
             if normal:
-                numbers.append(normal + super_.translate(SUPERSCRIPT_DIGITS) + letter_suffix)
+                numbers.append(
+                    normal + super_.translate(SUPERSCRIPT_DIGITS) + bracket_super + letter_suffix
+                    + letter_super.translate(SUPERSCRIPT_DIGITS)
+                )
             i = j + 1
         else:
             i += 1
     return numbers
+
+
+# "\d{2}\.\d{2}\.\d{4}" -- stempel daty w starszym formacie, ten sam co w
+# HEADER_FOOTER_PATTERNS: bez niego kontekst z pdfplumber zawierał stempel,
+# którego już nie ma w clean_text, i korekta cicho przepadała (Krok 65).
+FOOTER_TOKEN_RE = re.compile(r"^(©Kancelaria|Sejmu|s\.|\d+/\d+|\d{4}-\d{2}-\d{2}|\d{2}\.\d{2}\.\d{4})$")
+USTEP_CONTEXT_WORDS = 4  # ile poprzedzających słów bierzemy jako "odcisk palca" do zlokalizowania miejsca w clean_text
+DIFFERENT_ACT_CONTEXT_RE = re.compile(
+    r"(?i)(ustawy z dnia|kodeksu|rozporz[ąa]dzenia|zmienianej|wymienionej|"
+    r"odr[ęe]bnej ustawy|innej ustawy|przepis[oó]w odr[ęe]bnych|niniejszej ustawy)"
+)
+DIFFERENT_ACT_FOLLOWING_LOOKAHEAD = 150  # okno sprawdzane pod kątem nazwy INNEGO aktu (Krok 49)
+# Skróty kończące się kropką, które NIE są końcem zdania (więc nie zaczynają nowego
+# ustępu) -- odróżnia np. "godz." (godzina) od prawdziwej kropki kończącej zdanie.
+# Świadomie krótka, oparta wyłącznie na potwierdzonych przypadkach (Krok 49: zapis
+# godzin "godz. 600 do godz. 1800" mylnie wykryty jako ustęp "6⁰⁰"/"18⁰⁰") -- nie
+# rozszerzać spekulacyjnie bez nowego potwierdzonego przypadku.
+NON_SENTENCE_ENDING_ABBREVIATIONS = {"godz."}
+
+
+def find_ustep_superscript_corrections_pdfplumber(pdf_bytes: bytes) -> list[tuple[list[str], str, str]]:
+    """Wykrywa spłaszczone superskrypty NA POZIOMIE USTĘPU (np. "21."
+    zamiast "2¹.") przez geometrię PDF -- ten sam mechanizm co
+    `find_article_numbers_pdfplumber` (Krok 18), ale dla numeracji
+    ustępów/paragrafów WEWNĄTRZ treści artykułu, nie numerów artykułów w
+    nagłówku (Krok 20/47 -- `autorskie` art. 1 ust. 2¹, potwierdzone
+    potem jako systemowy problem w 7 z 15 dziedzin, patrz PROGRESS.md).
+
+    W przeciwieństwie do numerów artykułów (zawsze poprzedzonych stałym
+    "Art. "), ustępy nie mają jednego stałego prefiksu -- w zależności od
+    aktu bywają zapisane jako "§ N." albo goły "N." zaraz po kropce
+    kończącej poprzedni ustęp. To z natury bardziej niejednoznaczne, więc
+    funkcja świadomie ogranicza się do JEDNOZNACZNYCH przypadków:
+    - wyklucza nagłówki "Art. N" (już obsłużone gdzie indziej),
+    - wyklucza cytaty w prozie do numeru INNEGO artykułu (poprzedzone
+      "art. "/"Art. " w środku zdania, albo zakresem "N–M" / "N-M") --
+      to osobny, nienaprawiony tu problem (spłaszczony numer artykułu
+      cytowany gdzie indziej w tekście, wymaga innego mechanizmu niż
+      korekta pozycyjna, bo trzeba by znać poprawny numer z INNEGO
+      miejsca w dokumencie),
+    - wymaga, żeby cyfry o mieszanej wielkości czcionki bezpośrednio
+      poprzedzał sam "§" albo kropka kończąca poprzednie zdanie --
+      wszystko inne (np. przypadkowy zbieg okoliczności typu zakresu
+      godzin "21:00 a 7:00" błędnie wykryty jako cyfry o mieszanej
+      wielkości czcionki) zostaje świadomie pominięte.
+
+    Do Kroku 49 funkcja wymagała też, żeby liczba kończyła się dosłowną
+    kropką (bo tak wygląda nagłówek nowego ustępu) -- to niepotrzebnie
+    wykluczało CYTATY do paragrafu innego artykułu w środku zdania,
+    zapisane tą samą konwencją "§ N" ale kończące się przecinkiem czy
+    średnikiem (potwierdzony przypadek: Kodeks pracy art. 29 cytuje
+    "art. 25 § 22," -- powinno być "§ 2²," -- kropka po liczbie nigdy
+    nie występuje, bo zdanie się tu nie kończy). Naprawione tym samym
+    negatywnym lookahead `(?!\\d)`, którego już używa
+    `apply_flattened_superscript_corrections` dla cytatów "art. N" --
+    liczba musi po prostu nie być częścią dłuższej liczby, nic więcej.
+
+    To rozluźnienie ujawniło DWA nowe źródła fałszywych trafień
+    (znalezione i naprawione w tej samej sesji, Krok 49), oba dlatego, że
+    "kończy się kropką" samo w sobie nie odróżnia zdania od skrótu:
+    - **skróty niekończące zdania** (np. "godz." w zapisie godzin "godz.
+      600 do godz. 1800") -- "godz." też kończy się kropką, więc bez
+      dodatkowego wykluczenia wyglądało jak prawdziwy ustęp. Wykluczone
+      przez `NON_SENTENCE_ENDING_ABBREVIATIONS` -- świadomie krótka,
+      oparta wyłącznie na potwierdzonym przypadku, nie rozszerzana
+      spekulacyjnie na inne skróty bez nowych dowodów.
+    - **cytaty "§ N"/"ust. N" do INNEJ ustawy** (np. "art. 4779 § 31
+      ustawy z dnia..." w ustawie systemowej, cytujący Kodeks pracy) --
+      ten sam problem co przy cytatach "art. N"
+      (`find_citation_superscript_corrections_pdfplumber`), tylko że tu
+      poprzedzający sygnał to "§"/"." zamiast "art.", więc dawniejsza
+      logika `is_citation` (sprawdzająca wyłącznie "art."/"Art.") tego
+      nie łapała. Wykluczone tym samym `DIFFERENT_ACT_CONTEXT_RE` i tym
+      samym oknem "do przodu", co w detektorze cytatów.
+
+    Zwraca listę (słowa_kontekstu, spłaszczony_numer, poprawiony_numer) w
+    KOLEJNOŚCI występowania w dokumencie -- `słowa_kontekstu` to kilka
+    poprzedzających słów (bez artefaktów nagłówka/stopki strony
+    Kancelarii Sejmu, które i tak znikają z `clean_text`), używane przez
+    `apply_flattened_superscript_corrections` jako "odcisk palca" do
+    zlokalizowania właściwego miejsca -- nie da się dopasować pozycyjnie
+    jak przy artykułach (liczba ustępów na artykuł jest zmienna), a
+    dosłowne dopasowanie tekstu zawodzi, bo `pdfplumber` (ten kod) i
+    `pypdf` (`pdf_to_clean_text`) inaczej renderują białe znaki na
+    złamaniach linii -- stąd dopasowanie ma być odporne na to w
+    `apply_flattened_superscript_corrections` (dopasowanie `\\s+` zamiast
+    dosłownej spacji)."""
+    corrections: list[tuple[list[str], str, str]] = []
+    chars: list[dict] = []
+    with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
+        for page in pdf.pages:
+            chars.extend(page.chars)
+    if not chars:
+        return corrections
+    body_size = Counter(round(c["size"], 1) for c in chars).most_common(1)[0][0]
+    n = len(chars)
+    i = 0
+    while i < n:
+        if not chars[i]["text"].isdigit():
+            i += 1
+            continue
+        start = i
+        j = i
+        while j < n and chars[j]["text"].isdigit():
+            j += 1
+        digit_chars = chars[start:j]
+        normal_digits = "".join(c["text"] for c in digit_chars if c["size"] >= body_size * SUPERSCRIPT_SIZE_RATIO)
+        super_digits = "".join(c["text"] for c in digit_chars if c["size"] < body_size * SUPERSCRIPT_SIZE_RATIO)
+        if normal_digits and super_digits:
+            preceding = "".join(c["text"] for c in chars[max(0, start - 80): start])
+            preceding_stripped = preceding.rstrip()
+            preceding_words = preceding_stripped.split()
+            is_art_header = preceding_stripped.endswith("Art.") or preceding_stripped.endswith("Art")
+            is_citation = (
+                bool(re.search(r"(?i)\bart\.?\s*$", preceding_stripped))
+                or preceding_stripped.endswith("–")
+                or preceding_stripped.endswith("-")
+            )
+            is_non_sentence_abbreviation = bool(preceding_words) and preceding_words[-1] in NON_SENTENCE_ENDING_ABBREVIATIONS
+            is_true_ustep = (
+                not is_art_header and not is_citation and not is_non_sentence_abbreviation
+                and (preceding_stripped.endswith("§") or preceding_stripped.endswith("."))
+            )
+            if is_true_ustep:
+                following = "".join(c["text"] for c in chars[j: j + DIFFERENT_ACT_FOLLOWING_LOOKAHEAD])
+                is_different_act = bool(DIFFERENT_ACT_CONTEXT_RE.search(preceding)) or bool(
+                    DIFFERENT_ACT_CONTEXT_RE.search(following)
+                )
+                if not is_different_act:
+                    flattened = normal_digits + super_digits
+                    corrected = normal_digits + super_digits.translate(SUPERSCRIPT_DIGITS)
+                    words = [w for w in preceding_words if not FOOTER_TOKEN_RE.match(w)]
+                    words = words[-USTEP_CONTEXT_WORDS:]
+                    if words:
+                        corrections.append((words, flattened, corrected))
+        i = j + 1
+    return corrections
+
+
+CITATION_CONTEXT_WORDS = 4
+
+
+def find_citation_superscript_corrections_pdfplumber(pdf_bytes: bytes) -> list[tuple[list[str], str, str]]:
+    """Wykrywa spłaszczone superskrypty w CYTATACH W PROZIE do numeru
+    artykułu tej SAMEJ ustawy (np. "art. 1291" zamiast "art. 129¹" w
+    zdaniu "Przepisy art. 129¹ stosuje się...") -- Krok 49, następstwo
+    Kroku 48. Sonda przez wszystkie 15 dziedzin (po naprawie ustępów)
+    znalazła nie 47, a 642 takich przypadków po odsianiu prawdziwych
+    nagłówków -- ale okazało się, że to NIE jest jednorodna kategoria:
+
+    - część to faktycznie cytaty do artykułu TEJ SAMEJ ustawy (bezpieczne
+      do naprawy -- ten sam mechanizm co ustępy w Kroku 48, bo geometria
+      PDF-a bezpośrednio i niezależnie od kontekstu koduje, które cyfry
+      są naprawdę superskryptem, tak samo dla cytatu jak dla nagłówka),
+    - część to cytaty do artykułu INNEJ ustawy (np. "art. 775 § 2 ustawy
+      z dnia 26 czerwca 1974" -- Kodeksu pracy, cytowane z zupełnie innego
+      aktu) -- teoretycznie też dałoby się naprawić (mielibyśmy dokładnie
+      taki sam sygnał geometrii dla tamtego aktu, GDYBY to była jedna z
+      15 zaindeksowanych ustaw), ale wymaga innego mechanizmu (przeszukania
+      metadanych INNEGO aktu) -- świadomie poza zakresem tej funkcji,
+    - część to ZNACZNIKI PRZYPISÓW, nie numery artykułów w ogóle (np. "w
+      art. 239⁷) i art. 240" -- czytane jako "art. 239, przypis 7)", nie
+      jako prawdziwy "art. 239⁷") -- zaklasyfikowanie tego jako superskryptu
+      artykułu i "naprawienie" wstawiłoby FAŁSZYWY numer artykułu, więc
+      to NIE jest kwestia braku danych, tylko realne ryzyko błędu.
+
+    Użytkownik świadomie wybrał najbezpieczniejszy zakres: naprawiać
+    WYŁĄCZNIE cytaty do tej samej ustawy. Odsiewanie:
+    - wymaga małej litery "art."/"art" bezpośrednio przed liczbą (wielka
+      litera "Art." to nagłówek, już obsłużony przez
+      `find_article_numbers_pdfplumber`),
+    - wyklucza znaczniki przypisów: jeśli znak TUŻ PO liczbie to ")",
+      pomijamy (przypisy w tych PDF-ach mają format "N)", prawdziwy
+      cytat artykułu nigdy nie kończy się gołym ")"),
+    - wyklucza cytaty do innej ustawy: sprawdza ok. 45 znaków PRZED "art."
+      i 150 znaków PO liczbie (`DIFFERENT_ACT_FOLLOWING_LOOKAHEAD`) pod kątem
+      fraz nazywających inny akt (`DIFFERENT_ACT_CONTEXT_RE`) -- szerokie okno
+      "po" jest konieczne, bo nazwa aktu cytowanego zwykle pada dopiero
+      pod koniec długiego zdania wyliczającego kilka artykułów (potwierdzone
+      empirycznie: okno 60 znaków przepuszczało 11 fałszywych "bezpiecznych"
+      przypadków, które dopiero szersze okno poprawnie wyłapało).
+
+    To CELOWO konserwatywne -- woli pominąć prawdziwy, bezpieczny
+    przypadek (np. gdy nazwa innej ustawy przypadkiem pojawia się w
+    pobliżu z zupełnie innego powodu, jak wspólny przypis o historii
+    zmian tej SAMEJ ustawy) niż zaryzykować naprawienie czegoś, co nie
+    powinno być tknięte -- w tym kierunku błędu nic złego się nie dzieje
+    (numeracja zostaje po prostu jak z pypdf, tak jak przed tą poprawką).
+
+    Zwraca listę w tym samym kształcie co
+    `find_ustep_superscript_corrections_pdfplumber`, do użycia z
+    `apply_flattened_superscript_corrections`."""
+    corrections: list[tuple[list[str], str, str]] = []
+    chars: list[dict] = []
+    with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
+        for page in pdf.pages:
+            chars.extend(page.chars)
+    if not chars:
+        return corrections
+    body_size = Counter(round(c["size"], 1) for c in chars).most_common(1)[0][0]
+    n = len(chars)
+    i = 0
+    while i < n:
+        if not chars[i]["text"].isdigit():
+            i += 1
+            continue
+        start = i
+        j = i
+        while j < n and chars[j]["text"].isdigit():
+            j += 1
+        digit_chars = chars[start:j]
+        normal_digits = "".join(c["text"] for c in digit_chars if c["size"] >= body_size * SUPERSCRIPT_SIZE_RATIO)
+        super_digits = "".join(c["text"] for c in digit_chars if c["size"] < body_size * SUPERSCRIPT_SIZE_RATIO)
+        if normal_digits and super_digits:
+            preceding = "".join(c["text"] for c in chars[max(0, start - 45): start])
+            following = "".join(c["text"] for c in chars[j: j + DIFFERENT_ACT_FOLLOWING_LOOKAHEAD])
+            preceding_stripped = preceding.rstrip()
+            is_real_header = preceding_stripped.endswith("Art.") or preceding_stripped.endswith("Art")
+            is_citation = not is_real_header and (
+                preceding_stripped.endswith("art.") or preceding_stripped.endswith("art")
+            )
+            if is_citation:
+                is_footnote_marker = following[:1] == ")"
+                is_different_act = bool(DIFFERENT_ACT_CONTEXT_RE.search(preceding)) or bool(
+                    DIFFERENT_ACT_CONTEXT_RE.search(following)
+                )
+                if not is_footnote_marker and not is_different_act:
+                    flattened = normal_digits + super_digits
+                    corrected = normal_digits + super_digits.translate(SUPERSCRIPT_DIGITS)
+                    words = [w for w in preceding_stripped.split() if not FOOTER_TOKEN_RE.match(w)]
+                    words = words[-CITATION_CONTEXT_WORDS:]
+                    if words:
+                        corrections.append((words, flattened, corrected))
+        i = j + 1
+    return corrections
+
+
+CITED_ACT_DATE_RE = re.compile(r"ustawy z dnia (\d{1,2} [a-ząćęłńóśźż]+ \d{4}) r\.")
+
+
+def _act_date_phrase(title: str) -> str | None:
+    """Wyciąga i normalizuje frazę 'DD MIESIĄC RRRR' z tytułu aktu (np.
+    'Ustawa z dnia 26 czerwca 1974 r. Kodeks pracy.' -> '26 czerwca 1974') --
+    data uchwalenia jednoznacznie identyfikuje polską ustawę wśród wszystkich
+    innych (dwa różne akty tego projektu nigdy nie dzielą tej samej daty),
+    używana do rozpoznania CYTOWANEGO aktu w cytatach w prozie do INNEJ
+    ustawy (Krok 50, patrz `find_cross_act_citation_corrections_pdfplumber`)."""
+    m = re.search(r"z dnia (\d{1,2} [a-ząćęłńóśźż]+ \d{4}) r\.", title)
+    return m.group(1) if m else None
+
+
+def _known_act_dates() -> dict[str, str]:
+    """Mapa {data uchwalenia -> act_short} zbudowana z tytułów zapisanych w
+    `data/raw/{short}_meta.json` dla wszystkich aktów z `acts_config.json` --
+    to jedyny artefakt z `data/raw/` faktycznie commitowany do repo (patrz
+    .gitignore), więc ta mapa działa niezależnie od tego, które akty zostały
+    pobrane w BIEŻĄCYM uruchomieniu (`--domain`/`--acts`). Akt bez zapisanych
+    metadanych (nigdy jeszcze nie pobrany, świeży klon repo) po prostu nie
+    zostanie rozpoznany jako cel cytatu -- bezpiecznie, żadna korekta nie
+    zostanie podjęta dla cytatów do niego, tak jak dotychczas."""
+    mapping: dict[str, str] = {}
+    for act in load_acts_config():
+        meta_path = RAW_DIR / f"{act['short']}_meta.json"
+        if not meta_path.exists():
+            continue
+        try:
+            title = json.loads(meta_path.read_text(encoding="utf-8")).get("title", "")
+        except (json.JSONDecodeError, OSError):
+            continue
+        date_phrase = _act_date_phrase(title)
+        if date_phrase:
+            mapping[date_phrase] = act["short"]
+    return mapping
+
+
+_CITED_ACT_NUMBERS_CACHE: dict[str, set[str]] = {}
+
+
+def _cited_act_article_numbers(act_short: str) -> set[str]:
+    """Zwraca zbiór PRAWDZIWYCH numerów artykułów (z indeksem górnym jako
+    prawdziwym znakiem Unicode) CYTOWANEGO aktu -- ostateczny bezpiecznik
+    `find_cross_act_citation_corrections_pdfplumber`: korekta cytatu do
+    innej ustawy stosowana jest TYLKO, gdy naprawiony numer faktycznie
+    występuje na tej liście. Woli już pobrany PDF (`data/raw/{short}.pdf`);
+    jeśli go brak (PDF-y nie są commitowane, patrz .gitignore), pobiera go
+    jednorazowo z ELI API na podstawie wpisu w `acts_config.json`. Wynik
+    cache'owany w pamięci procesu -- ten sam cytowany akt bywa cytowany
+    wielokrotnie w jednym uruchomieniu (np. Kodeks pracy z kilkunastu miejsc
+    ustawy o rynku pracy)."""
+    if act_short in _CITED_ACT_NUMBERS_CACHE:
+        return _CITED_ACT_NUMBERS_CACHE[act_short]
+    pdf_path = RAW_DIR / f"{act_short}.pdf"
+    if pdf_path.exists():
+        pdf_bytes = pdf_path.read_bytes()
+    else:
+        acts = load_acts_config(shorts={act_short})
+        if not acts:
+            _CITED_ACT_NUMBERS_CACHE[act_short] = set()
+            return set()
+        meta = fetch_meta(acts[0])
+        kind, file_name = pick_text_file(meta)
+        pdf_bytes = fetch_pdf_bytes(acts[0], kind, file_name)
+    numbers = set(find_article_numbers_pdfplumber(pdf_bytes))
+    _CITED_ACT_NUMBERS_CACHE[act_short] = numbers
+    return numbers
+
+
+def find_cross_act_citation_corrections_pdfplumber(
+    pdf_bytes: bytes, own_act_short: str
+) -> list[tuple[list[str], str, str]]:
+    """Wykrywa spłaszczone superskrypty w cytatach w prozie do numeru
+    artykułu INNEJ ustawy (Krok 50, dokończenie Kroku 49) -- np. "art. 775
+    § 2 ustawy z dnia 26 czerwca 1974 r. − Kodeks pracy" powinno być "art.
+    77⁵ § 2 ...". `find_citation_superscript_corrections_pdfplumber` (Krok
+    49) świadomie WYKLUCZA takie przypadki (`DIFFERENT_ACT_CONTEXT_RE`) --
+    ta funkcja dopełnia to celowo pozostawione ograniczenie, ale tylko gdy
+    WSZYSTKIE trzy warunki są spełnione:
+    1. w kontekście cytatu (45 znaków przed "art.", 150 znaków po liczbie)
+       da się jednoznacznie zidentyfikować CYTOWANY akt po jego dacie
+       uchwalenia ("ustawy z dnia D MIESIĄC RRRR r.") -- ta sama fraza, którą
+       akt podaje we własnym tytule (`_act_date_phrase`),
+    2. ten akt jest jednym z aktów już znanych temu projektowi
+       (`acts_config.json`) -- inaczej nie mamy jak sprawdzić jego
+       prawdziwej numeracji,
+    3. poprawiony numer (z ewentualnym sufiksem literowym tuż po cyfrach,
+       np. "18³a") FAKTYCZNIE występuje w prawdziwej liście numerów
+       artykułów tego aktu (`_cited_act_article_numbers`) -- ostateczny
+       bezpiecznik: nawet gdyby rozpoznanie aktu z (1) było przypadkowe/
+       błędne, korekta i tak nie zostanie zastosowana, chyba że naprawdę
+       odpowiada istniejącemu artykułowi.
+
+    Potwierdzone bezpośrednio na realnych danych (Krok 50): warunek 3 sam
+    w sobie odsiał jeden potwierdzony fałszywy trop (`prawo_autorskie`,
+    "art. 9915" -- to własny, tej samej ustawy artykuł 99¹⁵, błędnie
+    wykluczony przez zbyt szeroki lookahead `DIFFERENT_ACT_CONTEXT_RE`,
+    bo w tym samym zdaniu, kilka słów dalej, wspomniana jest KPA z
+    zupełnie innego powodu proceduralnego -- "99¹⁵" nie istnieje w
+    prawdziwej numeracji KPA, więc korekta świadomie nie została podjęta).
+
+    Bez potwierdzenia wszystkich trzech warunków kandydat jest bezpiecznie
+    pomijany -- dokładnie tak samo, jak przed tym mechanizmem. Świadomie
+    NIE obejmuje cytatów na poziomie USTĘPU
+    (`find_ustep_superscript_corrections_pdfplumber`) -- sonda na
+    wszystkich 22 aktach (Krok 50) nie znalazła tam ANI JEDNEGO
+    prawdziwego, możliwego do naprawienia przypadku: wszystkie tam
+    wykluczone kandydaty to (a) cytaty do aktów spoza tego projektu (głównie
+    Kodeks postępowania cywilnego, nieindeksowany) albo (b) błędne
+    wykluczenia prawdziwych cytatów W TEJ SAMEJ ustawie (ten sam efekt
+    uboczny szerokiego lookaheadu jak w przykładzie wyżej) -- osobny,
+    nienaprawiony tu problem samego `DIFFERENT_ACT_CONTEXT_RE`, nie coś do
+    rozwiązania mechanizmem cross-act.
+
+    Świadomie NIE rozpoznaje krótkich form bez daty (np. samo "Kodeksu
+    pracy" w zdaniu, gdy pełne "ustawy z dnia..." padło wcześniej w innym
+    zdaniu/artykule) -- jeden taki potwierdzony przypadek pozostał
+    nienaprawiony (`prawo_ochrony_srodowiska`, "art. 775 § 2 Kodeksu
+    pracy"), udokumentowany jako świadomie pozostawiona luka, nie błąd.
+
+    Zwraca listę w tym samym kształcie co inne funkcje
+    `find_*_corrections_*` (bez sufiksu literowego w `flattened`/
+    `corrected` -- litera zostaje nietknięta w tekście, tak jak już działa
+    `apply_flattened_superscript_corrections` dla cytatów tej samej
+    ustawy)."""
+    corrections: list[tuple[list[str], str, str]] = []
+    known_dates = _known_act_dates()
+    chars: list[dict] = []
+    with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
+        for page in pdf.pages:
+            chars.extend(page.chars)
+    if not chars:
+        return corrections
+    body_size = Counter(round(c["size"], 1) for c in chars).most_common(1)[0][0]
+    n = len(chars)
+    i = 0
+    while i < n:
+        if not chars[i]["text"].isdigit():
+            i += 1
+            continue
+        start = i
+        j = i
+        while j < n and chars[j]["text"].isdigit():
+            j += 1
+        digit_chars = chars[start:j]
+        normal_digits = "".join(c["text"] for c in digit_chars if c["size"] >= body_size * SUPERSCRIPT_SIZE_RATIO)
+        super_digits = "".join(c["text"] for c in digit_chars if c["size"] < body_size * SUPERSCRIPT_SIZE_RATIO)
+        if normal_digits and super_digits:
+            preceding = "".join(c["text"] for c in chars[max(0, start - 45): start])
+            following = "".join(c["text"] for c in chars[j: j + DIFFERENT_ACT_FOLLOWING_LOOKAHEAD])
+            preceding_stripped = preceding.rstrip()
+            is_real_header = preceding_stripped.endswith("Art.") or preceding_stripped.endswith("Art")
+            is_citation = not is_real_header and (
+                preceding_stripped.endswith("art.") or preceding_stripped.endswith("art")
+            )
+            if is_citation:
+                is_footnote_marker = following[:1] == ")"
+                date_match = CITED_ACT_DATE_RE.search(preceding) or CITED_ACT_DATE_RE.search(following)
+                cited_act_short = known_dates.get(date_match.group(1)) if date_match else None
+                if not is_footnote_marker and cited_act_short and cited_act_short != own_act_short:
+                    letter_suffix = ""
+                    for ch in following:
+                        if ch.isalpha() and ch.islower():
+                            letter_suffix += ch
+                        else:
+                            break
+                    corrected = normal_digits + super_digits.translate(SUPERSCRIPT_DIGITS)
+                    full_corrected = corrected + letter_suffix
+                    if full_corrected in _cited_act_article_numbers(cited_act_short):
+                        flattened = normal_digits + super_digits
+                        words = [w for w in preceding_stripped.split() if not FOOTER_TOKEN_RE.match(w)]
+                        words = words[-CITATION_CONTEXT_WORDS:]
+                        if words:
+                            corrections.append((words, flattened, corrected))
+        i = j + 1
+    return corrections
+
+
+def apply_flattened_superscript_corrections(
+    clean_text: str, corrections: list[tuple[list[str], str, str]], label: str = "indeksu górnego"
+) -> str:
+    """Stosuje korekty z `find_ustep_superscript_corrections_pdfplumber`
+    ALBO `find_citation_superscript_corrections_pdfplumber` na `clean_text`
+    (obie zwracają ten sam kształt: lista (słowa_kontekstu, spłaszczony,
+    poprawiony)). Każda korekta szuka wzorca regex (poprzedzające słowa
+    połączone `\\s+` zamiast dosłownej spacji, żeby przetrwać różnice w
+    białych znakach między `pdfplumber` a `pypdf` na złamaniach linii;
+    liczba zakończona negatywnym lookahead `(?!\\d)` zamiast wymogu
+    konkretnego znaku kończącego, bo ustępy zawsze kończą się kropką, ale
+    cytaty w prozie różnie -- kropką, przecinkiem, myślnikiem zakresu,
+    spacją przed "ust."/"§") i zamienia TYLKO pierwsze pozostałe
+    dopasowanie -- ponieważ korekty są podawane w kolejności występowania
+    w dokumencie, a każde zastosowanie "zużywa" jedno dopasowanie, kolejne
+    wywołanie trafia we właściwe, następne miejsce w tekście, nawet gdyby
+    krótki kontekst nie był globalnie unikalny. Ponieważ lookahead nie
+    konsumuje znaku kończącego, zamiana dotyka WYŁĄCZNIE samej liczby --
+    cokolwiek po niej następuje (kropka, przecinek, myślnik) zostaje
+    nietknięte.
+
+    Brak dopasowania (różnice w dzieleniu wyrazów z łącznikiem, albo
+    miejsce leżące wewnątrz already-usuniętego "< >") jest CELOWO
+    bezpiecznie pomijane z ostrzeżeniem, a nie traktowane jako błąd --
+    zweryfikowane na 7 dziedzinach: ok. 85% zidentyfikowanych przypadków
+    ustępów trafia w cel, reszta zostaje nietknięta (nie gorzej niż przed
+    tą poprawką), patrz PROGRESS.md, Krok 48/49. `label` trafia tylko do
+    komunikatu, żeby dziennik ekstrakcji rozróżniał ustępy od cytatów.
+
+    WAŻNE (błąd znaleziony i naprawiony w Kroku 49, dotyczył też Kroku 48):
+    wszystkie dopasowania są wyszukiwane względem NIEZMIENIONEGO,
+    oryginalnego `clean_text` (przesuwany kursor `search_from` zapewnia,
+    że powtarzający się identyczny krótki kontekst w różnych miejscach
+    dokumentu nadal trafia we właściwą, kolejną wersję -- ta sama
+    gwarancja co poprzednio), a WSZYSTKIE podmiany są stosowane dopiero
+    na końcu, od najdalszej pozycji do najbliższej. Dawniejsza wersja
+    mutowała `clean_text` PO KAŻDEJ korekcie z osobna -- co psuło kolejną
+    korektę, jeśli jej własny "odcisk palca" (poprzedzające słowa)
+    przypadkiem cytował spłaszczony numer WŁAŚNIE poprawiony przez
+    poprzednią korektę. Potwierdzony rzeczywisty przypadek: "art. 1291,
+    art. 1361" w Prawie własności przemysłowej -- kontekst dla "1361" to
+    `['w', 'art.', '1291,', 'art.']`, więc po naprawieniu "1291" na
+    "129¹" ten fragment przestawał dosłownie istnieć i druga korekta
+    cicho zawodziła, mimo że w oryginalnym tekście oba dopasowania są
+    całkowicie poprawne. Wyszukiwanie wszystkiego na niezmienionym
+    tekście i stosowanie zamian od końca (żeby wcześniejsze pozycje się
+    nie przesunęły) eliminuje tę klasę błędu w całości."""
+    fixed = 0
+    skipped = 0
+    replacements: list[tuple[int, int, str]] = []
+    search_from = 0
+    for words, flattened, corrected in corrections:
+        pattern = re.compile(r"\s+".join(re.escape(w) for w in words) + r"\s+" + re.escape(flattened) + r"(?!\d)")
+        m = pattern.search(clean_text, search_from) or pattern.search(clean_text)
+        if m:
+            replacements.append((m.end() - len(flattened), m.end(), corrected))
+            search_from = m.end()
+            fixed += 1
+        else:
+            skipped += 1
+    for start, end, corrected in sorted(replacements, key=lambda r: r[0], reverse=True):
+        clean_text = clean_text[:start] + corrected + clean_text[end:]
+    if fixed:
+        print(f"poprawiono numerację {label} w {fixed} miejscach")
+    if skipped:
+        print(
+            f"[UWAGA] nie znaleziono kontekstu dla {skipped} kandydatów na indeks górny "
+            f"({label}) -- pominięto bezpiecznie (numeracja zostaje jak z pypdf)"
+        )
+    return clean_text
 
 
 RETRY_DELAYS = (5, 15, 45)  # sekundy między próbami przy chwilowych błędach serwera
@@ -288,7 +812,7 @@ def find_footnote_markers_pdfplumber(pdf_bytes: bytes) -> list[tuple[str, str] |
     bez spacji) jest potrzebny, bo przypis sam bywa wyliczeniem -- przypis
     "1) Niniejsza ustawa wdraża: 1) dyrektywę...; 2) ..." na 1. stronie
     ustawy zawiera własne linie "1) ...", więc samo "utnij od ostatniej
-    linii '1)'" zostawiało jego nagłówek w art. 1 (projekt "RAG-LoRA - prawo polskie", PROGRESS.md Krok 63).
+    linii '1)'" zostawiało jego nagłówek w art. 1 (PROGRESS.md, Krok 63).
 
     Kancelaria Sejmu drukuje przypisy ("15) Zmiany tekstu jednolitego
     wymienionej ustawy zostały ogłoszone w...") na dole strony, mniejszą
@@ -297,7 +821,7 @@ def find_footnote_markers_pdfplumber(pdf_bytes: bytes) -> list[tuple[str, str] |
     więc trafiały do środka artykułu łamanego przez stronę -- potwierdzone w
     co najmniej 129 artykułach 28 ustaw, a numer przypisu wyglądał jak
     kolejny punkt wyliczenia (adapter zacytował nieistniejący "art. 389 pkt
-    15" Prawa wodnego, projekt "RAG-LoRA - prawo polskie", PROGRESS.md Krok 61/63).
+    15" Prawa wodnego, PROGRESS.md Krok 61/63).
 
     Marker to wiersz złożony WYŁĄCZNIE z małych cyfr i ")" (numer przypisu
     ma własną wysokość linii), pod którym nie ma już żadnej linii czcionką
@@ -400,8 +924,8 @@ def align_superscript_corrections(pypdf_labels: list[str], detected: list[str]) 
     od liczby artykułów z pypdf (np. jeden nagłówek wykryty tylko przez
     jedno narzędzie). Dotąd korekta była wtedy pomijana W CAŁOŚCI -- każdy
     art. 22¹ zostawał jako "221" i kolidował z prawdziwym art. 221 (13
-    historycznych okien, ~75 zdublowanych etykiet, np. KC 2013: 28 --
-    projekt "RAG-LoRA - prawo polskie", PROGRESS.md Krok 64). Teraz obie sekwencje dopasowujemy lokalnie
+    historycznych okien, ~75 zdublowanych etykiet, np. KC 2013: 28,
+    PROGRESS.md Krok 64). Teraz obie sekwencje dopasowujemy lokalnie
     (`difflib`) po SPŁASZCZONEJ etykiecie z pdfplumber ("22¹" -> "221") i
     poprawiamy tylko pary, które się zgadzają -- rozjazd w jednym miejscu
     nie blokuje korekty w pozostałych. Zwraca {indeks artykułu pypdf:
@@ -413,6 +937,43 @@ def align_superscript_corrections(pypdf_labels: list[str], detected: list[str]) 
         for k in range(size):
             if detected[a + k] != pypdf_labels[b + k]:
                 fixes[b + k] = detected[a + k]
+    return fixes
+
+
+def repair_flattened_superscript_labels(labels: list[str]) -> dict[int, str]:
+    """Naprawa etykiet ze SPŁASZCZONYM indeksem górnym, których nie wykrył
+    pdfplumber (Krok 84: Kodeks postępowania cywilnego -- 54 artykuły, bloki
+    477^15-16 i 479^28-88: "47928" zamiast "479²⁸", bo nagłówki w gęstym
+    bloku kolejnych indeksów nie zostały wykryte i `align_superscript_corrections`
+    nie miało czego dopasować).
+
+    Heurystyka z ciągłości numeracji (artykuły w ustawie idą rosnąco): etykieta
+    złożona z samych cyfr (+ ew. litery), której początek to numer ostatniego
+    zaufanego artykułu ("479" + "28"), a PÓŹNIEJ w sekwencji numeracja cofa się
+    poniżej niej (po bloku wraca "478"/"479⁸⁹") -- czyli nie mogła być
+    prawdziwym, wyższym artykułem -- dostaje indeks górny. Obie przesłanki
+    naraz (prefiks + późniejszy spadek) praktycznie wykluczają fałszywe
+    trafienia w ustawach o monotonicznej numeracji. Zwraca {indeks: nowa etykieta}."""
+    def lead(label: str) -> int | None:
+        m = re.match(r"\d+", label)
+        return int(m.group()) if m else None
+
+    leads = [lead(label) for label in labels]
+    fixes: dict[int, str] = {}
+    prev_base: int | None = None
+    for i, label in enumerate(labels):
+        m = re.fullmatch(r"(\d+)([a-z]{0,3})", label)
+        if m and prev_base is not None:
+            digits, letters = m.groups()
+            prefix = str(prev_base)
+            value = int(digits)
+            if len(digits) > len(prefix) and digits.startswith(prefix):
+                drop = next((l for l in leads[i + 1 :] if l is not None and l < value), None)
+                if drop is not None and drop >= prev_base:
+                    fixes[i] = prefix + digits[len(prefix) :].translate(SUPERSCRIPT_DIGITS) + letters
+                    continue
+        if leads[i] is not None:
+            prev_base = leads[i]
     return fixes
 
 
@@ -454,6 +1015,73 @@ EDITORIAL_FOOTNOTE_START_RE = re.compile(
 EDITORIAL_FOOTNOTE_MAX_LINES = 6
 
 
+# Krok 86: PDF-y obwieszczeń sprzed ~2014 (pliki "O"/"T" w historii) mają czcionkę
+# z kodowaniem Mac Central European odczytanym jako Mac Roman -- polskie litery
+# wychodzą jako "dzia∏ajà" (= "działają"), "okreÊla" (= "określa"), "wzgl´du"
+# (= "względu"), "U˝yte" (= "Użyte"), "DZIA¸" (= "DZIAŁ"). Mapowanie jest stałe
+# (potwierdzone na 7 oknach historii w 7 dziedzinach, ~45 tys. wystąpień).
+FONT_MOJIBAKE_MAP = str.maketrans(
+    {
+        "∏": "ł", "à": "ą", "Ê": "ś", "´": "ę", "˝": "ż", "ç": "ć", "ƒ": "ń", "ê": "ź",
+        "¸": "Ł", "Â": "Ś", "˚": "Ż", "¢": "Ę", "¡": "Ń",
+    }
+)
+FONT_MOJIBAKE_SIGNATURE = "∏à´˝"
+FONT_MOJIBAKE_MIN_HITS = 30
+
+
+def fix_font_mojibake(text: str) -> str:
+    """Naprawia mojibake czcionki Mac CE/Roman (patrz FONT_MOJIBAKE_MAP), ale tylko gdy
+    tekst DOKUMENTU ma wyraźną sygnaturę (>= 30 znaków z "∏à´˝"). Zdrowe teksty nie
+    zawierają tych znaków, więc dla nich funkcja nic nie zmienia."""
+    if sum(text.count(c) for c in FONT_MOJIBAKE_SIGNATURE) < FONT_MOJIBAKE_MIN_HITS:
+        return text
+    return text.translate(FONT_MOJIBAKE_MAP)
+
+
+_LEGIT_CHARS = frozenset(
+    "aąbcćdeęfghijklłmnńoóprsśtuwyzźżAĄBCĆDEĘFGHIJKLŁMNŃOÓPRSŚTUWYZŹŻqvxQVX0123456789 \n"
+    ".,;:!?()[]\"'„”«»–—-/%§°…²³¹⁰⁴⁵⁶⁷⁸⁹&*+=<>_€$№@\u00a0\u00ad"
+)
+SCAN_QUALITY_MAX_ODD_PER_1000 = 4.0
+
+
+def odd_char_rate_per_1000(texts: list[str]) -> float:
+    """Liczba znaków spoza zwykłego alfabetu/interpunkcji polskich ustaw na 1000.
+    Zdrowe okna historii: <= 0,9 (maks. z 25 dziedzin); zepsuty skan OCR (Krok 86,
+    KPA przed 2000): 7,7; przed naprawą mojibake'u okna sprzed 2014: 35-42 --
+    próg 4,0 (jedno wywołanie po `fix_font_mojibake`)."""
+    total = sum(len(t) for t in texts)
+    if not total:
+        return 0.0
+    return 1000.0 * sum(1 for t in texts for c in t if c not in _LEGIT_CHARS) / total
+
+
+# Krok 90: nowsze PDF-y tekstów ujednoliconych Kancelarii Sejmu (Kodeks pracy z 2026-10,
+# także fragmenty KPC) zapisują indeks górny jako "[n]" PRZYKLEJONE do liczby: "Art. 18[4].",
+# "§ 2[1].", "art. 22[1]", "pkt 5[2])", "ust. 3[3d]". `strip_not_yet_in_force_text` zdejmował
+# te nawiasy jak adnotację redakcyjną, więc cyfra się spłaszczała ("§ 21", "art. 221") --
+# po odświeżeniu Kodeksu pracy 498 -> 236 indeksów górnych. Nawias redakcyjny ("[stary tekst]",
+# "[1. ...]") nigdy nie jest przyklejony do cyfry i nie zamyka się tuż po 1-3 cyfrach/literach.
+BRACKET_SUPERSCRIPT_RE = re.compile(r"(?<=\d)\[(\d{1,3})([a-z]{0,3})\]")
+
+
+_HEADER_PREFIX_RE = re.compile(r"Art\. \d+$")
+
+
+def convert_bracket_superscripts(text: str) -> str:
+    """"22[1]" -> "22¹", "18[3d]" -> "18³d" (cyfry w nawiasie na indeks górny, litery obok).
+    NAGŁÓWKI artykułów ("Art. 18[4].", wielka litera) zostają bez zmian: mają własny
+    mechanizm (geometria PDF -> poprawka etykiety), a "Art. 18³c." nie pasuje do wzorca
+    podziału na artykuły -- pierwsza wersja tej funkcji wchłaniała 28 artykułów Kodeksu pracy."""
+    def repl(m: re.Match) -> str:
+        if _HEADER_PREFIX_RE.search(text[max(0, m.start() - 14) : m.start()]):
+            return m.group(0)
+        return m.group(1).translate(SUPERSCRIPT_DIGITS) + m.group(2)
+
+    return BRACKET_SUPERSCRIPT_RE.sub(repl, text)
+
+
 def pdf_to_clean_text(pdf_bytes: bytes) -> str:
     reader = PdfReader(io.BytesIO(pdf_bytes))
     footnote_markers = find_footnote_markers_pdfplumber(pdf_bytes)
@@ -483,11 +1111,30 @@ def pdf_to_clean_text(pdf_bytes: bytes) -> str:
                 lines[-1] = lines[-1][:-1] + stripped
             else:
                 lines.append(stripped)
-    return strip_inline_footnote_refs("\n".join(lines))
+    return convert_bracket_superscripts(strip_inline_footnote_refs(fix_font_mojibake("\n".join(lines))))
 
 
-NOT_YET_IN_FORCE_RE = re.compile(r"<.*?>", re.DOTALL)
-SUPERSEDED_STILL_VALID_RE = re.compile(r"\[(.*?)\]", re.DOTALL)
+def _matched_angle_bracket_positions(text: str) -> set[int]:
+    """Zwraca indeksy znaków '<'/'>' które faktycznie tworzą PARĘ (do
+    usunięcia razem z zawartością), przez klasyczne dopasowanie stosowe
+    (jak nawiasy w wyrażeniu) zamiast niezachłannego wzorca regex
+    dopasowywanego niezależnie do każdej kolejnej pary z osobna.
+
+    Niesparowany '<' (bez ')'>' gdziekolwiek dalej w tekście) albo
+    niesparowany '>' (bez wcześniejszego '<') NIE trafiają do zbioru --
+    zostają jako pojedyncze osierocone znaki do usunięcia bez ruszania
+    zawartości wokół nich (bezpiecznik z Krok 45: nie ryzykujemy
+    pochłonięcia zbyt dużego fragmentu poprawnego tekstu)."""
+    matched: set[int] = set()
+    stack: list[int] = []
+    for i, ch in enumerate(text):
+        if ch == "<":
+            stack.append(i)
+        elif ch == ">" and stack:
+            start = stack.pop()
+            matched.add(start)
+            matched.add(i)
+    return matched
 
 
 # "\S{1,3}" zamiast "ł", bo najstarsze PDF-y (2006) mają zepsute kodowanie
@@ -506,7 +1153,7 @@ def strip_announcement_preamble(text: str) -> str:
     tekstem jednolitym ("tekst jednolity nie obejmuje art. 10-24 ...,
     które stanowią: Art. 10. ..."). Parser brał je za artykuły ustawy --
     stąd podwojone art. 10-24 ustawy o min. wynagrodzeniu (okno 2015) i
-    art. 3-6 Prawa lotniczego (okno 2006), projekt prawo polskie, PROGRESS.md Krok 65.
+    art. 3-6 Prawa lotniczego (okno 2006), PROGRESS.md Krok 65.
 
     Obwieszczenie rozpoznajemy po nagłówku "Załącznik do obwieszczenia ..."
     z "USTAWA" kilka linii niżej, ale tniemy za OSTATNIM podpisem
@@ -543,10 +1190,35 @@ def strip_not_yet_in_force_text(text: str) -> str:
     treść poprzedniego, prawdziwego artykułu (patrz PROGRESS.md, krok
     12) -- czyli przedstawiane tak, jakby już obowiązywały.
 
-    Podstawienie jest nie-zachłanne (`.*?`), więc niesparowany "<" bez
-    odpowiadającego ">" po prostu nie zostanie dopasowany (nic się nie
-    usuwa) zamiast ryzykować pochłonięcie zbyt dużego fragmentu poprawnego
-    tekstu -- ale wtedy wypisujemy ostrzeżenie do ręcznego sprawdzenia."""
+    Implementacja to POJEDYNCZY przebieg znak-po-znaku (nie dwa
+    niezależne podstawienia regex jak przed Krokiem 47), bo dwa
+    niezależne, niezachłanne podstawienia (`<.*?>` potem `\\[(.*?)\\]`)
+    źle radzą sobie z zagnieżdżonymi/sąsiadującymi nawiasami -- patrz
+    Krok 46 (`upadlosciowe`): dla `[1. ... [stare słowo] <nowe słowo>.]`
+    niezachłany `\\[(.*?)\\]` dopasowuje od ZEWNĘTRZNEGO '[' do
+    PIERWSZEGO napotkanego ']' (czyli tego WEWNĘTRZNEGO), zostawiając
+    osierocony wewnętrzny '[' jako dosłowny tekst i osierocone
+    zewnętrzne ']' nietknięte -- a dla dwóch sąsiadujących artykułów,
+    z których jeden ma taki zagnieżdżony nawias, potrafi to pochłonąć
+    CAŁY nagłówek i treść NASTĘPNEGO artykułu jako rzekomą "zawartość"
+    tej samej pary (potwierdzone wprost w `prawo_upadlosciowe`, art.
+    241/242 dla okna @2019-02-21 -- art. 242 znikał jako osobny wpis).
+
+    Nowe podejście: dla "< >" dopasowanie parami robione jest
+    JAWNIE (`_matched_angle_bracket_positions`, jak nawiasy w wyrażeniu),
+    więc zagnieżdżenie/sąsiedztwo z "[ ]" nie ma znaczenia -- zawartość
+    między faktycznie sparowanym '<' i '>' znika w całości niezależnie od
+    głębokości. Dla "[ ]" nie trzeba w ogóle dopasowywać par: skoro
+    zawartość ZAWSZE zostaje (to tylko adnotacja edytorska), wystarczy
+    usunąć KAŻDY pojedynczy znak '['/']' napotkany poza obszarem "< >"
+    -- nie ma ryzyka złego sparowania, bo nigdy nie decydujemy o zasięgu
+    na podstawie tych znaków.
+
+    Niesparowany "<" (bez odpowiadającego ">" dalej w tekście) albo
+    niesparowany ">" nie usuwają żadnej zawartości -- tylko sam
+    pojedynczy znak znika, tekst wokół zostaje nietknięty, tak jak przy
+    dwóch niezależnych regexach wcześniej -- ale wypisujemy ostrzeżenie
+    do ręcznego sprawdzenia."""
     if text.count("<") != text.count(">"):
         print(
             "[UWAGA] niesparowane nawiasy < > w tekście -- część fragmentu "
@@ -554,9 +1226,110 @@ def strip_not_yet_in_force_text(text: str) -> str:
         )
     if text.count("[") != text.count("]"):
         print("[UWAGA] niesparowane nawiasy [ ] w tekście -- sprawdź ręcznie")
-    text = NOT_YET_IN_FORCE_RE.sub("", text)
-    text = SUPERSEDED_STILL_VALID_RE.sub(r"\1", text)
-    return text
+
+    matched_angle = _matched_angle_bracket_positions(text)
+    unclosed_article_ends = _unclosed_future_article_ends(text, matched_angle)
+    unclosed_article_ends.update(_unclosed_future_paragraph_ends(text, matched_angle))
+    output: list[str] = []
+    angle_depth = 0
+    skip_until = -1
+    for i, ch in enumerate(text):
+        if i < skip_until:
+            continue
+        if ch == "<":
+            if i in matched_angle:
+                angle_depth += 1
+            elif i in unclosed_article_ends:
+                skip_until = unclosed_article_ends[i]
+            continue
+        if ch == ">":
+            if i in matched_angle:
+                angle_depth -= 1
+            continue
+        if ch == "[" or ch == "]":
+            continue
+        if angle_depth == 0:
+            output.append(ch)
+    return "".join(output)
+
+
+NEXT_ARTICLE_HEADER_RE = re.compile(r"\n[<\[]?Art\.\s*\d")
+
+
+def _unclosed_future_article_ends(text: str, matched_angle: set[int]) -> dict[int, int]:
+    """Kancelaria Sejmu czasem gubi w samym PDF-ie zamykające ">" przyszłej
+    wersji artykułu (potwierdzone w surowym wyjściu pypdf: POŚ 2016 art.
+    286, ruch drogowy 2017 art. 80b/80bh/80c/80ca). Niesparowany "<" nic
+    nie wycinał, więc przyszła wersja zostawała obok obowiązującej "[Art.
+    286. ...]" jako duplikat etykiety (PROGRESS.md Krok 65).
+
+    Dla niesparowanego "<" stojącego na początku nagłówka artykułu
+    ("\\n<Art. 286.") zwraca {pozycja '<': początek następnego nagłówka
+    artykułu} -- wycinamy NAJMNIEJ, co się da (jeden artykuł). Blok
+    przyszły bywa wieloartykułowy (80ca-80ch), ale bez ">" nie wiadomo,
+    gdzie się kończy, a ten sam bezpiecznik co w Kroku 45: lepiej zostawić
+    za dużo niż wyciąć obowiązujący tekst. Inne niesparowane "<" -- jak
+    dotąd, tylko sam znak znika.
+
+    Wyjątek: artykuł zamknięty "]" bez własnego "[" (Prawo energetyczne
+    2024, art. 5ab: "<Art. 5ab. ... art. 6b.]", a dalej osobno właściwa
+    przyszła wersja "<Art. 5ab. ...>") -- to literówka za "[", czyli
+    OBOWIĄZUJĄCY tekst; zostaje."""
+    ends: dict[int, int] = {}
+    for i, ch in enumerate(text):
+        if ch != "<" or i in matched_angle:
+            continue
+        if not (i == 0 or text[i - 1] == "\n") or not text.startswith("Art.", i + 1):
+            continue
+        nxt = NEXT_ARTICLE_HEADER_RE.search(text, i + 1)
+        end = nxt.start() + 1 if nxt else len(text)
+        if text.count("]", i, end) > text.count("[", i, end):
+            continue
+        ends[i] = end
+    return ends
+
+
+UNCLOSED_PARAGRAPH_OPEN_RE = re.compile(r"<(\d+)\. ")
+MAX_UNCLOSED_PARAGRAPH_CHARS = 6000
+
+
+def _unclosed_future_paragraph_ends(text: str, matched_angle: set[int]) -> dict[int, int]:
+    """Odpowiednik `_unclosed_future_article_ends` dla USTĘPU: Kancelaria
+    Sejmu zgubiła zamykające ">" przyszłego brzmienia pojedynczego ustępu
+    (ustawa o systemie ubezpieczeń społecznych, stan 2026-11-09, art. 68
+    ust. 2: "[2. ...]\\n<2. ..." bez ">", a dalej obowiązujące ust. 3-4).
+    Niesparowany "<" nic nie wycinał, więc przyszłe brzmienie ust. 2
+    trafiało do bazy obok obowiązującego (Krok 141 repo wielodziedzinowego, Krok 33 tego repo).
+
+    Reguła jest celowo WĄSKA (ten sam bezpiecznik co w Kroku 45 --
+    lepiej zostawić za dużo niż wyciąć obowiązujący tekst). Obsługujemy
+    niesparowany "<" tylko gdy WSZYSTKIE warunki są spełnione:
+    1. stoi na początku wiersza i otwiera ustęp "<N. ",
+    2. bezpośrednio przed nim (poza białymi znakami) kończy się "]", czyli
+       zamyka obowiązujące, zastępowane brzmienie TEGO ustępu,
+    3. dalej jest początek ustępu N+1 ("\\nN+1. ") albo nagłówek następnego
+       artykułu -- tam kończymy wycinanie (blok przyszły o kilku ustępach
+       bez ">" nie jest wykrywany, zostaje jak dotąd),
+    4. odcinek ma najwyżej `MAX_UNCLOSED_PARAGRAPH_CHARS` znaków i nie
+       zawiera więcej "]" niż "[".
+    Inne niesparowane "<" -- jak dotąd, tylko sam znak znika."""
+    ends: dict[int, int] = {}
+    for m in UNCLOSED_PARAGRAPH_OPEN_RE.finditer(text):
+        i = m.start()
+        if i in matched_angle or not (i == 0 or text[i - 1] == "\n"):
+            continue
+        if not text[:i].rstrip().endswith("]"):
+            continue
+        next_paragraph = re.compile(rf"\n{int(m.group(1)) + 1}\. ").search(text, i + 1)
+        next_article = NEXT_ARTICLE_HEADER_RE.search(text, i + 1)
+        candidates = [x.start() + 1 for x in (next_paragraph, next_article) if x]
+        if not candidates:
+            continue
+        end = min(candidates)
+        if end - i > MAX_UNCLOSED_PARAGRAPH_CHARS or text.count("]", i, end) > text.count("[", i, end):
+            continue
+        ends[i] = end
+    return ends
 
 
 MIDTEXT_SUPERSCRIPT_HEADER_RE = re.compile(r"Art\. (\d+) (\d+[a-ząćęłńóśźż]{0,3})\.")
@@ -576,6 +1349,26 @@ def recover_midtext_superscript_headers(clean_text: str) -> str:
     return MIDTEXT_SUPERSCRIPT_HEADER_RE.sub(r"\nArt. \1\2.", clean_text)
 
 
+LETTER_SUPERSCRIPT_HEADER_RE = re.compile(r"Art\. (\d+[a-ząćęłńóśźż]{1,3}) ?(\d{1,2})\. ")
+
+
+def recover_letter_superscript_headers(clean_text: str) -> str:
+    """Nagłówki z indeksem górnym PO sufiksie literowym -- np. "Art. 5b¹."
+    `pypdf` spłaszcza do "Art. 5b1." albo "Art. 5a 1." (ze spacją), czego
+    `ARTICLE_SPLIT_RE` nie łapie (wymaga kropki zaraz po literze), więc
+    cały artykuł był wchłaniany przez poprzedni. W polskiej numeracji
+    cyfra po literze w numerze artykułu występuje WYŁĄCZNIE jako indeks
+    górny, więc zamiana jest jednoznaczna -- od razu na znak Unicode (a nie
+    tylko sklejenie jak w `recover_midtext_superscript_headers`), żeby
+    etykieta była poprawna nawet, gdy korekta pdfplumber zostanie pominięta
+    przez niezgodną liczbę nagłówków. Wymuszamy też początek linii.
+    Potwierdzony przypadek: Prawo energetyczne, 17 nagłówków (PROGRESS.md,
+    Krok 60); w żadnym innym pobranym akcie ten wzorzec nie występuje."""
+    return LETTER_SUPERSCRIPT_HEADER_RE.sub(
+        lambda m: f"\nArt. {m.group(1)}{m.group(2).translate(SUPERSCRIPT_DIGITS)}. ", clean_text
+    )
+
+
 STRAY_SPACE_BEFORE_PERIOD_RE = re.compile(r"(Art\. \d+[a-ząćęłńóśźż]{0,3}) \.")
 
 
@@ -588,6 +1381,57 @@ def fix_stray_space_before_period(clean_text: str) -> str:
     poprzedni, tak samo jak w `recover_midtext_superscript_headers`
     (patrz PROGRESS.md, krok 13)."""
     return STRAY_SPACE_BEFORE_PERIOD_RE.sub(r"\1.", clean_text)
+
+
+# Adnotacje Kancelarii Sejmu z marginesu tekstu ujednoliconego ("Nowe brzmienie
+# § 2 w art. 18³a wejdzie w życie z dn. 5.11.2026 r. (Dz. U. z 2026 r. poz.
+# 1046).") wpadają w środek zdania przepisu -- szum w embeddingach i w
+# kontekście modelu (PROGRESS.md, Krok 67/74). Opis zawsze kończy się
+# odwołaniem do artykułu/ustępu tuż przed "wejdzie w życie" i składa się z
+# małych liter, numerów i skrótów jednostek redakcyjnych -- to odróżnia go od
+# treści przepisu przed nim.
+# Data bywa rozbita spacją przez pypdf ("1.01.20 30 r."), a zamiast daty bywa
+# "z dniem określonym w komunikacie, o którym mowa w art. N ustawy z dn. ...".
+ANNOTATION_END_RE = re.compile(
+    r"\s*wejdzie w życie z (?:dn\s?\.\s*[\d\s.]{6,14}?\s*r\."
+    r"|dn(?:iem)?\s?\.?\s*określonym w komunikacie, o którym mowa w art\.\s*\d+[a-z]*\s+ustawy z dn(?:ia)?\.?\s[^()]{0,200}?)"
+    r"\s*\(Dz\.\s*U\.[^)]*\)\.?"
+)
+ANNOTATION_START_RE = re.compile(
+    r"(?:Nowe brzmienie|Now[aey]\s|Dodan[a-ząęśćźżół]*|Uchylon[a-ząęśćźżół]*|Przepis uchylający|Zmiana"
+    r"|Skreślon[a-ząęśćźżół]*|Ust\.|Art\.|Pkt|Lit\.|§)"
+)
+_ANNOTATION_TOKEN = r"(?:[a-ząęśćźżół()]+\.?|\d+[a-z]*|ust\.|art\.|pkt|lit\.|zd\.|tiret|§|[,–\-])"
+ANNOTATION_DESC_RE = re.compile(rf"{_ANNOTATION_TOKEN}(?:\s+{_ANNOTATION_TOKEN})*")
+ANNOTATION_TAIL_RE = re.compile(r"(?:[Aa]rt\.|ust\.)\s*\d+[a-z]*(?:\s[\da-z]{1,3})?$")
+ANNOTATION_LOOKBACK = 200
+
+
+def strip_entry_into_force_annotations(text: str) -> str:
+    """Usuwa adnotacje "... wejdzie w życie z dn. D r. (Dz. U. ...)." z treści
+    artykułu. Dla każdego końca adnotacji szuka NAJWCZEŚNIEJSZEGO słowa-klucza
+    (w oknie 200 znaków), od którego do końca opis jest czysty (patrz
+    ANNOTATION_DESC_RE) i kończy się odwołaniem do artykułu/ustępu; bez
+    takiego startu adnotacja zostaje (lepiej szum niż ucięty przepis)."""
+    out, pos = [], 0
+    for m in ANNOTATION_END_RE.finditer(text):
+        if m.start() < pos:
+            continue
+        window_start = max(pos, m.start() - ANNOTATION_LOOKBACK)
+        pre = text[window_start : m.start()]
+        cut = None
+        for start in ANNOTATION_START_RE.finditer(pre):
+            candidate = pre[start.start() :].strip()
+            desc = pre[start.end() :].strip()
+            if ANNOTATION_TAIL_RE.search(candidate) and (not desc or ANNOTATION_DESC_RE.fullmatch(desc)):
+                cut = window_start + start.start()
+                break
+        if cut is None:
+            continue
+        out.append(text[pos:cut])
+        pos = m.end()
+    out.append(text[pos:])
+    return re.sub(r"[ \t]{2,}", " ", "".join(out)).strip()
 
 
 def normalize_text(s: str) -> str:
@@ -661,10 +1505,29 @@ def parse_pdf_articles(pdf_bytes: bytes, act_short: str) -> list[dict]:
     clean_text = strip_announcement_preamble(clean_text)
     clean_text = strip_not_yet_in_force_text(clean_text)
     clean_text = recover_midtext_superscript_headers(clean_text)
+    clean_text = recover_letter_superscript_headers(clean_text)
     clean_text = fix_stray_space_before_period(clean_text)
+
+    ustep_corrections = find_ustep_superscript_corrections_pdfplumber(pdf_bytes)
+    if ustep_corrections:
+        clean_text = apply_flattened_superscript_corrections(clean_text, ustep_corrections, label="poziomu ustępu")
+
+    citation_corrections = find_citation_superscript_corrections_pdfplumber(pdf_bytes)
+    if citation_corrections:
+        clean_text = apply_flattened_superscript_corrections(
+            clean_text, citation_corrections, label="cytatu w prozie"
+        )
+
+    cross_act_corrections = find_cross_act_citation_corrections_pdfplumber(pdf_bytes, act_short)
+    if cross_act_corrections:
+        clean_text = apply_flattened_superscript_corrections(
+            clean_text, cross_act_corrections, label="cytatu do innej ustawy"
+        )
 
     print(f"[{act_short}] tnę na artykuły...")
     articles = parse_articles(clean_text)
+    for article in articles:
+        article["text"] = strip_entry_into_force_annotations(article["text"])
     print(f"[{act_short}] znaleziono {len(articles)} artykułów")
 
     print(f"[{act_short}] sprawdzam numerację pod kątem indeksów górnych...")
@@ -683,11 +1546,23 @@ def parse_pdf_articles(pdf_bytes: bytes, act_short: str) -> list[dict]:
         article["article"] = detected
     if fixes:
         print(f"[{act_short}] poprawiono numerację indeksu górnego w {len(fixes)} artykułach")
+    # Krok 84: etykiety spłaszczone, których pdfplumber w ogóle nie wykrył
+    repaired = repair_flattened_superscript_labels([a["article"] for a in articles])
+    for i, label in repaired.items():
+        article = articles[i]
+        article["text"] = article["text"].replace(f"Art. {article['article']}.", f"Art. {label}.", 1)
+        article["article"] = label
+    if repaired:
+        print(f"[{act_short}] naprawiono spłaszczone etykiety (ciągłość numeracji) w {len(repaired)} artykułach")
 
     articles = split_annexes(articles)
     return articles
 
 
+# Początek załączników bez nagłówka: "Załącznik nr N" po końcu zdania i przed wielką literą albo
+# nawiasem ("ustawy. Załącznik nr 1 Lp. ..."). Tekst artykułu ma już sklejone linie, więc nie
+# da się kotwiczyć do linii; proza ("zgodnie z Załącznik nr 1 do ustawy") nie pasuje.
+ANNEX_LINE_START_RE = re.compile(r"(?<=[.;)])\s+(Za\S{1,3}cznik nr \d+[a-z]?)(?=\s+[A-ZĄĆĘŁŃÓŚŹŻ(])")
 ANNEXES_HEADER_RE = re.compile(r"Za\S{1,3}\s?\S{0,2}cznik(?:i)? do ustawy z dnia [^()]{0,60}\([^)]*\)\s*")
 ANNEX_NUMBER_RE = re.compile(r"(?=Za\S{1,3}cznik nr (\d+[a-z]?)(\))?)")
 
@@ -717,10 +1592,19 @@ def split_annexes(articles: list[dict]) -> list[dict]:
         return articles
     last = articles[-1]
     match = ANNEXES_HEADER_RE.search(last["text"])
-    if not match:
-        return articles
-    annex_text = last["text"][match.end():].strip()
-    head = last["text"][: match.start()].rstrip()
+    if match:
+        annex_start, head_end = match.end(), match.start()
+    else:
+        # Krok 90: nowsze teksty ujednolicone (Prawo lotnicze 2026-10) nie mają nagłówka
+        # "Załączniki do ustawy...", tylko od razu linię "Załącznik nr 1" -- 97 tys. znaków
+        # załączników lądowało w art. 232 ("wchodzi w życie"). Linia złożona WYŁĄCZNIE z
+        # "Załącznik nr N" nie występuje w zwykłej prozie.
+        line_match = ANNEX_LINE_START_RE.search(last["text"])
+        if not line_match:
+            return articles
+        annex_start, head_end = line_match.start(1), line_match.start()
+    annex_text = last["text"][annex_start:].strip()
+    head = last["text"][:head_end].rstrip()
     result = articles[:-1] + [{**last, "text": head}]
     starts = []
     for m in ANNEX_NUMBER_RE.finditer(annex_text):
@@ -831,6 +1715,7 @@ def write_act_chunks(act: dict, title: str, eli: str, kind: str, file_name: str,
             "article": a["article"],
             "text": a["text"],
             "source_url": source_url,
+            "domains": act.get("domains", []),
         }
         for a in articles
     ]
@@ -974,7 +1859,14 @@ def fetch_version_windows(base_act: dict) -> tuple[str, str, list[dict]]:
 
 
 def process_act_version(
-    source: dict, act_short: str, base_eli: str, base_title: str, valid_from, valid_to, announcement_eli
+    source: dict,
+    act_short: str,
+    base_eli: str,
+    base_title: str,
+    valid_from,
+    valid_to,
+    announcement_eli,
+    domains: list[str] | None = None,
 ) -> list[dict]:
     """Pobiera i parsuje JEDNĄ historyczną wersję tekstu (obwieszczenie) tym
     samym pipeline'em co `process_act()` (przez `_extract_articles()`). NIE
@@ -993,18 +1885,19 @@ def process_act_version(
         source, label, HISTORY_TEXT_KINDS
     )
     return build_version_articles(
-        source, act_short, base_eli, base_title, valid_from, valid_to, announcement_eli, articles, kind, file_name
+        source, act_short, base_eli, base_title, valid_from, valid_to, announcement_eli, domains, articles, kind, file_name
     )
 
 
 def drop_future_wording_duplicates(articles: list[dict]) -> list[dict]:
     """Tekst jednolity w wersji z dnia ogłoszenia (plik "T", historia od
-    przeniesienia z projektu prawo polskie, Krok 69) podaje artykuł zmieniony
-    przepisem, który jeszcze nie wszedł w życie, DWA razy pod rząd: najpierw
-    brzmienie obowiązujące (przypis "W tym brzmieniu obowiązuje do wejścia w
-    życie zmiany..."), zaraz potem nowe ("W brzmieniu ustalonym przez...").
-    Zostawiamy pierwsze -- obowiązujące w oknie (w plikach "U" tę rolę
-    pełniło wycinanie "< >"). Tylko KOLEJNE duplikaty."""
+    Kroku 69) podaje artykuł zmieniony przepisem, który jeszcze nie wszedł w
+    życie, DWA razy pod rząd: najpierw brzmienie obowiązujące (przypis "W tym
+    brzmieniu obowiązuje do wejścia w życie zmiany..."), zaraz potem nowe
+    ("W brzmieniu ustalonym przez..."). Sprawdzone na Ordynacji 2017, KSH
+    2020, Prawie upadłościowym 2019, Prawie restrukturyzacyjnym 2021, Prawie
+    o ruchu drogowym 2012. Zostawiamy pierwsze -- obowiązujące w oknie (w
+    plikach "U" tę rolę pełniło wycinanie "< >"). Tylko KOLEJNE duplikaty."""
     kept: list[dict] = []
     for a in articles:
         if kept and kept[-1]["article"] == a["article"]:
@@ -1021,6 +1914,7 @@ def build_version_articles(
     valid_from,
     valid_to,
     announcement_eli,
+    domains: list[str] | None,
     articles: list[dict],
     kind: str,
     file_name: str,
@@ -1033,7 +1927,7 @@ def build_version_articles(
     )
     # Najstarsze okna nie mają znanego początku (valid_from=None) -- dawniej
     # dostawały sufiks "@current" (mylący, a dla kilku takich okien jednej
-    # ustawy, np. 4 w Prawie budowlanym, powtarzający się); projekt prawo polskie, PROGRESS.md Krok 65.
+    # ustawy, np. 4 w Prawie budowlanym, powtarzający się); PROGRESS.md Krok 65.
     if valid_from:
         version_suffix = valid_from
     elif valid_to:
@@ -1053,38 +1947,77 @@ def build_version_articles(
             "valid_from": valid_from,
             "valid_to": valid_to,
             "announcement_eli": announcement_eli,
+            "domains": domains or [],
         }
         for a in articles
     ]
 
 
+def rebuild_all_articles() -> list[dict]:
+    """Odbudowuje all_articles.json ze WSZYSTKICH już pobranych aktów na
+    dysku (data/processed/{short}.json), niezależnie od tego, które akty
+    zostały pobrane w BIEŻĄCYM uruchomieniu `main()` -- inaczej odpalenie
+    `--domain podatkowe` nadpisałoby all_articles.json samą tylko treścią
+    podatkową, kasując po cichu wcześniej pobrane dziedziny. Pomija w
+    ciszy akty z konfiguracji, których jeszcze nie pobrano (brak pliku
+    {short}.json -- świeży klon repo albo dopiero co dodana pozycja w
+    acts_config.json)."""
+    all_chunks = []
+    for act in load_acts_config():
+        path = PROCESSED_DIR / f"{act['short']}.json"
+        if not path.exists():
+            continue
+        all_chunks.extend(json.loads(path.read_text(encoding="utf-8")))
+    return all_chunks
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument(
+        "--domain",
+        type=str,
+        default=None,
+        help="Ogranicz pobieranie do jednej dziedziny (pole 'domains' w data/acts_config.json). "
+        "Domyślnie: wszystkie akty z konfiguracji.",
+    )
+    parser.add_argument(
+        "--acts",
+        type=str,
+        default=None,
+        help="Lista skrótów ustaw po przecinku -- ogranicza dodatkowo do podanych aktów "
+        "(można łączyć z --domain).",
+    )
     parser.add_argument(
         "--workers",
         type=int,
         default=None,
-        help="Liczba procesów parsujących PDF-y (domyślnie: dobrane do rdzeni i wolnej pamięci maszyny, "
+        help="Liczba procesów parsujących PDF-y (domyślnie: dobrane do rdzeni i RAM-u maszyny, "
         "patrz default_parse_workers; 1 = bez równoległości).",
     )
     args = parser.parse_args()
 
-    workers = args.workers or default_parse_workers(len(ACTS))
+    shorts = {s.strip() for s in args.acts.split(",") if s.strip()} if args.acts else None
+    acts = load_acts_config(domain=args.domain, shorts=shorts)
+    if not acts:
+        raise SystemExit("Brak aktów pasujących do podanych filtrów (--domain/--acts).")
+
+    workers = args.workers or default_parse_workers(len(acts))
     print(f"[INFO] parsowanie PDF-ów: {workers} proces(ów) równolegle (pobieranie sekwencyjne)")
-    all_chunks = []
     with ParsePool(workers) as pool:
         pending = []
-        for act in ACTS:
+        for act in acts:
             meta, title, eli, pdf_bytes, kind, file_name = _fetch_source(act, act["short"])
             save_act_raw(act, meta, pdf_bytes)
             pending.append((act, title, eli, kind, file_name, pool.submit(pdf_bytes, act["short"])))
             time.sleep(1)  # nie bombardujemy publicznego API bez potrzeby
         for act, title, eli, kind, file_name, future in pending:
-            all_chunks.extend(write_act_chunks(act, title, eli, kind, file_name, future.result())["chunks"])
+            write_act_chunks(act, title, eli, kind, file_name, future.result())
 
+    all_chunks = rebuild_all_articles()
     out_path = PROCESSED_DIR / "all_articles.json"
     out_path.write_text(json.dumps(all_chunks, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"\nRazem: {len(all_chunks)} fragmentów (artykułów) zapisanych w {out_path}")
+
 
 if __name__ == "__main__":
     main()

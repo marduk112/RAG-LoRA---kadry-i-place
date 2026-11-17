@@ -1,7 +1,7 @@
 {
   "address": "WDU19981370887",
   "announcementDate": "1998-10-13",
-  "changeDate": "2026-10-07T00:00:00",
+  "changeDate": "2026-11-12T09:34:16",
   "displayAddress": "Dz.U. 1998 nr 137 poz. 887",
   "pos": 887,
   "promulgation": "1998-11-10",
@@ -172,6 +172,12 @@
       },
       {
         "id": "MP/2026/211"
+      },
+      {
+        "id": "MP/2026/1120"
+      },
+      {
+        "id": "MP/2026/1098"
       },
       {
         "id": "MP/2025/936"
@@ -2230,6 +2236,9 @@
     "Inf. o tekście jednolitym": [
       {
         "id": "DU/2026/199"
+      },
+      {
+        "id": "DU/2026/1474"
       },
       {
         "id": "DU/2025/350"
