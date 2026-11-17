@@ -1229,6 +1229,7 @@ def strip_not_yet_in_force_text(text: str) -> str:
 
     matched_angle = _matched_angle_bracket_positions(text)
     unclosed_article_ends = _unclosed_future_article_ends(text, matched_angle)
+    unclosed_article_ends.update(_unclosed_future_paragraph_ends(text, matched_angle))
     output: list[str] = []
     angle_depth = 0
     skip_until = -1
@@ -1283,6 +1284,49 @@ def _unclosed_future_article_ends(text: str, matched_angle: set[int]) -> dict[in
         nxt = NEXT_ARTICLE_HEADER_RE.search(text, i + 1)
         end = nxt.start() + 1 if nxt else len(text)
         if text.count("]", i, end) > text.count("[", i, end):
+            continue
+        ends[i] = end
+    return ends
+
+
+UNCLOSED_PARAGRAPH_OPEN_RE = re.compile(r"<(\d+)\. ")
+MAX_UNCLOSED_PARAGRAPH_CHARS = 6000
+
+
+def _unclosed_future_paragraph_ends(text: str, matched_angle: set[int]) -> dict[int, int]:
+    """Odpowiednik `_unclosed_future_article_ends` dla USTĘPU: Kancelaria
+    Sejmu zgubiła zamykające ">" przyszłego brzmienia pojedynczego ustępu
+    (ustawa o systemie ubezpieczeń społecznych, stan 2026-11-09, art. 68
+    ust. 2: "[2. ...]\\n<2. ..." bez ">", a dalej obowiązujące ust. 3-4).
+    Niesparowany "<" nic nie wycinał, więc przyszłe brzmienie ust. 2
+    trafiało do bazy obok obowiązującego (Krok 141 repo wielodziedzinowego, Krok 33 tego repo).
+
+    Reguła jest celowo WĄSKA (ten sam bezpiecznik co w Kroku 45 --
+    lepiej zostawić za dużo niż wyciąć obowiązujący tekst). Obsługujemy
+    niesparowany "<" tylko gdy WSZYSTKIE warunki są spełnione:
+    1. stoi na początku wiersza i otwiera ustęp "<N. ",
+    2. bezpośrednio przed nim (poza białymi znakami) kończy się "]", czyli
+       zamyka obowiązujące, zastępowane brzmienie TEGO ustępu,
+    3. dalej jest początek ustępu N+1 ("\\nN+1. ") albo nagłówek następnego
+       artykułu -- tam kończymy wycinanie (blok przyszły o kilku ustępach
+       bez ">" nie jest wykrywany, zostaje jak dotąd),
+    4. odcinek ma najwyżej `MAX_UNCLOSED_PARAGRAPH_CHARS` znaków i nie
+       zawiera więcej "]" niż "[".
+    Inne niesparowane "<" -- jak dotąd, tylko sam znak znika."""
+    ends: dict[int, int] = {}
+    for m in UNCLOSED_PARAGRAPH_OPEN_RE.finditer(text):
+        i = m.start()
+        if i in matched_angle or not (i == 0 or text[i - 1] == "\n"):
+            continue
+        if not text[:i].rstrip().endswith("]"):
+            continue
+        next_paragraph = re.compile(rf"\n{int(m.group(1)) + 1}\. ").search(text, i + 1)
+        next_article = NEXT_ARTICLE_HEADER_RE.search(text, i + 1)
+        candidates = [x.start() + 1 for x in (next_paragraph, next_article) if x]
+        if not candidates:
+            continue
+        end = min(candidates)
+        if end - i > MAX_UNCLOSED_PARAGRAPH_CHARS or text.count("]", i, end) > text.count("[", i, end):
             continue
         ends[i] = end
     return ends

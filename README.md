@@ -454,12 +454,14 @@ stan na dziś, czyli stawki z 2026 roku. Żeby zapytać o 2027, użyj `--as-of 2
 (albo `/data 2027-01-02`). Tak samo zachowują się inne przepisy, które wejdą w życie
 później — wtedy ustawa ma w tekście ujednoliconym osobne, jeszcze nieobowiązujące brzmienie.
 
-**Znany problem w ustawie o systemie ubezpieczeń społecznych.** W PDF-ie tekstu
-ujednoliconego (stan 2026-11-09) jest 16 znaków `<` i tylko 15 `>`. Kod usuwa przyszłe
-fragmenty (wchodzące w życie od 1.01.2027) zapisane w nawiasach `< >`, więc ten brak sprawia,
-że art. 68 ust. 2 trafia do bazy w obu wersjach, obecnej i przyszłej. Skrypt wypisuje wtedy
-ostrzeżenie o niesparowanych nawiasach. Nienaprawione; przy pytaniu o art. 68 sprawdź tekst w
-oficjalnym źródle.
+**Brakujący znak w PDF-ie ustawy o systemie ubezpieczeń społecznych (obsłużony).** W PDF-ie tekstu
+ujednoliconego (stan 2026-11-09) jest 16 znaków `<` i tylko 15 `>`: brakuje zamknięcia przyszłego
+brzmienia art. 68 ust. 2 (od 1.01.2027). Kod usuwa przyszłe fragmenty zapisane w nawiasach `< >`,
+więc bez zamknięcia ten ustęp trafiał do bazy w obu wersjach. Od Kroku 33 działa wąska reguła
+(niesparowany `<` na początku ustępu, tuż po `]` zamykającym stare brzmienie, wycinany do następnego
+ustępu) i dotyka w tej ustawie tylko tego jednego miejsca. Skrypt nadal wypisuje wtedy
+ostrzeżenie o niesparowanych nawiasach, bo liczy same znaki; w innych ustawach nowe, podobne braki
+mogą się pojawić i wymagają ręcznego sprawdzenia.
 
 **Poprawna numeracja artykułów z indeksem górnym (np. Art. 11¹).**
 Kodeks pracy od lat jest nowelizowany przez wstawianie nowych artykułów
