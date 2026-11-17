@@ -56,18 +56,25 @@ Jak działa cały pipeline w prostych słowach opisuje
 [JAK_TO_DZIALA.md](https://github.com/marduk112/prawo-polskie-rag/blob/main/JAK_TO_DZIALA.md)
 w projekcie następcy.
 
-**Który model odpowiada najlepiej?** W projekcie następcy (te same
-konteksty RAG, 76 pytań kadrowych) **Qwen3.8-27B** wypadł wyraźnie lepiej niż
-Bielik v3.0: 65 wygranych, 7 remisów, 0 wygranych Bielika; Bielik miał
-poważne błędy w 40 z 76 odpowiedzi, Qwen w 0. To pomiar okiem modelu-sędziego
-(sędzią był sam Qwen), z ręcznym sprawdzeniem próbki, bez prawnika, a Qwen
-pisze ponad dwa razy dłużej — traktuj go jako wskazówkę, nie dowód. Inne
-sprawdzone modele (Qwen3.6-35B-A3B, Qwen3-30B-A3B-2507, Gemma-4-26B-A4B) wypadły
-na kadrach gorzej od Qwena 27B; Gemma-4-26B-A4B miała najmniej poważnych błędów
-spośród lżejszych (patrz tabela niżej). Szczegóły: Kroki 106, 113, 115 i 142
-w [PROGRESS.md następcy](https://github.com/marduk112/prawo-polskie-rag/blob/main/PROGRESS.md).
+**Bielik czy Qwen?** Domyślnie to repo działa z **Bielikiem** (polski model, znacznie lżejszy: według
+pomiarów w tym README ok. 8–11 GB pamięci dla wariantu 11B i ok. 5 GB dla 4.5B). **Qwen3.8-27B jest większą, bardziej wymagającą alternatywą**
+i daje lepsze odpowiedzi: w projekcie następcy (te same konteksty RAG, 76 pytań kadrowych) wypadł wyraźnie
+lepiej niż Bielik v3.0 — 65 wygranych, 7 remisów, 0 wygranych Bielika; Bielik miał poważne błędy w 40 z 76
+odpowiedzi, Qwen w 0. To pomiar okiem modelu-sędziego (sędzią był sam Qwen), z ręcznym sprawdzeniem próbki,
+bez prawnika — traktuj go jako wskazówkę, nie dowód. Cena tej jakości:
+- **pamięć:** sam model to ok. 30 GB (w LM Studio), a okno kontekstu 16–32 tys. tokenów dokłada kolejne gigabajty,
+  więc potrzebujesz komputera z dużą ilością RAM (testowane na Macu z 69 GB; przy modelu takiej wielkości i
+  równoległej pracy innych programów wskaźnik pamięci potrafił przejść na żółto),
+- **czas i długość:** odpowiedzi są ponad dwa razy dłuższe (średnio 339 słów wobec 142 u Bielika v3.0) i zwykle
+  powstają wolniej, bo model najpierw rozumuje, zanim odpowie (czasu odpowiedzi nie mierzyłem tu osobno),
+- **konfiguracja:** trzeba go załadować w LM Studio z odpowiednio dużym oknem (opis niżej); nie działa w `chat.py` (MLX).
 
-**Qwen w tym repo.** `chat_lmstudio.py` obsługuje od Kroku 34 modele z trybem
+Inne sprawdzone modele (Qwen3.6-35B-A3B, Qwen3-30B-A3B-2507, Gemma-4-26B-A4B) wypadły na kadrach gorzej od
+Qwena 27B; Gemma-4-26B-A4B miała najmniej poważnych błędów spośród lżejszych (patrz tabela niżej). Szczegóły:
+Kroki 106, 113, 115 i 142 w
+[PROGRESS.md następcy](https://github.com/marduk112/prawo-polskie-rag/blob/main/PROGRESS.md).
+
+**Uruchomienie Qwena w tym repo.** `chat_lmstudio.py` obsługuje od Kroku 34 modele z trybem
 „myślenia” (Qwen): dla modelu o nazwie zawierającej „qwen” domyślnie
 `--max-tokens 3000` i `--reasoning-effort low` (bez tego Qwen zużywa cały budżet 500
 tokenów na rozumowanie i zwraca pustą odpowiedź), a przepisywanie pytań
