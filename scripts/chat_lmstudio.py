@@ -41,9 +41,12 @@ Użycie:
     python scripts/chat_lmstudio.py --url http://localhost:1234/v1
     python scripts/chat_lmstudio.py --file umowa.pdf     # z wgranym plikiem od startu
     python scripts/chat_lmstudio.py --as-of 2019-06-01    # stan prawny na dany dzień
+    python scripts/chat_lmstudio.py --model qwen/qwen3.8-27b --prompt "pytanie..."   # Qwen: domyślnie
+        # --max-tokens 3000 i --reasoning-effort low (model "thinking"; patrz PROGRESS.md, Krok 34)
 """
 
 import argparse
+import json
 import sys
 from datetime import date
 
@@ -61,6 +64,32 @@ from prompt import (
 from rag_search import RagIndex
 
 DEFAULT_URL = "http://localhost:1234/v1"
+EMPTY_RETRY_MAX_TOKENS = 2000  # jedno ponowienie krótkiego wywołania ("thinking"), gdy pierwsze zwróciło pusty tekst
+
+
+def resolve_generation_defaults(model_id: str, max_tokens: int | None, reasoning_effort: str | None) -> tuple[int, str | None]:
+    """Modele Qwen w trybie "thinking" z limitem 500 tokenów i bez `reasoning_effort` zwracają PUSTE odpowiedzi
+    (rozumowanie zjada cały budżet). Dla modeli Qwen domyślnie 3000 tokenów i reasoning_effort=low; jawnie
+    podane argumenty zawsze wygrywają. Pozostałe modele (Bielik): 500 i brak reasoning_effort, jak dotąd.
+    Zasada przeniesiona z repozytorium wielodziedzinowego (tam Krok 110; tu Krok 34)."""
+    is_qwen = "qwen" in model_id.lower()
+    if max_tokens is None:
+        max_tokens = 3000 if is_qwen else 500
+    if reasoning_effort is None and is_qwen:
+        reasoning_effort = "low"
+    return max_tokens, reasoning_effort
+
+
+def _apply_thinking_params(payload: dict, reasoning_effort: str | None, template_kwargs: dict | None) -> dict:
+    """Dokłada do zapytania parametry trybu "thinking": `reasoning_effort` (LM Studio/vLLM) oraz przez
+    `chat_template_kwargs` (vLLM przyjmuje parametry szablonu tylko tą drogą) i ewentualne dodatkowe
+    `template_kwargs` (np. {"enable_thinking": false}); niczego nie zmienia, gdy oba są puste."""
+    if reasoning_effort is not None:
+        payload["reasoning_effort"] = reasoning_effort
+        payload["chat_template_kwargs"] = {"reasoning_effort": reasoning_effort}
+    if template_kwargs:
+        payload["chat_template_kwargs"] = {**payload.get("chat_template_kwargs", {}), **template_kwargs}
+    return payload
 
 
 def detect_model(base_url: str) -> str:
@@ -81,17 +110,29 @@ def detect_model(base_url: str) -> str:
     return ids[0]
 
 
-def rewrite_followup(base_url: str, model_id: str, history: list[dict], question: str) -> str:
+def rewrite_followup(
+    base_url: str,
+    model_id: str,
+    history: list[dict],
+    question: str,
+    reasoning_effort: str | None = None,
+    template_kwargs: dict | None = None,
+) -> str:
     """Krótkie wywołanie modelu: pytanie uzupełniające -> samodzielne (patrz prompt.build_followup_rewrite_messages).
-    Modele z długim "myśleniem" (np. Qwen) mogą zwrócić pusty wynik -- wtedy zostaje oryginalne pytanie."""
+    Dla modeli z "myśleniem" (Qwen): 800 tokenów i jedno ponowienie z większym budżetem, gdy wynik jest pusty;
+    gdyby i to dało pusty tekst, zostaje oryginalne pytanie (czyści to prompt.clean_rewritten_question)."""
     messages = build_followup_rewrite_messages(history, question)
-    resp = requests.post(
-        f"{base_url}/chat/completions",
-        json={"model": model_id, "messages": messages, "max_tokens": 120, "temperature": 0.0},
-        timeout=120,
-    )
+    payload = {"model": model_id, "messages": messages, "max_tokens": 800 if reasoning_effort else 120, "temperature": 0.0}
+    _apply_thinking_params(payload, reasoning_effort, template_kwargs)
+    resp = requests.post(f"{base_url}/chat/completions", json=payload, timeout=300)
     resp.raise_for_status()
-    return resp.json()["choices"][0]["message"]["content"]
+    text = (resp.json()["choices"][0]["message"].get("content") or "").strip()
+    if not text and reasoning_effort is not None:
+        payload["max_tokens"] = EMPTY_RETRY_MAX_TOKENS
+        resp = requests.post(f"{base_url}/chat/completions", json=payload, timeout=600)
+        resp.raise_for_status()
+        text = (resp.json()["choices"][0]["message"].get("content") or "").strip()
+    return text
 
 
 def answer(
@@ -104,6 +145,9 @@ def answer(
     top_k: int,
     as_of: str | None = None,
     rewrite_followups: bool = True,
+    max_tokens: int = 500,
+    reasoning_effort: str | None = None,
+    template_kwargs: dict | None = None,
 ) -> str:
     if history and looks_like_meta_question(question):
         # Pytanie o przebieg rozmowy -- pomijamy fragmenty RAG (wyszukane
@@ -112,7 +156,11 @@ def answer(
         # prompt.looks_like_meta_question i PROGRESS.md, krok 10).
         current_turn = {"role": "user", "content": question}
     else:
-        rewrite = (lambda h, q: rewrite_followup(base_url, model_id, h, q)) if rewrite_followups else None
+        rewrite = (
+            (lambda h, q: rewrite_followup(base_url, model_id, h, q, reasoning_effort, template_kwargs))
+            if rewrite_followups
+            else None
+        )
         results = search_with_history(rag, history, question, top_k, as_of=as_of, rewrite=rewrite)
         file_results = file_index.search(question, top_k=3)
         current_turn = {
@@ -120,13 +168,20 @@ def answer(
             "content": build_user_message(question, results, file_results, as_of=as_of),
         }
     messages = [{"role": "system", "content": SYSTEM_PROMPT}] + history + [current_turn]
-    resp = requests.post(
-        f"{base_url}/chat/completions",
-        json={"model": model_id, "messages": messages, "max_tokens": 500, "temperature": 0.2},
-        timeout=300,
-    )
+    payload = {"model": model_id, "messages": messages, "max_tokens": max_tokens, "temperature": 0.2}
+    _apply_thinking_params(payload, reasoning_effort, template_kwargs)
+    resp = requests.post(f"{base_url}/chat/completions", json=payload, timeout=600)
     resp.raise_for_status()
-    text = resp.json()["choices"][0]["message"]["content"]
+    choice = resp.json()["choices"][0]
+    text = (choice["message"].get("content") or "").strip()
+    if not text:
+        # Model "thinking" zużył cały budżet na rozumowanie (finish_reason=length) -- nie dopisujemy pustej
+        # odpowiedzi do historii; mówimy wprost, co zrobić.
+        raise RuntimeError(
+            "Model zwrócił pustą odpowiedź (prawdopodobnie cały budżet --max-tokens poszedł na rozumowanie, "
+            f"finish_reason={choice.get('finish_reason')!r}). Podnieś --max-tokens (np. 3000) i/lub ustaw "
+            "--reasoning-effort low."
+        )
     # W historii trzymamy samo pytanie (bez fragmentów RAG) -- fragmenty
     # doklejane są od nowa przy każdej turze, więc trzymanie ich też w
     # historii bardzo szybko przepełnia okno kontekstu (patrz PROGRESS.md,
@@ -156,6 +211,24 @@ def main():
         help="Nie przepisuj pytań uzupełniających (\"a po 15 latach?\") na samodzielne dodatkowym wywołaniem modelu "
         "(PROGRESS.md, Krok 29) -- wraca stary fallback oparty na progu kosinusa",
     )
+    parser.add_argument(
+        "--max-tokens",
+        type=int,
+        default=None,
+        help="Limit tokenów odpowiedzi (domyślnie 500; dla modeli Qwen 3000, bo rozumowanie zjada budżet i "
+        "odpowiedź wychodzi pusta)",
+    )
+    parser.add_argument(
+        "--reasoning-effort",
+        choices=["low", "medium", "high", "xhigh"],
+        default=None,
+        help="Dla modeli z trybem \"thinking\" (Qwen): ile rozumować (domyślnie low dla Qwena, brak dla pozostałych)",
+    )
+    parser.add_argument(
+        "--template-kwargs",
+        default=None,
+        help='JSON z dodatkowymi parametrami szablonu czatu, np. \'{"enable_thinking": false}\' (łączony z --reasoning-effort)',
+    )
     parser.add_argument("--max-turns", type=int, default=6, help="Ile ostatnich par pytanie/odpowiedź zachować w kontekście rozmowy")
     parser.add_argument("--file", type=str, default=None, help="Ścieżka do pliku PDF (tekstowego) wgrywanego jako dodatkowy kontekst")
     parser.add_argument(
@@ -169,7 +242,12 @@ def main():
     args = parser.parse_args()
 
     model_id = args.model or detect_model(args.url)
-    print(f"[INFO] LM Studio: {args.url}, model={model_id}")
+    max_tokens, reasoning_effort = resolve_generation_defaults(model_id, args.max_tokens, args.reasoning_effort)
+    template_kwargs = json.loads(args.template_kwargs) if args.template_kwargs else None
+    print(
+        f"[INFO] LM Studio: {args.url}, model={model_id}, max_tokens={max_tokens}"
+        + (f", reasoning_effort={reasoning_effort}" if reasoning_effort else "")
+    )
 
     print("[INFO] Ładowanie indeksu RAG...")
     rag = RagIndex()
@@ -183,7 +261,10 @@ def main():
         print(f"[INFO] Stan prawny na dzień: {args.as_of}")
 
     if args.prompt:
-        print(answer(args.url, model_id, rag, file_index, [], args.prompt, args.top_k, as_of=args.as_of))
+        print(answer(
+            args.url, model_id, rag, file_index, [], args.prompt, args.top_k, as_of=args.as_of,
+            max_tokens=max_tokens, reasoning_effort=reasoning_effort, template_kwargs=template_kwargs,
+        ))
         return
 
     print("\nAsystent kadrowo-płacowy (LM Studio) gotowy. Wpisz pytanie (Ctrl+C aby zakończyć, /nowy aby zacząć nowy wątek, /plik <ścieżka> aby wgrać PDF, /data RRRR-MM-DD aby zapytać o stan prawny na dany dzień).\n")
@@ -226,10 +307,15 @@ def main():
                 as_of = arg
                 print(f"[INFO] Stan prawny na dzień: {as_of}\n")
             continue
-        text = answer(
-            args.url, model_id, rag, file_index, history, question, args.top_k, as_of=as_of,
-            rewrite_followups=not args.no_rewrite_followups,
-        )
+        try:
+            text = answer(
+                args.url, model_id, rag, file_index, history, question, args.top_k, as_of=as_of,
+                rewrite_followups=not args.no_rewrite_followups,
+                max_tokens=max_tokens, reasoning_effort=reasoning_effort, template_kwargs=template_kwargs,
+            )
+        except RuntimeError as e:  # np. pusta odpowiedź modelu "thinking" -- nie przerywamy rozmowy
+            print(f"[BŁĄD] {e}\n")
+            continue
         print("Asystent:", text, "\n")
         history = trim_history(history, args.max_turns)
 
