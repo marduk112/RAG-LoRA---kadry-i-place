@@ -1835,6 +1835,13 @@ Problem: `build_context` ucinał artykuły dłuższe niż 6000 znaków do ich po
 **Test na żywo (Qwen3.8-27B w LM Studio, okno 32 768 tokenów):** (1) "Ile dni urlopu wypoczynkowego przysługuje pracownikowi, który pracuje od 12 lat?" -- 26 dni, art. 154 § 1 pkt 2 (zgodne z tekstem w bazie; uwaga o proporcjonalnym wymiarze dla niepełnego etatu z art. 154 § 2 też zgodna), bez pustej odpowiedzi; (2) rozmowa: "po 5 latach pracy" -- 20 dni, potem "A po 15 latach?" -- przepisane na "Ile dni urlopu wypoczynkowego przysługuje pracownikowi po 15 latach pracy?" i odpowiedź 26 dni, art. 154 § 1, dodatkowa uwaga o art. 162 (podział urlopu) z kontekstu.
 **Zastrzeżenia:** dwa scenariusze ręcznie, nie bateria; odpowiedzi czytane tylko pod kątem art. 154; bez prawnika. Domyślne okno LM Studio (8192 tokenów) jest za małe dla kontekstu RAG (ok. 10 tys. tokenów) -- serwer odpowiada błędem 400, opisane w README. `chat.py` (MLX) i `chat_cuda.py` bez zmian.
 
+## Krok 35: bateria 102 pytań z Qwenem3.8-27B i ostrzeżenie o ucięciu odpowiedzi
+
+**Bateria (RunPod, RTX PRO 6000, vLLM z Qwen3.8-27B-FP8, szczegóły w Kroku 143 repo wielodziedzinowego):** prawdziwy `chat_lmstudio.answer()` z RAG tego repo na 26 pytaniach z etykietą artykułu (`data/retrieval_battery.json`) i 76 pytaniach z Kroków 106/115, jedna tura na pytanie. Wynik: 102 odpowiedzi, 0 błędów/pustych, 1 ucięta; 26/26 pytań z etykietą ma właściwy artykuł w kontekście i cytowany w odpowiedzi; cytaty spoza kontekstu 12/102 (z 31 oznaczonych heurystyką 19 to odsyłacze z treści fragmentów); średnio 37 s/odp przy 8 zapytaniach równoległych, 289 słów. Odpowiedzi nie są w tym repo (niezweryfikowane odpowiedzi prawne, tylko w archiwum prywatnym).
+**Znaleziona słabość:** pytanie spoza zakresu bazy dało 11 słów po wyczerpaniu 3000 tokenów (rozumowanie `low` zjadło budżet), a `answer()` nie zgłaszało ucięcia -- tekst był niepusty, więc żaden błąd.
+**Wdrożone:** gdy `finish_reason == "length"`, `answer()` dopisuje do wyniku ostrzeżenie z podpowiedzią podniesienia `--max-tokens`; historia rozmowy zostaje bez ostrzeżenia. Testy +2 (razem 172 w całym repo).
+**Zastrzeżenia:** bateria przeciw vLLM, nie LM Studio na Macu (inne środowisko, kwantyzacja FP8 vs lokalna); automatyczne kontrole i trzy ręcznie przeczytane odpowiedzi, bez sędziego i prawnika; czas dotyczy 8 równoległych zapytań na RTX PRO 6000, nie pojedynczej odpowiedzi lokalnie.
+
 ## Co dalej
 
 1. ~~Zweryfikować ręcznie 3 rozbieżności `changeDate` znalezione przy

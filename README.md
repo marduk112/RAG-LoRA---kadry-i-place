@@ -87,9 +87,14 @@ lms load qwen/qwen3.8-27b --context-length 32768
 .venv/bin/python scripts/chat_lmstudio.py --model qwen/qwen3.8-27b --prompt "Ile dni urlopu po 12 latach pracy?"
 ```
 
-Sprawdzone tylko ręcznie na kilku pytaniach (jedno pojedyncze, jedna rozmowa z pytaniem
-uzupełniającym) oraz testami jednostkowymi z atrapą serwera — **nie** na całej baterii
-76 pytań z odpowiedziami w tym repo.
+Sprawdzone testami jednostkowymi z atrapą serwera, kilkoma pytaniami ręcznie oraz baterią 102 pytań
+end-to-end (Krok 35): ten sam kod `chat_lmstudio.py` przeciw vLLM z Qwenem3.8-27B-FP8 na RunPodzie
+(nie przeciw LM Studio na Macu). Wynik: 0 błędów i 0 pustych odpowiedzi; dla 26 pytań z etykietą
+właściwy artykuł był w kontekście 26/26 i cytowany w odpowiedzi 26/26. Jedna odpowiedź (pytanie spoza zakresu
+bazy) została ucięta limitem tokenów — od Kroku 35 skrypt dopisuje wtedy ostrzeżenie i podpowiada
+podniesienie `--max-tokens`. W 12 ze 102 odpowiedzi Qwen powołał się na numer artykułu, którego nie ma w
+przekazanym kontekście (z dwóch przeczytanych jedna to jawne przyznanie braku przepisu, który nie trafił do
+wyszukiwania, druga to poprawna, ale nieoznaczona wiedza własna modelu). Jakości merytorycznej całości nie oceniano.
 
 **Zastrzeżenie:** zestaw `data/finetune/{train,valid}.jsonl` nie został
 zweryfikowany przez specjalistę kadrowo-płacowego — napisał go autor
@@ -578,12 +583,12 @@ modelu oceniał głównie inny model, nie prawnik ani kadrowa.
 | Adaptery produkcyjne a Bielik v3.1 bez adaptera (3 inne dziedziny, 70 pytań) | 18 : 20, bez różnicy | j.w. |
 | Qwen3.8-27B a Bielik v3.0 (76 pytań kadrowych) | 65 : 0 przy 7 remisach | sędzią był Qwen, odpowiedzi Qwena są 2,4 razy dłuższe |
 | Qwen3-30B-A3B-2507 (lokalnie w LM Studio) a Qwen3.8-27B (76 pytań, obie kolejności) | Qwen 27B 60 : 0 przy 7 remisach; poważne błędy 0 vs 52 | j.w.; kwantyzacja lokalna, 9 par bez werdyktu (Krok 142 następcy) |
-| Qwen w `chat_lmstudio.py` tego repo (Krok 34) | 2 pytania ręcznie (w tym pytanie uzupełniające), odpowiedzi zgodne z tekstem art. 154 | nie bateria; bez prawnika |
+| Qwen3.8-27B w `chat_lmstudio.py` tego repo, bateria 102 pytań (Krok 35; vLLM na RunPodzie) | 0 błędów; 26/26 pytań z etykietą: artykuł w kontekście i cytowany; 1 odpowiedź ucięta; 12/102 odpowiedzi cytują numer artykułu spoza kontekstu | brak oceny merytorycznej całości i sędziego, bez prawnika; nie LM Studio na Macu |
 | Poprawność merytoryczna odpowiedzi przez prawnika / kadrową | **nie wykonano** | to największa luka |
 
 Pełne opisy: Kroki 106, 113, 118, 121 i 122 w
 [PROGRESS.md projektu następcy](https://github.com/marduk112/prawo-polskie-rag/blob/main/PROGRESS.md) oraz
-Kroki 28–34 w [PROGRESS.md](PROGRESS.md) tego repo.
+Kroki 28–35 w [PROGRESS.md](PROGRESS.md) tego repo.
 
 ## Zastrzeżenie prawne
 
