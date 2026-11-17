@@ -61,10 +61,28 @@ konteksty RAG, 76 pytań kadrowych) **Qwen3.8-27B** wypadł wyraźnie lepiej ni�
 Bielik v3.0: 65 wygranych, 7 remisów, 0 wygranych Bielika; Bielik miał
 poważne błędy w 40 z 76 odpowiedzi, Qwen w 0. To pomiar okiem modelu-sędziego
 (sędzią był sam Qwen), z ręcznym sprawdzeniem próbki, bez prawnika, a Qwen
-pisze ponad dwa razy dłużej — traktuj go jako wskazówkę, nie dowód. **W tym
-repo `chat_lmstudio.py` z Qwenem nie był testowany** (modele z "myśleniem"
-wymagają obsługi, którą ma wersja wielodziedzinowa). Szczegóły: Kroki 106 i 113
+pisze ponad dwa razy dłużej — traktuj go jako wskazówkę, nie dowód. Inne
+sprawdzone modele (Qwen3.6-35B-A3B, Qwen3-30B-A3B-2507, Gemma-4-26B-A4B) wypadły
+na kadrach gorzej od Qwena 27B; Gemma-4-26B-A4B miała najmniej poważnych błędów
+spośród lżejszych (patrz tabela niżej). Szczegóły: Kroki 106, 113, 115 i 142
 w [PROGRESS.md następcy](https://github.com/marduk112/prawo-polskie-rag/blob/main/PROGRESS.md).
+
+**Qwen w tym repo.** `chat_lmstudio.py` obsługuje od Kroku 34 modele z trybem
+„myślenia” (Qwen): dla modelu o nazwie zawierającej „qwen” domyślnie
+`--max-tokens 3000` i `--reasoning-effort low` (bez tego Qwen zużywa cały budżet 500
+tokenów na rozumowanie i zwraca pustą odpowiedź), a przepisywanie pytań
+uzupełniających też działa z takim modelem. Załaduj model w LM Studio z oknem
+**co najmniej 16 tys. tokenów, najlepiej 32 tys.** (kontekst RAG potrafi mieć ok. 10 tys.
+tokenów; przy domyślnym oknie 8192 serwer odpowiadał w moich testach błędem 400):
+
+```bash
+lms load qwen/qwen3.8-27b --context-length 32768
+.venv/bin/python scripts/chat_lmstudio.py --model qwen/qwen3.8-27b --prompt "Ile dni urlopu po 12 latach pracy?"
+```
+
+Sprawdzone tylko ręcznie na kilku pytaniach (jedno pojedyncze, jedna rozmowa z pytaniem
+uzupełniającym) oraz testami jednostkowymi z atrapą serwera — **nie** na całej baterii
+76 pytań z odpowiedziami w tym repo.
 
 **Zastrzeżenie:** zestaw `data/finetune/{train,valid}.jsonl` nie został
 zweryfikowany przez specjalistę kadrowo-płacowego — napisał go autor
@@ -551,12 +569,14 @@ modelu oceniał głównie inny model, nie prawnik ani kadrowa.
 | Pytania uzupełniające ("A po 15 latach?"), `chat_lmstudio.py` | właściwy artykuł w top-8: 14/14 (wcześniej 5/14) | 14 + 26 pytań, jeden model przepisujący |
 | Adapter LoRA a sam model z RAG (Bielik v3.1, 76 pytań kadrowych, sędzia Qwen w obu kolejnościach) | 22 : 18 na korzyść adaptera, 29 remisów, różnica nieistotna (p = 0,32) | sędzia = model, jedna dziedzina |
 | Adaptery produkcyjne a Bielik v3.1 bez adaptera (3 inne dziedziny, 70 pytań) | 18 : 20, bez różnicy | j.w. |
-| Qwen3.8-27B a Bielik v3.0 (76 pytań kadrowych) | 65 : 0 przy 7 remisach | sędzią był Qwen, odpowiedzi Qwena są 2,4 razy dłuższe; w tym repo Qwen nietestowany |
+| Qwen3.8-27B a Bielik v3.0 (76 pytań kadrowych) | 65 : 0 przy 7 remisach | sędzią był Qwen, odpowiedzi Qwena są 2,4 razy dłuższe |
+| Qwen3-30B-A3B-2507 (lokalnie w LM Studio) a Qwen3.8-27B (76 pytań, obie kolejności) | Qwen 27B 60 : 0 przy 7 remisach; poważne błędy 0 vs 52 | j.w.; kwantyzacja lokalna, 9 par bez werdyktu (Krok 142 następcy) |
+| Qwen w `chat_lmstudio.py` tego repo (Krok 34) | 2 pytania ręcznie (w tym pytanie uzupełniające), odpowiedzi zgodne z tekstem art. 154 | nie bateria; bez prawnika |
 | Poprawność merytoryczna odpowiedzi przez prawnika / kadrową | **nie wykonano** | to największa luka |
 
 Pełne opisy: Kroki 106, 113, 118, 121 i 122 w
 [PROGRESS.md projektu następcy](https://github.com/marduk112/prawo-polskie-rag/blob/main/PROGRESS.md) oraz
-Kroki 28–32 w [PROGRESS.md](PROGRESS.md) tego repo.
+Kroki 28–34 w [PROGRESS.md](PROGRESS.md) tego repo.
 
 ## Zastrzeżenie prawne
 
